@@ -10,22 +10,34 @@ pub struct CPU {
 //    register_x: u8,
 //    register_y: u8,
 //    processor_status: u8
+    op_codes: OpCodes,
 }
 
 impl CPU {
     pub fn new() -> CPU {
         return CPU {
-        program_counter: 0x8000,
+            program_counter: 0x8000,
         //        stack_pointer: 0xFF,
-        accumulator: 0,
+            accumulator: 0,
         //        register_x: 0,
         //        register_y: 0,
         //        processor_status: 0,
+            op_codes: OpCodes::new(),
         }
     }
 
     pub fn add_accumulator(&mut self, value: u8) {
         self.accumulator += value;
+    }
+
+    fn execute_instruction(&mut self, memory: &mut Memory) {
+        let opcode = memory.get(self.program_counter);
+        self.program_counter += 1;
+
+        match self.op_codes.get(opcode) {
+            &Some(OpCode(_, addressing_mode, method)) => method(addressing_mode(self, memory), self, memory),
+            &None => println!("Unkown opcode"),
+        }
     }
 }
 
@@ -49,17 +61,6 @@ impl AddressingMode {
         return AddressingMode {
             operand_address: operand_address,
         }
-    }
-}
-
-fn execute_one_instruction(cpu: &mut CPU, memory: &mut Memory) {
-    let opcode = memory.get(cpu.program_counter);
-    cpu.program_counter += 1;
-
-    match opcode {
-        opcodes::ADC_IMMEDIATE => adc(AddressingMode::immediate(cpu, memory), cpu, memory),
-        opcodes::ADC_ZERO_PAGE => adc(AddressingMode::zero_paged(cpu, memory), cpu, memory),
-        _ => println!("Unkown opcode")
     }
 }
 
@@ -165,7 +166,7 @@ mod tests {
 
         let mut cpu = super::CPU::new();
 
-        super::execute_one_instruction(&mut cpu, &mut memory);
+        cpu.execute_instruction(&mut memory);
         assert_eq!(0x05, cpu.accumulator);
         assert_eq!(0x8002, cpu.program_counter);
     }
@@ -179,7 +180,7 @@ mod tests {
 
         let mut cpu = super::CPU::new();
 
-        super::execute_one_instruction(&mut cpu, &mut memory);
+        cpu.execute_instruction(&mut memory);
         assert_eq!(10, cpu.accumulator);
         assert_eq!(0x8002, cpu.program_counter);
     }
