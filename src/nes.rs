@@ -9,7 +9,7 @@ pub struct CPU {
     pub accumulator: u8,
 //    register_x: u8,
 //    register_y: u8,
-//    processor_status: u8
+    processor_status: u8,
     op_codes: OpCodes,
 }
 
@@ -21,9 +21,21 @@ impl CPU {
             accumulator: 0,
         //        register_x: 0,
         //        register_y: 0,
-        //        processor_status: 0,
+            processor_status: 0,
             op_codes: OpCodes::new(),
         }
+    }
+
+    fn is_zero_flag_set(&self) -> bool {
+        self.processor_status & 0b0000_0010 > 0
+    }
+
+    fn set_zero_flag(&mut self) {
+        self.processor_status |= 0b0000_0010;
+    }
+
+    fn clear_zero_flag(&mut self) {
+        self.processor_status &= 0b1111_1101;
     }
 
     pub fn add_accumulator(&mut self, value: u8) {
@@ -66,19 +78,6 @@ impl AddressingMode {
 
 type Opcode = fn(&mut CPU, &mut Memory);
 
-//
-//fn adc_zero_page_indexed(cpu: &mut CPU, memory: &mut Memory) {
-//    let base_address = memory.get(cpu.program_counter) as u16;
-//    cpu.accumulator = cpu.accumulator + memory.get(base_address + cpu.register_x as u16);
-//    cpu.program_counter += 1;
-//}
-//
-//fn adc_absolute(cpu: &mut CPU, memory: &mut Memory) {
-//    let address = memory.get(cpu.program_counter) as u16 & (memory.get(cpu.program_counter+1) as u16) << 8;
-//    cpu.accumulator = cpu.accumulator + memory.get(address);
-//    cpu.program_counter += 2;
-//}
-
 type OpCodeExecute = fn(AddressingMode, &mut CPU, &mut Memory);
 
 #[derive(Copy)]
@@ -117,6 +116,12 @@ impl OpCodes {
 
 fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
     cpu.add_accumulator(memory.get(addressing_mode.operand_address));
+}
+
+fn beq(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    if cpu.is_zero_flag_set() {
+        cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
+    }
 }
 
 const OP_CODES: [OpCode; 2] = [
@@ -202,5 +207,21 @@ mod tests {
 
         super::adc(AddressingMode::immediate(&mut cpu, &memory), &mut cpu, &mut memory);
         assert_eq!(0x05, cpu.accumulator);
+    }
+
+    #[test]
+    fn test_branch_equal() {
+        let mut memory = BasicMemory::new();
+        memory.set(0x8000, 0x06);
+
+        let mut cpu = super::CPU::new();
+        cpu.set_zero_flag();
+        super::beq(AddressingMode::immediate(&mut cpu, &memory), &mut cpu, &mut memory);
+        assert_eq!(0x8007, cpu.program_counter);
+
+        cpu.program_counter = 0x8000;
+        cpu.clear_zero_flag();
+        super::beq(AddressingMode::immediate(&mut cpu, &memory), &mut cpu, &mut memory);
+        assert_eq!(0x8001, cpu.program_counter);
     }
 }
