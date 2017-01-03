@@ -3,6 +3,11 @@ use opcodes;
 use memory::Address;
 use memory::Memory;
 
+const NEGATIVE_FLAG: u8 = 0b1000_0000;
+const OVERFLOW_FLAG: u8 = 0b0100_0000;
+const ZERO_FLAG: u8 = 0b0000_0010;
+const CARRY_FLAG: u8 = 0b0000_0001;
+
 pub struct CPU {
     pub program_counter: Address,
 //    stack_pointer: u8,
@@ -26,16 +31,16 @@ impl CPU {
         }
     }
 
-    fn is_zero_flag_set(&self) -> bool {
-        self.processor_status & 0b0000_0010 > 0
+    fn set_flags(&mut self, flags: u8) {
+        self.processor_status |= flags;
     }
 
-    fn set_zero_flag(&mut self) {
-        self.processor_status |= 0b0000_0010;
+    fn clear_flags(&mut self, flags: u8) {
+        self.processor_status &= !flags;
     }
 
-    fn clear_zero_flag(&mut self) {
-        self.processor_status &= 0b1111_1101;
+    fn is_flag_set(&self, flags: u8) -> bool {
+        self.processor_status & flags > 0
     }
 
     pub fn add_accumulator(&mut self, value: u8) {
@@ -119,14 +124,65 @@ fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
 }
 
 fn beq(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
-    if cpu.is_zero_flag_set() {
+    if cpu.is_flag_set(ZERO_FLAG) {
         cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
     }
 }
 
-const OP_CODES: [OpCode; 2] = [
+fn bne(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    if !cpu.is_flag_set(ZERO_FLAG) {
+        cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
+    }
+}
+
+fn bmi(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    if cpu.is_flag_set(NEGATIVE_FLAG) {
+        cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
+    }
+}
+
+fn bpl(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    if !cpu.is_flag_set(NEGATIVE_FLAG) {
+        cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
+    }
+}
+
+fn bcs(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    if cpu.is_flag_set(CARRY_FLAG) {
+        cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
+    }
+}
+
+fn bcc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    if !cpu.is_flag_set(CARRY_FLAG) {
+        cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
+    }
+}
+
+fn bvs(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    if cpu.is_flag_set(OVERFLOW_FLAG) {
+        cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
+    }
+}
+
+fn bvc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    if !cpu.is_flag_set(OVERFLOW_FLAG) {
+        cpu.program_counter += memory.get(addressing_mode.operand_address) as Address;
+    }
+}
+
+const OP_CODES: [OpCode; 10] = [
     OpCode(opcodes::ADC_IMMEDIATE, AddressingMode::immediate, adc),
     OpCode(opcodes::ADC_ZERO_PAGE, AddressingMode::zero_paged, adc),
+
+    OpCode(opcodes::BRANCH_PLUS, AddressingMode::immediate, bpl),
+    OpCode(opcodes::BRANCH_MINUS, AddressingMode::immediate, bmi),
+    OpCode(opcodes::BRANCH_OVERFLOW_SET, AddressingMode::immediate, bvs),
+    OpCode(opcodes::BRANCH_OVERFLOW_CLEAR, AddressingMode::immediate, bvc),
+    OpCode(opcodes::BRANCH_CARRY_SET, AddressingMode::immediate, bcs),
+    OpCode(opcodes::BRANCH_CARRY_CLEAR, AddressingMode::immediate, bcc),
+    OpCode(opcodes::BRANCH_NOT_EQUAL, AddressingMode::immediate, bne),
+    OpCode(opcodes::BRANCH_EQUAL, AddressingMode::immediate, beq),
 ];
 
 #[cfg(test)]
@@ -198,6 +254,20 @@ mod tests {
         assert_eq!(opcodes::ADC_ZERO_PAGE, op_codes.get(opcodes::ADC_ZERO_PAGE).unwrap().0);
     }
 
+
+    macro_rules! memory {
+        ( $( $x:expr => $y:expr ),* ) => {
+            {
+                use memory;
+                let mut temp_memory = memory::BasicMemory::new();
+                $(
+                    temp_memory.set($x, $y);
+                )*
+                temp_memory
+            }
+        };
+    }
+
     #[test]
     fn test_add_with_carry() {
         let mut memory = BasicMemory::new();
@@ -211,17 +281,47 @@ mod tests {
 
     #[test]
     fn test_branch_equal() {
-        let mut memory = BasicMemory::new();
-        memory.set(0x8000, 0x06);
+        test_branch(super::ZERO_FLAG, opcodes::BRANCH_EQUAL, false);
+        test_branch(super::ZERO_FLAG, opcodes::BRANCH_NOT_EQUAL, true);
+        test_branch(super::NEGATIVE_FLAG, opcodes::BRANCH_MINUS, false);
+        test_branch(super::NEGATIVE_FLAG, opcodes::BRANCH_PLUS, true);
+        test_branch(super::CARRY_FLAG, opcodes::BRANCH_CARRY_SET, false);
+        test_branch(super::CARRY_FLAG, opcodes::BRANCH_CARRY_CLEAR, true);
+        test_branch(super::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_SET, false);
+        test_branch(super::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_CLEAR, true);
+    }
 
-        let mut cpu = super::CPU::new();
-        cpu.set_zero_flag();
-        super::beq(AddressingMode::immediate(&mut cpu, &memory), &mut cpu, &mut memory);
-        assert_eq!(0x8007, cpu.program_counter);
+    fn test_branch(flag: u8, op_code: u8, negative: bool) {
+        {
+            let mut memory = memory!(
+                0x8000 => op_code,
+                0x8001 => 0x06
+            );
 
-        cpu.program_counter = 0x8000;
-        cpu.clear_zero_flag();
-        super::beq(AddressingMode::immediate(&mut cpu, &memory), &mut cpu, &mut memory);
-        assert_eq!(0x8001, cpu.program_counter);
+            let mut cpu = super::CPU::new();
+            cpu.set_flags(flag);
+            cpu.execute_instruction(&mut memory);
+            if negative {
+                assert_eq!(0x8002, cpu.program_counter);
+            } else {
+                assert_eq!(0x8008, cpu.program_counter);
+            }
+        }
+
+        {
+            let mut memory = memory!(
+                0x8000 => op_code,
+                0x8001 => 0x06
+            );
+
+            let mut cpu = super::CPU::new();
+            cpu.clear_flags(flag);
+            cpu.execute_instruction(&mut memory);
+            if negative {
+                assert_eq!(0x8008, cpu.program_counter);
+            } else {
+                assert_eq!(0x8002, cpu.program_counter);
+            }
+        }
     }
 }
