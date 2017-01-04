@@ -8,7 +8,7 @@ pub struct AddressingMode {
 
 impl AddressingMode {
     pub fn zero_paged(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let operand_address = memory.get(cpu.get_and_increase_pc(1)) as u16;
+        let operand_address = memory.get(cpu.get_and_increment_pc()) as u16;
         return AddressingMode {
             operand_address: operand_address,
         }
@@ -16,37 +16,37 @@ impl AddressingMode {
 
     #[allow(unused_variables)]
     pub fn immediate(cpu: &mut CPU, ignored: &Memory) -> AddressingMode {
-        let operand_address = cpu.get_and_increase_pc(1);
+        let operand_address = cpu.get_and_increment_pc();
         return AddressingMode {
             operand_address: operand_address,
         }
     }
 
     pub fn zero_paged_index_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let operand_address: Address = memory.get(cpu.get_and_increase_pc(1)) as Address + cpu.register_x() as Address;
+        let operand_address: Address = memory.get(cpu.get_and_increment_pc()) as Address + cpu.register_x() as Address;
         return AddressingMode {
             operand_address: if operand_address > 0xFF { operand_address & 0xFF } else { operand_address }
         }
     }
 
     pub fn zero_paged_index_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let operand_address: Address = memory.get(cpu.get_and_increase_pc(1)) as Address + cpu.register_y() as Address;
+        let operand_address: Address = memory.get(cpu.get_and_increment_pc()) as Address + cpu.register_y() as Address;
         return AddressingMode {
             operand_address: operand_address & 0xFF
         }
     }
 
     pub fn absolute_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let lsbs: u8 = memory.get(cpu.get_and_increase_pc(1));
-        let msbs: u8 = memory.get(cpu.get_and_increase_pc(1));
+        let lsbs: u8 = memory.get(cpu.get_and_increment_pc());
+        let msbs: u8 = memory.get(cpu.get_and_increment_pc());
         return AddressingMode {
             operand_address: (msbs as Address) << 8 | lsbs as Address
         }
     }
 
     pub fn indexed_absolute_x_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let lsb: u16 = memory.get(cpu.get_and_increase_pc(1)) as u16;
-        let msb: u16 = memory.get(cpu.get_and_increase_pc(1)) as u16;
+        let lsb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
+        let msb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
         let base_address = (msb << 8) | lsb;
         let operand_address = (base_address as u32) + (cpu.register_x() as u32);
         return AddressingMode {
@@ -56,8 +56,8 @@ impl AddressingMode {
 
     pub fn indirect_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let base_address = {
-            let lsb: u16 = memory.get(cpu.get_and_increase_pc(1)) as u16;
-            let msb: u16 = memory.get(cpu.get_and_increase_pc(1)) as u16;
+            let lsb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
+            let msb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
             (msb << 8) | lsb
         };
         let operand_address = {
@@ -71,7 +71,7 @@ impl AddressingMode {
     }
 
     pub fn indexed_indirect_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let index1 = memory.get(cpu.get_and_increase_pc(1)) as u16;
+        let index1 = memory.get(cpu.get_and_increment_pc()) as u16;
         let base_address = index1 + cpu.register_x() as u16;
 
         let operand_address = {
@@ -85,7 +85,7 @@ impl AddressingMode {
     }
 
     pub fn indirect_indexed_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let base_address = memory.get(cpu.get_and_increase_pc(1)) as u16;
+        let base_address = memory.get(cpu.get_and_increment_pc()) as u16;
         let operand_address: u32 = {
             let lsb: u16 = memory.get(base_address) as u16;
             let msb: u16 = memory.get(base_address+1) as u16;

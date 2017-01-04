@@ -65,11 +65,16 @@ impl CPU {
         self.register_y
     }
 
-    pub fn get_and_increase_pc(&mut self, value: Address) -> Address {
+    pub fn get_and_increment_pc(&mut self) -> Address {
         let old_value = self.program_counter;
-        self.program_counter += value;
+        self.program_counter += 1;
         old_value
     }
+
+    pub fn add_program_counter(&mut self, value: u16) {
+        self.program_counter = self.program_counter.wrapping_add(value);
+    }
+
 }
 
 pub struct CpuBuilder {

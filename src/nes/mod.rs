@@ -6,7 +6,6 @@ mod addressing;
 
 use nes::cpu::CPU;
 use nes::memory::Memory;
-use nes::memory::Address;
 use nes::addressing::AddressingMode;
 
 struct NES {
@@ -23,7 +22,7 @@ impl NES {
     }
 
     fn execute_instruction(&mut self, memory: &mut Memory) {
-        let opcode = memory.get(self.cpu.get_and_increase_pc(1));
+        let opcode = memory.get(self.cpu.get_and_increment_pc());
 
         let instr = { self.op_codes.get(opcode) };
         match instr {
@@ -97,14 +96,22 @@ impl Instruction for Branch {
 
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
         let condition =
-        if self.inverted {
-            !cpu.is_flag_set(self.flag)
-        } else {
-            cpu.is_flag_set(self.flag)
-        };
-        let branch_distance = memory.get(cpu.get_and_increase_pc(1)) as Address;
+            if self.inverted {
+                !cpu.is_flag_set(self.flag)
+            } else {
+                cpu.is_flag_set(self.flag)
+            };
+
+        //
+        //0b0000_0000_0000_0100
+        //0b1111_1111_1111_1100
+        //------------
+        //0b0000_0000
+        let branch_distance: i8 = memory.get(cpu.get_and_increment_pc()) as i8;
+        println!("Branch distance: {:#b}", branch_distance as u16);
+        println!("Branch distance: {:#b}", cpu.program_counter());
         if condition {
-            cpu.get_and_increase_pc(branch_distance);
+            cpu.add_program_counter(branch_distance as u16);
         }
     }
 }
@@ -183,7 +190,6 @@ mod tests {
     }
 
     #[test]
-    //TODO: Should be able to branch backwards
     fn test_branch_equal() {
         test_branch(cpu::ZERO_FLAG, opcodes::BRANCH_EQUAL, false);
         test_branch(cpu::ZERO_FLAG, opcodes::BRANCH_NOT_EQUAL, true);
@@ -197,36 +203,74 @@ mod tests {
 
     fn test_branch(flag: u8, op_code: u8, negative: bool) {
         {
-            let mut memory = memory!(
-                0x8000 => op_code,
-                0x8001 => 0x06
-            );
+            {
+                let mut memory = memory!(
+                    0x8000 => op_code,
+                    0x8001 => 0x06
+                );
 
-            let mut nes = super::NES::new();
-            nes.cpu.set_flags(flag);
-            nes.execute_instruction(&mut memory);
-            let cpu = &nes.cpu;
-            if negative {
-                assert_eq!(0x8002, cpu.program_counter());
-            } else {
-                assert_eq!(0x8008, cpu.program_counter());
+                let mut nes = super::NES::new();
+                nes.cpu.set_flags(flag);
+                nes.execute_instruction(&mut memory);
+                let cpu = &nes.cpu;
+                if negative {
+                    assert_eq!(0x8002, cpu.program_counter());
+                } else {
+                    assert_eq!(0x8008, cpu.program_counter());
+                }
+            }
+
+            {
+                let mut memory = memory!(
+                    0x8000 => op_code,
+                    0x8001 => 0b1111_1010 // -6
+                );
+
+                let mut nes = super::NES::new();
+                nes.cpu.set_flags(flag);
+                nes.execute_instruction(&mut memory);
+                let cpu = &nes.cpu;
+                if negative {
+                    assert_eq!(0x8002, cpu.program_counter());
+                } else {
+                    assert_eq!(0x7FFC, cpu.program_counter());
+                }
             }
         }
 
         {
-            let mut memory = memory!(
-                0x8000 => op_code,
-                0x8001 => 0x06
-            );
+            {
+                let mut memory = memory!(
+                    0x8000 => op_code,
+                    0x8001 => 0x06
+                );
 
-            let mut nes = super::NES::new();
-            nes.cpu.clear_flags(flag);
-            nes.execute_instruction(&mut memory);
-            let cpu = &nes.cpu;
-            if negative {
-                assert_eq!(0x8008, cpu.program_counter());
-            } else {
-                assert_eq!(0x8002, cpu.program_counter());
+                let mut nes = super::NES::new();
+                nes.cpu.clear_flags(flag);
+                nes.execute_instruction(&mut memory);
+                let cpu = &nes.cpu;
+                if negative {
+                    assert_eq!(0x8008, cpu.program_counter());
+                } else {
+                    assert_eq!(0x8002, cpu.program_counter());
+                }
+            }
+
+            {
+                let mut memory = memory!(
+                    0x8000 => op_code,
+                    0x8001 => 0b1111_1010 // -6
+                );
+
+                let mut nes = super::NES::new();
+                nes.cpu.clear_flags(flag);
+                nes.execute_instruction(&mut memory);
+                let cpu = &nes.cpu;
+                if negative {
+                    assert_eq!(0x7FFC, cpu.program_counter());
+                } else {
+                    assert_eq!(0x8002, cpu.program_counter());
+                }
             }
         }
     }
