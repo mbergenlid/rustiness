@@ -296,27 +296,17 @@ mod tests {
 
         assert_eq!(expected_cpu, nes.cpu);
     }
-    #[test]
-    fn test_add_with_carry() {
-        let mut memory = BasicMemory::new();
-        memory.set(0x8000, 0x05);
-
-        let mut cpu = super::CPU::new();
-
-        super::adc(AddressingMode::immediate(&mut cpu, &memory), &mut cpu, &mut memory);
-        assert_eq!(0x05, cpu.accumulator);
-    }
 
     #[test]
     fn test_branch_equal() {
         test_branch(super::ZERO_FLAG, opcodes::BRANCH_EQUAL, false);
-//        test_branch(super::ZERO_FLAG, opcodes::BRANCH_NOT_EQUAL, true);
-//        test_branch(super::NEGATIVE_FLAG, opcodes::BRANCH_MINUS, false);
-//        test_branch(super::NEGATIVE_FLAG, opcodes::BRANCH_PLUS, true);
-//        test_branch(super::CARRY_FLAG, opcodes::BRANCH_CARRY_SET, false);
-//        test_branch(super::CARRY_FLAG, opcodes::BRANCH_CARRY_CLEAR, true);
-//        test_branch(super::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_SET, false);
-//        test_branch(super::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_CLEAR, true);
+        test_branch(super::ZERO_FLAG, opcodes::BRANCH_NOT_EQUAL, true);
+        test_branch(super::NEGATIVE_FLAG, opcodes::BRANCH_MINUS, false);
+        test_branch(super::NEGATIVE_FLAG, opcodes::BRANCH_PLUS, true);
+        test_branch(super::CARRY_FLAG, opcodes::BRANCH_CARRY_SET, false);
+        test_branch(super::CARRY_FLAG, opcodes::BRANCH_CARRY_CLEAR, true);
+        test_branch(super::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_SET, false);
+        test_branch(super::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_CLEAR, true);
     }
 
     fn test_branch(flag: u8, op_code: u8, negative: bool) {
