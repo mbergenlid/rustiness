@@ -21,8 +21,7 @@ impl NES {
     }
 
     fn execute_instruction(&mut self, memory: &mut Memory) {
-        let opcode = memory.get(self.cpu.program_counter);
-        self.cpu.program_counter += 1;
+        let opcode = memory.get(self.cpu.get_and_increase_pc(1));
 
         let instr = { self.op_codes.get(opcode) };
         match instr {
@@ -38,8 +37,7 @@ pub struct AddressingMode {
 
 impl AddressingMode {
     pub fn zero_paged(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let operand_address = memory.get(cpu.program_counter) as u16;
-        cpu.program_counter += 1;
+        let operand_address = memory.get(cpu.get_and_increase_pc(1)) as u16;
         return AddressingMode {
             operand_address: operand_address,
         }
@@ -47,8 +45,7 @@ impl AddressingMode {
 
     #[allow(unused_variables)]
     pub fn immediate(cpu: &mut CPU, ignored: &Memory) -> AddressingMode {
-        let operand_address = cpu.program_counter;
-        cpu.program_counter += 1;
+        let operand_address = cpu.get_and_increase_pc(1);
         return AddressingMode {
             operand_address: operand_address,
         }
@@ -124,10 +121,9 @@ impl Instruction for Branch {
         } else {
             cpu.is_flag_set(self.flag)
         };
-        let branch_distance = memory.get(cpu.program_counter) as Address;
-        cpu.program_counter += 1;
+        let branch_distance = memory.get(cpu.get_and_increase_pc(1)) as Address;
         if condition {
-            cpu.program_counter += branch_distance;
+            cpu.get_and_increase_pc(branch_distance);
         }
     }
 }
@@ -188,28 +184,26 @@ mod tests {
     #[test]
     fn test_zero_paged_addressing() {
         let mut memory = BasicMemory::new();
-        memory.set(0x8001, 0xAC);
+        memory.set(0x8000, 0xAC);
         memory.set(0x00AC, 0x0A);
 
         let mut cpu = cpu::CPU::new();
-        cpu.program_counter = 0x8001;
 
         let addressing = AddressingMode::zero_paged(&mut cpu, &memory);
         assert_eq!(0x00AC, addressing.operand_address);
-        assert_eq!(cpu.program_counter, 0x8002);
+        assert_eq!(cpu.program_counter(), 0x8001);
     }
 
     #[test]
     fn test_immediate_addressing() {
         let mut memory = BasicMemory::new();
-        memory.set(0x8001, 0x05);
+        memory.set(0x8000, 0x05);
 
         let mut cpu = cpu::CPU::new();
-        cpu.program_counter = 0x8001;
 
         let addressing = AddressingMode::immediate(&mut cpu, &memory);
-        assert_eq!(0x8001, addressing.operand_address);
-        assert_eq!(cpu.program_counter, 0x8002);
+        assert_eq!(0x8000, addressing.operand_address);
+        assert_eq!(cpu.program_counter(), 0x8001);
     }
 
     #[test]
@@ -219,11 +213,10 @@ mod tests {
                 0x8000 => 0x69,
                 0x8001 => 0x05
             ),
-            cpu::CPU {
-                program_counter: 0x8002,
-                accumulator: 0x05,
-                processor_status: cpu::CPU::new().processor_status,
-            }
+            cpu::CpuBuilder::new()
+                .program_counter(0x8002)
+                .accumulator(0x05)
+                .build()
         );
     }
 
@@ -235,11 +228,10 @@ mod tests {
                 0x8001 => 0xAC,
                 0x00AC => 0x0A
             ),
-            cpu::CPU {
-                program_counter: 0x8002,
-                accumulator: 10,
-                processor_status: cpu::CPU::new().processor_status,
-            }
+            cpu::CpuBuilder::new()
+                .program_counter(0x8002)
+                .accumulator(10)
+                .build()
         )
     }
 
@@ -274,9 +266,9 @@ mod tests {
             nes.execute_instruction(&mut memory);
             let cpu = &nes.cpu;
             if negative {
-                assert_eq!(0x8002, cpu.program_counter);
+                assert_eq!(0x8002, cpu.program_counter());
             } else {
-                assert_eq!(0x8008, cpu.program_counter);
+                assert_eq!(0x8008, cpu.program_counter());
             }
         }
 
@@ -291,9 +283,9 @@ mod tests {
             nes.execute_instruction(&mut memory);
             let cpu = &nes.cpu;
             if negative {
-                assert_eq!(0x8008, cpu.program_counter);
+                assert_eq!(0x8008, cpu.program_counter());
             } else {
-                assert_eq!(0x8002, cpu.program_counter);
+                assert_eq!(0x8002, cpu.program_counter());
             }
         }
     }
