@@ -1,12 +1,11 @@
 
-use opcodes;
-use memory::Address;
-use memory::Memory;
+mod cpu;
+mod memory;
+mod opcodes;
 
-const NEGATIVE_FLAG: u8 = 0b1000_0000;
-const OVERFLOW_FLAG: u8 = 0b0100_0000;
-const ZERO_FLAG: u8 = 0b0000_0010;
-const CARRY_FLAG: u8 = 0b0000_0001;
+use nes::cpu::CPU;
+use nes::memory::Memory;
+use nes::memory::Address;
 
 struct NES {
     cpu: CPU,
@@ -30,53 +29,6 @@ impl NES {
             &Some(ref instruction) => instruction.execute(&mut self.cpu, memory),
             &None => println!("Unkown opcode"),
         }
-    }
-}
-
-#[derive(Eq, Debug)]
-pub struct CPU {
-    pub program_counter: Address,
-//    stack_pointers: u8,
-    pub accumulator: u8,
-//    register_x: u8,
-//    register_y: u8,
-    processor_status: u8,
-}
-
-impl PartialEq for CPU {
-    fn eq(&self, other: &CPU) -> bool {
-        self.program_counter == other.program_counter &&
-            self.accumulator == other.accumulator &&
-            self.processor_status == other.processor_status
-    }
-}
-
-impl CPU {
-    pub fn new() -> CPU {
-        return CPU {
-            program_counter: 0x8000,
-        //        stack_pointer: 0xFF,
-            accumulator: 0,
-        //        register_x: 0,
-        //        register_y: 0,
-            processor_status: 0
-        }
-    }
-
-    fn set_flags(&mut self, flags: u8) {
-        self.processor_status |= flags;
-    }
-
-    fn clear_flags(&mut self, flags: u8) {
-        self.processor_status &= !flags;
-    }
-
-    fn is_flag_set(&self, flags: u8) -> bool {
-        self.processor_status & flags > 0
-    }
-
-    pub fn add_accumulator(&mut self, value: u8) {
-        self.accumulator += value;
     }
 }
 
@@ -114,17 +66,17 @@ impl OpCodes {
 
     fn new() -> OpCodes {
         let all_codes: Vec<Box<Instruction>> = vec![
-            Box::new(Branch { op_code: opcodes::BRANCH_PLUS, flag: NEGATIVE_FLAG, inverted: true }),
-            Box::new(Branch { op_code: opcodes::BRANCH_MINUS, flag: NEGATIVE_FLAG, inverted: false }),
-            Box::new(Branch { op_code: opcodes::BRANCH_OVERFLOW_SET, flag: OVERFLOW_FLAG, inverted: false }),
-            Box::new(Branch { op_code: opcodes::BRANCH_OVERFLOW_CLEAR, flag: OVERFLOW_FLAG, inverted: true }),
-            Box::new(Branch { op_code: opcodes::BRANCH_CARRY_SET, flag: CARRY_FLAG, inverted: false }),
-            Box::new(Branch { op_code: opcodes::BRANCH_CARRY_CLEAR, flag: CARRY_FLAG, inverted: true }),
-            Box::new(Branch { op_code: opcodes::BRANCH_NOT_EQUAL, flag: ZERO_FLAG, inverted: true }),
-            Box::new(Branch { op_code: opcodes::BRANCH_EQUAL, flag: ZERO_FLAG, inverted: false }),
+        Box::new(Branch { op_code: opcodes::BRANCH_PLUS, flag: cpu::NEGATIVE_FLAG, inverted: true }),
+        Box::new(Branch { op_code: opcodes::BRANCH_MINUS, flag: cpu::NEGATIVE_FLAG, inverted: false }),
+        Box::new(Branch { op_code: opcodes::BRANCH_OVERFLOW_SET, flag: cpu::OVERFLOW_FLAG, inverted: false }),
+        Box::new(Branch { op_code: opcodes::BRANCH_OVERFLOW_CLEAR, flag: cpu::OVERFLOW_FLAG, inverted: true }),
+        Box::new(Branch { op_code: opcodes::BRANCH_CARRY_SET, flag: cpu::CARRY_FLAG, inverted: false }),
+        Box::new(Branch { op_code: opcodes::BRANCH_CARRY_CLEAR, flag: cpu::CARRY_FLAG, inverted: true }),
+        Box::new(Branch { op_code: opcodes::BRANCH_NOT_EQUAL, flag: cpu::ZERO_FLAG, inverted: true }),
+        Box::new(Branch { op_code: opcodes::BRANCH_EQUAL, flag: cpu::ZERO_FLAG, inverted: false }),
 
-            Box::new(ADC {op_code: opcodes::ADC_IMMEDIATE, addressing_mode: AddressingMode::immediate, instruction: adc}),
-            Box::new(ADC {op_code: opcodes::ADC_ZERO_PAGE, addressing_mode: AddressingMode::zero_paged, instruction: adc}),
+        Box::new(ADC {op_code: opcodes::ADC_IMMEDIATE, addressing_mode: AddressingMode::immediate, instruction: adc}),
+        Box::new(ADC {op_code: opcodes::ADC_ZERO_PAGE, addressing_mode: AddressingMode::zero_paged, instruction: adc}),
         ];
 
         let mut codes: Vec<Option<Box<Instruction>>> = vec![];
@@ -167,11 +119,11 @@ impl Instruction for Branch {
 
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
         let condition =
-            if self.inverted {
-                !cpu.is_flag_set(self.flag)
-            } else {
-                cpu.is_flag_set(self.flag)
-            };
+        if self.inverted {
+            !cpu.is_flag_set(self.flag)
+        } else {
+            cpu.is_flag_set(self.flag)
+        };
         let branch_distance = memory.get(cpu.program_counter) as Address;
         cpu.program_counter += 1;
         if condition {
@@ -202,16 +154,17 @@ fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
 
 #[cfg(test)]
 mod tests {
-    use memory::BasicMemory;
-    use memory::Memory;
+    use nes::cpu;
+    use nes::memory::BasicMemory;
+    use nes::memory::Memory;
     use super::AddressingMode;
-    use opcodes;
+    use nes::opcodes;
 
 
     macro_rules! memory {
         ( $( $x:expr => $y:expr ),* ) => {
             {
-                use memory;
+                use nes::memory;
                 let mut temp_memory = memory::BasicMemory::new();
                 $(
                     temp_memory.set($x, $y);
@@ -238,7 +191,7 @@ mod tests {
         memory.set(0x8001, 0xAC);
         memory.set(0x00AC, 0x0A);
 
-        let mut cpu = super::CPU::new();
+        let mut cpu = cpu::CPU::new();
         cpu.program_counter = 0x8001;
 
         let addressing = AddressingMode::zero_paged(&mut cpu, &memory);
@@ -251,7 +204,7 @@ mod tests {
         let mut memory = BasicMemory::new();
         memory.set(0x8001, 0x05);
 
-        let mut cpu = super::CPU::new();
+        let mut cpu = cpu::CPU::new();
         cpu.program_counter = 0x8001;
 
         let addressing = AddressingMode::immediate(&mut cpu, &memory);
@@ -266,10 +219,10 @@ mod tests {
                 0x8000 => 0x69,
                 0x8001 => 0x05
             ),
-            super::CPU {
+            cpu::CPU {
                 program_counter: 0x8002,
                 accumulator: 0x05,
-                processor_status: super::CPU::new().processor_status,
+                processor_status: cpu::CPU::new().processor_status,
             }
         );
     }
@@ -282,15 +235,15 @@ mod tests {
                 0x8001 => 0xAC,
                 0x00AC => 0x0A
             ),
-            super::CPU {
+            cpu::CPU {
                 program_counter: 0x8002,
                 accumulator: 10,
-                processor_status: super::CPU::new().processor_status,
+                processor_status: cpu::CPU::new().processor_status,
             }
         )
     }
 
-    fn test_instruction(memory: &mut Memory, expected_cpu: super::CPU) {
+    fn test_instruction(memory: &mut Memory, expected_cpu: cpu::CPU) {
         let mut nes = super::NES::new();
         nes.execute_instruction(memory);
 
@@ -299,14 +252,14 @@ mod tests {
 
     #[test]
     fn test_branch_equal() {
-        test_branch(super::ZERO_FLAG, opcodes::BRANCH_EQUAL, false);
-        test_branch(super::ZERO_FLAG, opcodes::BRANCH_NOT_EQUAL, true);
-        test_branch(super::NEGATIVE_FLAG, opcodes::BRANCH_MINUS, false);
-        test_branch(super::NEGATIVE_FLAG, opcodes::BRANCH_PLUS, true);
-        test_branch(super::CARRY_FLAG, opcodes::BRANCH_CARRY_SET, false);
-        test_branch(super::CARRY_FLAG, opcodes::BRANCH_CARRY_CLEAR, true);
-        test_branch(super::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_SET, false);
-        test_branch(super::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_CLEAR, true);
+        test_branch(cpu::ZERO_FLAG, opcodes::BRANCH_EQUAL, false);
+        test_branch(cpu::ZERO_FLAG, opcodes::BRANCH_NOT_EQUAL, true);
+        test_branch(cpu::NEGATIVE_FLAG, opcodes::BRANCH_MINUS, false);
+        test_branch(cpu::NEGATIVE_FLAG, opcodes::BRANCH_PLUS, true);
+        test_branch(cpu::CARRY_FLAG, opcodes::BRANCH_CARRY_SET, false);
+        test_branch(cpu::CARRY_FLAG, opcodes::BRANCH_CARRY_CLEAR, true);
+        test_branch(cpu::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_SET, false);
+        test_branch(cpu::OVERFLOW_FLAG, opcodes::BRANCH_OVERFLOW_CLEAR, true);
     }
 
     fn test_branch(flag: u8, op_code: u8, negative: bool) {
