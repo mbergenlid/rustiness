@@ -183,6 +183,7 @@ mod tests {
     }
 
     #[test]
+    //TODO: Should be able to branch backwards
     fn test_branch_equal() {
         test_branch(cpu::ZERO_FLAG, opcodes::BRANCH_EQUAL, false);
         test_branch(cpu::ZERO_FLAG, opcodes::BRANCH_NOT_EQUAL, true);
