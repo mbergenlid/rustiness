@@ -11,8 +11,8 @@ pub struct CPU {
     program_counter: Address,
     //    stack_pointers: u8,
     accumulator: u8,
-    //    register_x: u8,
-    //    register_y: u8,
+    register_x: u8,
+    register_y: u8,
     processor_status: u8,
 }
 
@@ -31,8 +31,8 @@ impl CPU {
             program_counter: 0x8000,
             //        stack_pointer: 0xFF,
             accumulator: 0,
-            //        register_x: 0,
-            //        register_y: 0,
+            register_x: 0,
+            register_y: 0,
             processor_status: 0
         }
     }
@@ -55,6 +55,14 @@ impl CPU {
 
     pub fn program_counter(&self) -> Address {
         self.program_counter
+    }
+
+    pub fn register_x(&self) -> u8 {
+        self.register_x
+    }
+
+    pub fn register_y(&self) -> u8 {
+        self.register_y
     }
 
     pub fn get_and_increase_pc(&mut self, value: Address) -> Address {
@@ -82,6 +90,16 @@ impl CpuBuilder {
 
     pub fn accumulator(&mut self, value: u8) -> &mut CpuBuilder {
         self.cpu.accumulator = value;
+        return self;
+    }
+
+    pub fn register_x(&mut self, value: u8) -> &mut CpuBuilder {
+        self.cpu.register_x = value;
+        return self;
+    }
+
+    pub fn register_y(&mut self, value: u8) -> &mut CpuBuilder {
+        self.cpu.register_y = value;
         return self;
     }
 
