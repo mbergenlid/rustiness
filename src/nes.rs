@@ -94,22 +94,11 @@ impl AddressingMode {
     }
 }
 
-type Opcode = fn(&mut CPU, &mut Memory);
-
 type OpCodeExecute = fn(AddressingMode, &mut CPU, &mut Memory);
 type AddressingModeConstructor = fn(&mut CPU, &Memory) -> AddressingMode;
 
-#[derive(Copy)]
-pub struct OpCode(u8, fn(&mut CPU, &Memory) -> AddressingMode, OpCodeExecute);
-
-impl Clone for OpCode {
-    fn clone(&self) -> Self {
-        OpCode(self.0, self.1, self.2)
-    }
-}
-
 pub struct OpCodes {
-    other_codes: Vec<Option<Box<Instruction>>>,
+    codes: Vec<Option<Box<Instruction>>>,
 }
 
 impl OpCodes {
@@ -129,23 +118,23 @@ impl OpCodes {
             Box::new(ADC {op_code: opcodes::ADC_ZERO_PAGE, addressing_mode: AddressingMode::zero_paged, instruction: adc}),
         ];
 
-        let mut codes2: Vec<Option<Box<Instruction>>> = vec![];
+        let mut codes: Vec<Option<Box<Instruction>>> = vec![];
         for _ in 0..0xFF {
-            codes2.push(None);
+            codes.push(None);
         }
 
         for op_code in all_codes.into_iter() {
             let c = op_code.op_code();
-            codes2[c as usize] = Some(op_code);
+            codes[c as usize] = Some(op_code);
         }
 
         return OpCodes {
-            other_codes: codes2,
+            codes: codes,
         }
     }
 
     fn get(&self, code: u8) -> &Option<Box<Instruction>> {
-        let instr: &Option<Box<Instruction>> = &self.other_codes[code as usize];
+        let instr: &Option<Box<Instruction>> = &self.codes[code as usize];
         return instr;
     }
 }
