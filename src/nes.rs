@@ -33,6 +33,7 @@ impl NES {
     }
 }
 
+#[derive(Eq, Debug)]
 pub struct CPU {
     pub program_counter: Address,
 //    stack_pointers: u8,
@@ -40,6 +41,14 @@ pub struct CPU {
 //    register_x: u8,
 //    register_y: u8,
     processor_status: u8,
+}
+
+impl PartialEq for CPU {
+    fn eq(&self, other: &CPU) -> bool {
+        self.program_counter == other.program_counter &&
+            self.accumulator == other.accumulator &&
+            self.processor_status == other.processor_status
+    }
 }
 
 impl CPU {
@@ -198,6 +207,31 @@ mod tests {
     use super::AddressingMode;
     use opcodes;
 
+
+    macro_rules! memory {
+        ( $( $x:expr => $y:expr ),* ) => {
+            {
+                use memory;
+                let mut temp_memory = memory::BasicMemory::new();
+                $(
+                    temp_memory.set($x, $y);
+                )*
+                temp_memory
+            }
+        };
+    }
+
+    macro_rules! instruction_test {
+        ( $name:expr, $memory:expr, $expected_cpu:expr ) => {
+            {
+                #[test]
+                fn test_$name() {
+                    test_instruction(memory, expected_cpu);
+                }
+            }
+        };
+    }
+
     #[test]
     fn test_zero_paged_addressing() {
         let mut memory = BasicMemory::new();
@@ -227,46 +261,41 @@ mod tests {
 
     #[test]
     fn test_add_with_carry_immediate() {
-        let mut memory = BasicMemory::new();
-        memory.set(0x8000, 0x69);
-        memory.set(0x8001, 0x05);
-
-        let mut nes = super::NES::new();
-
-        nes.execute_instruction(&mut memory);
-        let cpu = &nes.cpu;
-        assert_eq!(0x05, cpu.accumulator);
-        assert_eq!(0x8002, cpu.program_counter);
+        test_instruction(
+            &mut memory!(
+                0x8000 => 0x69,
+                0x8001 => 0x05
+            ),
+            super::CPU {
+                program_counter: 0x8002,
+                accumulator: 0x05,
+                processor_status: super::CPU::new().processor_status,
+            }
+        );
     }
 
     #[test]
     fn test_add_with_carry_zero_page() {
-        let mut memory = BasicMemory::new();
-        memory.set(0x8000, 0x65);
-        memory.set(0x8001, 0xAC);
-        memory.set(0x00AC, 0x0A);
-
-        let mut nes = super::NES::new();
-
-        nes.execute_instruction(&mut memory);
-        let cpu = &nes.cpu;
-        assert_eq!(10, cpu.accumulator);
-        assert_eq!(0x8002, cpu.program_counter);
-    }
-
-    macro_rules! memory {
-        ( $( $x:expr => $y:expr ),* ) => {
-            {
-                use memory;
-                let mut temp_memory = memory::BasicMemory::new();
-                $(
-                    temp_memory.set($x, $y);
-                )*
-                temp_memory
+        test_instruction(
+            &mut memory!(
+                0x8000 => 0x65,
+                0x8001 => 0xAC,
+                0x00AC => 0x0A
+            ),
+            super::CPU {
+                program_counter: 0x8002,
+                accumulator: 10,
+                processor_status: super::CPU::new().processor_status,
             }
-        };
+        )
     }
 
+    fn test_instruction(memory: &mut Memory, expected_cpu: super::CPU) {
+        let mut nes = super::NES::new();
+        nes.execute_instruction(memory);
+
+        assert_eq!(expected_cpu, nes.cpu);
+    }
     #[test]
     fn test_add_with_carry() {
         let mut memory = BasicMemory::new();
