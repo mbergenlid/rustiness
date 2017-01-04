@@ -1,11 +1,13 @@
 
 mod cpu;
-mod memory;
+#[macro_use] mod memory;
 mod opcodes;
+mod addressing;
 
 use nes::cpu::CPU;
 use nes::memory::Memory;
 use nes::memory::Address;
+use nes::addressing::AddressingMode;
 
 struct NES {
     cpu: CPU,
@@ -27,27 +29,6 @@ impl NES {
         match instr {
             &Some(ref instruction) => instruction.execute(&mut self.cpu, memory),
             &None => println!("Unkown opcode"),
-        }
-    }
-}
-
-pub struct AddressingMode {
-    pub operand_address: Address
-}
-
-impl AddressingMode {
-    pub fn zero_paged(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let operand_address = memory.get(cpu.get_and_increase_pc(1)) as u16;
-        return AddressingMode {
-            operand_address: operand_address,
-        }
-    }
-
-    #[allow(unused_variables)]
-    pub fn immediate(cpu: &mut CPU, ignored: &Memory) -> AddressingMode {
-        let operand_address = cpu.get_and_increase_pc(1);
-        return AddressingMode {
-            operand_address: operand_address,
         }
     }
 }
@@ -151,24 +132,8 @@ fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
 #[cfg(test)]
 mod tests {
     use nes::cpu;
-    use nes::memory::BasicMemory;
     use nes::memory::Memory;
-    use super::AddressingMode;
     use nes::opcodes;
-
-
-    macro_rules! memory {
-        ( $( $x:expr => $y:expr ),* ) => {
-            {
-                use nes::memory;
-                let mut temp_memory = memory::BasicMemory::new();
-                $(
-                    temp_memory.set($x, $y);
-                )*
-                temp_memory
-            }
-        };
-    }
 
     macro_rules! instruction_test {
         ( $name:expr, $memory:expr, $expected_cpu:expr ) => {
@@ -179,31 +144,6 @@ mod tests {
                 }
             }
         };
-    }
-
-    #[test]
-    fn test_zero_paged_addressing() {
-        let mut memory = BasicMemory::new();
-        memory.set(0x8000, 0xAC);
-        memory.set(0x00AC, 0x0A);
-
-        let mut cpu = cpu::CPU::new();
-
-        let addressing = AddressingMode::zero_paged(&mut cpu, &memory);
-        assert_eq!(0x00AC, addressing.operand_address);
-        assert_eq!(cpu.program_counter(), 0x8001);
-    }
-
-    #[test]
-    fn test_immediate_addressing() {
-        let mut memory = BasicMemory::new();
-        memory.set(0x8000, 0x05);
-
-        let mut cpu = cpu::CPU::new();
-
-        let addressing = AddressingMode::immediate(&mut cpu, &memory);
-        assert_eq!(0x8000, addressing.operand_address);
-        assert_eq!(cpu.program_counter(), 0x8001);
     }
 
     #[test]

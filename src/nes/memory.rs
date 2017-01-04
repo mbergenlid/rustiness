@@ -24,3 +24,16 @@ impl Memory for BasicMemory {
         self.data[address as usize] = value;
     }
 }
+
+macro_rules! memory {
+    ( $( $x:expr => $y:expr ),* ) => {
+        {
+            use nes::memory;
+            let mut temp_memory = memory::BasicMemory::new();
+            $(
+                temp_memory.set($x, $y);
+            )*
+            temp_memory
+        }
+    };
+}
