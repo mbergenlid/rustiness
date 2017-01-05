@@ -8,13 +8,13 @@ use nes::cpu::CPU;
 use nes::memory::Memory;
 use nes::addressing::AddressingMode;
 
-struct NES {
+pub struct NES {
     cpu: CPU,
     op_codes: OpCodes,
 }
 
 impl NES {
-    fn new() -> NES {
+    pub fn new() -> NES {
         NES {
             cpu: CPU::new(),
             op_codes: OpCodes::new(),
@@ -54,6 +54,8 @@ impl OpCodes {
 
         Box::new(ADC {op_code: opcodes::ADC_IMMEDIATE, addressing_mode: AddressingMode::immediate, instruction: adc}),
         Box::new(ADC {op_code: opcodes::ADC_ZERO_PAGE, addressing_mode: AddressingMode::zero_paged, instruction: adc}),
+
+        Box::new(ADC {op_code: opcodes::AND_IMMEDIATE, addressing_mode: AddressingMode::immediate, instruction: and}),
         ];
 
         let mut codes: Vec<Option<Box<Instruction>>> = vec![];
@@ -136,6 +138,10 @@ fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
     cpu.add_accumulator(memory.get(addressing_mode.operand_address));
 }
 
+fn and(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    cpu.and_accumulator(memory.get(addressing_mode.operand_address));
+}
+
 #[cfg(test)]
 mod tests {
     use nes::cpu;
@@ -151,6 +157,40 @@ mod tests {
                 }
             }
         };
+    }
+
+    fn test_program(memory: &mut Memory, expected_cpu_states: &[cpu::CPU]) {
+        let mut nes = super::NES::new();
+
+        for &expected_cpu in expected_cpu_states.iter() {
+            nes.execute_instruction(memory);
+            assert_eq!(expected_cpu, nes.cpu);
+        }
+    }
+
+    #[test]
+    fn test() {
+        test_program(
+            &mut memory!(
+                //ADC $05
+                0x8000 => 0x69,
+                0x8001 => 0x05,
+
+                //AND $00
+                0x8002 => 0x29,
+                0x8003 => 0x00
+            ),
+            &[
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8002)
+                    .accumulator(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8004)
+                    .accumulator(0x00)
+                    .build()
+            ]
+        )
     }
 
     #[test]

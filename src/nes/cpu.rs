@@ -53,6 +53,10 @@ impl CPU {
         self.accumulator += value;
     }
 
+    pub fn and_accumulator(&mut self, value: u8) {
+        self.accumulator &= value;
+    }
+
     pub fn program_counter(&self) -> Address {
         self.program_counter
     }

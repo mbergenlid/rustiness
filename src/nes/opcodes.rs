@@ -2,6 +2,8 @@
 pub const ADC_IMMEDIATE: u8 = 0x69;
 pub const ADC_ZERO_PAGE: u8 = 0x65;
 
+pub const AND_IMMEDIATE: u8 = 0x29;
+
 pub const BRANCH_PLUS: u8           = 0x10;
 pub const BRANCH_MINUS: u8          = 0x30;
 pub const BRANCH_OVERFLOW_SET: u8   = 0x70;
