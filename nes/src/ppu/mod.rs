@@ -11,11 +11,35 @@ struct PPUCtrl {
 impl PPUCtrl {
     fn new() -> PPUCtrl { PPUCtrl {value: 0} }
     fn base_name_table(&self) -> u16 {
-        (self.value & 0x03) as u16
+        0x2000 + ((self.value & 0x03) as u16)*1024
     }
 
     fn background_pattern_table(&self) -> u16 {
         (self.value & 0x10) as u16
+    }
+}
+
+pub struct AttributeTable<'a> {
+    memory: &'a Memory,
+    address: u16
+}
+
+impl<'a> AttributeTable<'a> {
+    pub fn get_palette_index(&self, row: u16, col: u16) -> u8 {
+        let value = self.memory.get(self.address);
+        if row == 0 && col == 0 {
+            return value & 0b00_00_00_11;
+        }
+        if row == 0 && col == 1 {
+            return (value & 0b00_00_11_00) >> 2;
+        }
+        if row == 1 && col == 0 {
+            return (value & 0b00_11_00_00) >> 4;
+        }
+        if row ==1 && col == 1 {
+            return (value & 0b11_00_00_00) >> 6
+        }
+        0
     }
 }
 
@@ -39,19 +63,42 @@ impl<'a> PPU<'a> {
     }
 
     pub fn draw(&mut self) {
-        let base_x = 0;
-        let base_y = 0;
+        let pattern_table_base_address = self.control_register.background_pattern_table();
+        let mut name_table = self.control_register.base_name_table();
 
-        let pattern_table_address = self.control_register.background_pattern_table();
-        for row in 0..8 {
-            self.draw_tile_row(base_x, base_y + row, pattern_table_address + row as u16);
+        for row in 0..32 {
+            for col in 0..30 {
+                let pattern_table_address = self.memory.get(name_table) as u16 + pattern_table_base_address;
+                let colour_palette_address = {
+                    let attribute_table = AttributeTable {
+                        memory: &(*self.memory),
+                        address: 0x23C0,
+                    };
+                    0x3F00 + (attribute_table.get_palette_index(0, col/2)*4) as u16
+                };
+                for pattern_row in 0..8 {
+                    self.draw_tile_row(
+                        (col*8) as usize,
+                        (row*8 + pattern_row) as usize,
+                        pattern_table_address + pattern_row as u16,
+                        colour_palette_address
+                    );
+                }
+
+                name_table += 1;
+            }
         }
     }
 
-    fn draw_tile_row(&mut self, base_x: usize, base_y: usize, pattern_table_address: u16) {
+    fn draw_tile_row(
+        &mut self,
+        base_x: usize,
+        base_y: usize,
+        pattern_table_address: u16,
+        colour_palette_address: u16
+    ) {
         let mut low_bits = self.memory.get(pattern_table_address);
         let mut high_bits = self.memory.get(pattern_table_address+8);
-        let colour_palette_address: u16 = 0x3F00;
 
         for bit_index in 0..8 {
             let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
@@ -77,8 +124,26 @@ mod tests {
     use super::screen::BLACK;
     use super::screen::WHITE;
 
+    use super::AttributeTable;
+
+    #[test]
+    fn test_attribute_table() {
+        let memory = memory!(
+            0x23C0 => 0b11_10_01_00
+        );
+        let attribute_table = AttributeTable {
+            memory: &memory,
+            address: 0x23C0
+        };
+
+        assert_eq!(attribute_table.get_palette_index(0, 0), 0);
+        assert_eq!(attribute_table.get_palette_index(0, 1), 1);
+        assert_eq!(attribute_table.get_palette_index(1, 0), 2);
+        assert_eq!(attribute_table.get_palette_index(1, 1), 3);
+    }
+
     struct ScreenMock {
-        colors: [[Color; 30]; 32],
+        colors: [[Color; 240]; 256],
     }
 
     impl Screen for ScreenMock {
@@ -92,14 +157,14 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut screen = ScreenMock {colors: [[[0.0, 0.0, 0.0]; 30]; 32]};
+        let mut screen = ScreenMock {colors: [[[0.0, 0.0, 0.0]; 240]; 256]};
         {
             //0b00011100
             //0b00011100
             //  00 00 00 11 11 11 00 00
             let mut ppu = PPU::new(
                 Box::new(memory!(
-                    //Pattern table
+                    //Pattern table 1
                         //Layer 1
                     0x0000 => 0b00011100,
                     0x0001 => 0b00110010,
@@ -118,18 +183,65 @@ mod tests {
                     0x000D => 0b00100110,
                     0x000E => 0b00011100,
                     0x000F => 0b00000000,
+
+                    //Pattern table 2
+                        //Layer 1
+                    0x0010 => 0b00011100,
+                    0x0011 => 0b00000000,
+                    0x0012 => 0b00111000,
+                    0x0013 => 0b00011100,
+                    0x0014 => 0b00001110,
+                    0x0015 => 0b00100110,
+                    0x0016 => 0b00011100,
+                    0x0017 => 0b00000000,
+                        //Layer 2
+                    0x0018 => 0b00000000,
+                    0x0019 => 0b00110010,
+                    0x001A => 0b00111000,
+                    0x001B => 0b00011100,
+                    0x001C => 0b00001110,
+                    0x001D => 0b00100110,
+                    0x001E => 0b00011100,
+                    0x001F => 0b00000000,
+
+                    //Pattern table 3
+                        //Layer 1
+                    0x0020 => 0b00011100,
+                    0x0021 => 0b00110010,
+                    0x0022 => 0b00000000,
+                    0x0023 => 0b00011100,
+                    0x0024 => 0b00001110,
+                    0x0025 => 0b00100110,
+                    0x0026 => 0b00011100,
+                    0x0027 => 0b00000000,
+                        //Layer 2
+                    0x0028 => 0b00011100,
+                    0x0029 => 0b00000000,
+                    0x002A => 0b00111000,
+                    0x002B => 0b00011100,
+                    0x002C => 0b00001110,
+                    0x002D => 0b00100110,
+                    0x002E => 0b00011100,
+                    0x002F => 0b00000000,
                     //Pattern table end
 
                     //Name table
-                    0x2000 => 0x0000, //points to pattern table
+                    0x2000 => 0x00, //points to pattern table
+                    0x2001 => 0x10, //points to pattern table
+                    0x2002 => 0x20, //points to pattern table
                         //Attribute table
-                    0x23C0 => 0x0000,  //points to colour palette
+                    0x23C0 => 0b00_00_01_00,  //points to colour palette
 
                     //PPU Palettes
                     0x3F00 => 0x3F,
-                    0x3F01 => 0x00,
-                    0x3F02 => 0x00,
-                    0x3F03 => 0x20
+                    0x3F01 => 0x01,
+                    0x3F02 => 0x10,
+                    0x3F03 => 0x20,
+
+                    0x3F04 => 0x3F,
+                    0x3F05 => 0x0A,
+                    0x3F06 => 0x0B,
+                    0x3F07 => 0x0C
                 )),
                 &mut screen
             );
@@ -144,5 +256,17 @@ mod tests {
         assert_eq!(screen.colors[5][0..8], [BLACK, WHITE, WHITE, BLACK, BLACK, WHITE, BLACK, BLACK]);
         assert_eq!(screen.colors[6][0..8], [BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK]);
         assert_eq!(screen.colors[7][0..8], [BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK]);
+
+        let color_1 = super::screen::COLOUR_PALETTE[0x01];
+        let color_2 = super::screen::COLOUR_PALETTE[0x10];
+        assert_eq!(screen.colors[0][8..16], [BLACK, BLACK, color_1, color_1, color_1, BLACK, BLACK, BLACK]);
+        assert_eq!(screen.colors[1][8..16], [BLACK, color_2, BLACK, BLACK, color_2, color_2, BLACK, BLACK]);
+
+        let colour_1 = super::screen::COLOUR_PALETTE[0x0A];
+        let colour_2 = super::screen::COLOUR_PALETTE[0x0B];
+        let colour_3 = super::screen::COLOUR_PALETTE[0x0C];
+        assert_eq!(screen.colors[0][16..24], [BLACK, BLACK, colour_3, colour_3, colour_3, BLACK, BLACK, BLACK]);
+        assert_eq!(screen.colors[1][16..24], [BLACK, colour_1, BLACK, BLACK, colour_1, colour_1, BLACK, BLACK]);
+        assert_eq!(screen.colors[2][16..24], [BLACK, BLACK, BLACK, colour_2, colour_2, colour_2, BLACK, BLACK]);
     }
 }
