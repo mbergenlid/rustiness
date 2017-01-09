@@ -57,12 +57,13 @@ impl<'a> PPU<'a> {
             let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
             let colour_index = self.memory.get((colour_palette_address + pixel as u16));
             let color = COLOUR_PALETTE[colour_index as usize];
-            println!("Pixel {} {:b} = {:x} {:x} {:?}", bit_index, pixel, colour_palette_address, colour_index, color);
             self.screen.set_color(base_x+bit_index, base_y, color);
 
             low_bits >>= 1;
             high_bits >>= 1;
         }
+
+        self.screen.draw();
     }
 }
 
@@ -83,6 +84,9 @@ mod tests {
     impl Screen for ScreenMock {
         fn set_color(&mut self, x: usize, y: usize, color: Color) {
             self.colors[y][x] = color
+        }
+        fn draw(&mut self) {
+
         }
     }
 

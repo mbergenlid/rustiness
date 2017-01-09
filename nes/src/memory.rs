@@ -37,3 +37,17 @@ macro_rules! memory {
         }
     };
 }
+
+#[macro_export]
+macro_rules! external_memory {
+    ( $( $x:expr => $y:expr ),* ) => {
+        {
+            use nes::memory::Memory;
+            let mut temp_memory = nes::memory::BasicMemory::new();
+            $(
+                temp_memory.set($x, $y);
+            )*
+            temp_memory
+        }
+    };
+}

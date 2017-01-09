@@ -2,6 +2,7 @@ pub type Color = [f32; 3];
 
 pub trait Screen {
     fn set_color(&mut self, x: usize, y: usize, color: Color);
+    fn draw(&mut self);
 }
 
 pub const BLACK: Color = [0.0, 0.0, 0.0];

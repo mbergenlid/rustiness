@@ -59,10 +59,10 @@ impl Pixel {
         self.vertices[0].color
     }
 
-    fn set_color(&mut self, vertex_buffer: &mut glium::VertexBuffer<Vertex>, color: Color) {
+    fn set_color(&mut self, vertex_buffer: &mut glium::VertexBuffer<Vertex>, start_index: usize, color: Color) {
         for index in 0..4 {
             self.vertices[index].color = color;
-            vertex_buffer.map_write().set(index, self.vertices[index]);
+            vertex_buffer.map_write().set(start_index + index, self.vertices[index]);
         }
     }
 }
@@ -90,7 +90,6 @@ impl GliumScreen {
         let pixel_vec: Vec<Vec<Pixel>> = (0..SCREEN_HEIGHT)
             .map(|row| {
                 let top = 1.0 - (row as f32 * pixel_size);
-                println!("ROW {} = {}", row, top);
                 (0..SCREEN_WIDTH)
                     .map(|col| {
                         Pixel::new((col as f32)*pixel_size - 1.0, top, pixel_size, BLACK)
@@ -133,7 +132,24 @@ impl GliumScreen {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn get_color(&self, index: usize) -> Color {
+        self.pixels[index][0].color()
+    }
+
+    pub fn poll_events(&self) -> glium::backend::glutin_backend::PollEventsIter {
+        self.display.poll_events()
+    }
+}
+
+impl Screen for GliumScreen {
+    fn set_color(&mut self, x: usize, y: usize, color: Color) {
+        let top = y;
+        let left = x;
+        let start_index = top*(SCREEN_WIDTH as usize*4) + (left*4);
+        self.pixels[y][x].set_color(&mut self.vertex_buffer, start_index, color);
+    }
+
+    fn draw(&mut self) {
         let mut target = self.display.draw();
         target.clear_color(0.0, 0.0, 1.0, 1.0);
 
@@ -146,19 +162,5 @@ impl GliumScreen {
         ).unwrap();
 
         target.finish().unwrap();
-    }
-
-    pub fn get_color(&self, index: usize) -> Color {
-        self.pixels[index][0].color()
-    }
-
-    pub fn poll_events(&self) -> glium::backend::glutin_backend::PollEventsIter {
-        self.display.poll_events()
-    }
-}
-
-impl Screen for GliumScreen {
-    fn set_color(&mut self, x: usize, y: usize, color: Color) {
-        self.pixels[x][y].set_color(&mut self.vertex_buffer, color);
     }
 }
