@@ -1,11 +1,8 @@
 [package]
-name = "rustnes"
+name = "gliumscreen"
 version = "0.1.0"
 authors = ["Marcus Bergenlid <marcus.bergenlid@ooyala.com>"]
 
-[workspace]
-members = [
-    "nes"
-]
-
 [dependencies]
+glium = "*"
+nes = { path = "../nes"}

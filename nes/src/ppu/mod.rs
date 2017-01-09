@@ -1,8 +1,8 @@
-mod screen;
+pub mod screen;
 
-use nes::memory::Memory;
-use nes::ppu::screen::Screen;
-use nes::ppu::screen::COLOUR_PALETTE;
+use memory::Memory;
+use ppu::screen::Screen;
+use ppu::screen::COLOUR_PALETTE;
 
 struct PPUCtrl {
     value: u8,
@@ -26,7 +26,7 @@ pub struct PPU<'a> {
 }
 
 impl<'a> PPU<'a> {
-    fn new(memory: Box<Memory>, screen: &'a mut Screen) -> PPU<'a> {
+    pub fn new(memory: Box<Memory>, screen: &'a mut Screen) -> PPU<'a> {
         PPU {
             control_register: PPUCtrl::new(),
             memory: memory,
@@ -34,11 +34,11 @@ impl<'a> PPU<'a> {
         }
     }
 
-    fn set_ppu_ctrl(&mut self, value: u8) {
+    pub fn set_ppu_ctrl(&mut self, value: u8) {
         self.control_register.value = value;
     }
 
-    fn draw(&mut self) {
+    pub fn draw(&mut self) {
         let base_x = 0;
         let base_y = 0;
 
@@ -68,7 +68,7 @@ impl<'a> PPU<'a> {
 
 #[cfg(test)]
 mod tests {
-    use nes::memory::Memory;
+    use memory::Memory;
     use super::screen::Color;
     use super::screen::Screen;
     use super::PPU;

@@ -1,13 +1,13 @@
 
-mod cpu;
-#[macro_use] mod memory;
+pub mod cpu;
+#[macro_use] pub mod memory;
 mod opcodes;
-mod addressing;
-mod ppu;
+pub mod addressing;
+pub mod ppu;
 
-use nes::cpu::CPU;
-use nes::memory::Memory;
-use nes::addressing::AddressingMode;
+use cpu::CPU;
+use memory::Memory;
+use addressing::AddressingMode;
 
 pub struct NES {
     cpu: CPU,
@@ -20,6 +20,10 @@ impl NES {
             cpu: CPU::new(),
             op_codes: OpCodes::new(),
         }
+    }
+
+    pub fn execute(&mut self, memory: &mut Memory) {
+        self.execute_instruction(memory);
     }
 
     fn execute_instruction(&mut self, memory: &mut Memory) {
@@ -145,9 +149,9 @@ fn and(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
 
 #[cfg(test)]
 mod tests {
-    use nes::cpu;
-    use nes::memory::Memory;
-    use nes::opcodes;
+    use cpu;
+    use memory::Memory;
+    use opcodes;
 
     macro_rules! instruction_test {
         ( $name:expr, $memory:expr, $expected_cpu:expr ) => {

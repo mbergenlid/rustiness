@@ -1,5 +1,5 @@
 
-use nes::memory::Address;
+use memory::Address;
 
 pub const NEGATIVE_FLAG: u8 = 0b1000_0000;
 pub const OVERFLOW_FLAG: u8 = 0b0100_0000;

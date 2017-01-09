@@ -28,7 +28,7 @@ impl Memory for BasicMemory {
 macro_rules! memory {
     ( $( $x:expr => $y:expr ),* ) => {
         {
-            use nes::memory;
+            use memory;
             let mut temp_memory = memory::BasicMemory::new();
             $(
                 temp_memory.set($x, $y);

@@ -1,7 +1,12 @@
-use glium;
-use std::time::Duration;
+#[macro_use]
+extern crate glium;
+extern crate nes;
+
 use glium::Surface;
 use glium::DisplayBuild;
+
+use nes::ppu::screen::Color;
+use nes::ppu::screen::Screen;
 
 #[derive(Copy, Clone, Debug)]
 struct Vertex {
@@ -34,8 +39,6 @@ const FRAGMENT_SHADER_SRC: &'static str = r#"
         }
     "#;
 
-type Color = [f32; 3];
-
 struct Pixel {
     vertices: [Vertex; 4]
 }
@@ -64,14 +67,12 @@ impl Pixel {
     }
 }
 
-const RED: [f32; 3] = [1.0, 0.0, 0.0];
-const GREEN: [f32; 3] = [0.0, 1.0, 0.0];
 const BLACK: [f32; 3] = [0.0, 0.0, 0.0];
 
 const SCREEN_WIDTH: u32 = 256;
 const SCREEN_HEIGHT: u32 = 240;
 
-pub struct Screen {
+pub struct GliumScreen {
     display: glium::Display,
     program: glium::Program,
     vertex_buffer: glium::VertexBuffer<Vertex>,
@@ -79,8 +80,8 @@ pub struct Screen {
     pixels: Vec<Vec<Pixel>>,
 }
 
-impl Screen {
-    pub fn new(scale: u8) -> Screen {
+impl GliumScreen {
+    pub fn new(scale: u8) -> GliumScreen {
         let display: glium::Display = glium::glutin::WindowBuilder::new()
             .with_dimensions(SCREEN_WIDTH*(scale as u32), SCREEN_HEIGHT*(scale as u32))
             .build_glium().unwrap();
@@ -123,7 +124,7 @@ impl Screen {
             &indices
         ).unwrap();
 
-        Screen {
+        GliumScreen {
             display: display,
             program: program,
             vertex_buffer: vertex_buffer,
@@ -147,15 +148,17 @@ impl Screen {
         target.finish().unwrap();
     }
 
-    pub fn set_color(&mut self, index: usize, color: Color) {
-        self.pixels[index][0].set_color(&mut self.vertex_buffer, color);
-    }
-
     pub fn get_color(&self, index: usize) -> Color {
         self.pixels[index][0].color()
     }
 
     pub fn poll_events(&self) -> glium::backend::glutin_backend::PollEventsIter {
         self.display.poll_events()
+    }
+}
+
+impl Screen for GliumScreen {
+    fn set_color(&mut self, x: usize, y: usize, color: Color) {
+        self.pixels[x][y].set_color(&mut self.vertex_buffer, color);
     }
 }

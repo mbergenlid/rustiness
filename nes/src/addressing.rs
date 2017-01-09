@@ -1,6 +1,6 @@
-use nes::cpu::CPU;
-use nes::memory::Memory;
-use nes::memory::Address;
+use cpu::CPU;
+use memory::Memory;
+use memory::Address;
 
 pub struct AddressingMode {
     pub operand_address: Address
@@ -99,8 +99,8 @@ impl AddressingMode {
 
 #[cfg(test)]
 mod test {
-    use nes::cpu;
-    use nes::memory::Memory;
+    use cpu;
+    use memory::Memory;
     use super::AddressingMode;
 
     #[test]
