@@ -3,6 +3,7 @@ mod cpu;
 #[macro_use] mod memory;
 mod opcodes;
 mod addressing;
+mod ppu;
 
 use nes::cpu::CPU;
 use nes::memory::Memory;

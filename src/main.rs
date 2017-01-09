@@ -1,5 +1,8 @@
+#[macro_use]
+extern crate glium;
+
 mod nes;
 
 fn main() {
-    println!("Hello, world!");
+//    test_ppu();
 }
