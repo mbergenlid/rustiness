@@ -50,11 +50,41 @@ impl CPU {
     }
 
     pub fn add_accumulator(&mut self, value: u8) {
-        self.accumulator += value;
+        let sum = self.accumulator as u16 + value as u16;
+
+        if sum > 0xFF {
+            self.set_flags(CARRY_FLAG);
+        } else {
+            self.clear_flags(CARRY_FLAG);
+        }
+        if sum as u8 == 0 {
+            self.set_flags(ZERO_FLAG);
+        } else {
+            self.clear_flags(ZERO_FLAG);
+        }
+        if value & 0x80 == 0 && self.accumulator & 0x80 == 0 && sum >= 0x80 ||
+            value & self.accumulator >= 0x80 && (sum as u8) < 0x80 {
+            self.set_flags(OVERFLOW_FLAG);
+        } else {
+            self.clear_flags(OVERFLOW_FLAG);
+        }
+        self.accumulator = sum as u8;
     }
 
     pub fn and_accumulator(&mut self, value: u8) {
         self.accumulator &= value;
+    }
+
+    pub fn or_accumulator(&mut self, value: u8) {
+        self.accumulator |= value;
+    }
+
+    pub fn asl_accumulator(&mut self) {
+        self.accumulator <<= 1;
+    }
+
+    pub fn asl_into_accumulator(&mut self, value: u8) {
+        self.accumulator <<= 1;
     }
 
     pub fn program_counter(&self) -> Address {
@@ -112,7 +142,140 @@ impl CpuBuilder {
         return self;
     }
 
+    pub fn flags(&mut self, value: u8) -> &mut CpuBuilder {
+        self.cpu.processor_status = value;
+        return self;
+    }
+
     pub fn build(&self) -> CPU {
         return self.cpu;
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn test_add_with_carry() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x05)
+            .build();
+        cpu.add_accumulator(0x02);
+        assert_eq!(cpu.accumulator, 0x07);
+    }
+
+    #[test]
+    fn add_with_carry_should_set_the_carry_flag_on_overflow() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0xFE)
+            .build();
+        cpu.add_accumulator(0x03);
+        assert_eq!(cpu.accumulator, 0x01);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0xFF)
+                .build();
+            cpu.add_accumulator(1);
+            assert_eq!(cpu.accumulator, 0x00);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+            assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0x80)
+                .build();
+            cpu.add_accumulator(0xFF);
+            assert_eq!(cpu.accumulator, 127);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+        }
+    }
+
+    #[test]
+    fn add_with_carry_should_not_set_the_carry_flag_on_underflow() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x01)
+            .build();
+        cpu.add_accumulator(0b1111_1101);
+        assert_eq!(cpu.accumulator, 0xFE);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+    }
+
+    #[test]
+    fn add_accumulator_should_clear_carry_flag() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x01)
+            .flags(super::CARRY_FLAG)
+            .build();
+        cpu.add_accumulator(0x02);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false)
+    }
+
+    #[test]
+    fn add_with_carry_should_set_the_zero_flag() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x01)
+            .build();
+        cpu.add_accumulator(0b1111_1111);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn add_accumulator_should_clear_the_zero_flag() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x01)
+            .flags(super::ZERO_FLAG)
+            .build();
+        cpu.add_accumulator(0x02);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+    }
+
+    #[test]
+    fn add_with_carry_should_set_the_overflow_flag() {
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(127)
+                .build();
+            cpu.add_accumulator(1);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(1)
+                .build();
+            cpu.add_accumulator(1);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(1)
+                .build();
+            cpu.add_accumulator(0xFF);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0x80) //-128
+                .build();
+            cpu.add_accumulator(0xFF); //-1
+            assert_eq!(cpu.accumulator, 0x7F);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+        }
+    }
+
+    #[test]
+    fn add_accumulator_should_clear_the_overflow_flag() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x01)
+            .flags(super::OVERFLOW_FLAG)
+            .build();
+        cpu.add_accumulator(0x01);
+        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false)
     }
 }
