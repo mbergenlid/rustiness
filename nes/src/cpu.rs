@@ -78,6 +78,16 @@ impl CPU {
 
     pub fn and_accumulator(&mut self, value: u8) {
         self.accumulator &= value;
+        if self.accumulator == 0 {
+            self.set_flags(ZERO_FLAG);
+        } else {
+            self.clear_flags(ZERO_FLAG);
+        }
+        if self.accumulator & 0x80 == 0 {
+            self.clear_flags(NEGATIVE_FLAG);
+        } else {
+            self.set_flags(NEGATIVE_FLAG);
+        }
     }
 
     pub fn or_accumulator(&mut self, value: u8) {
@@ -300,6 +310,36 @@ mod test {
                 .build();
             cpu.add_accumulator(0x02);
             assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        }
+    }
+
+    #[test]
+    fn test_and_accumulator() {
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0x15)
+                .build();
+            cpu.and_accumulator(!0x15);
+            assert_eq!(cpu.accumulator, 0x00);
+            assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0xFF)
+                .build();
+            cpu.and_accumulator(0x80);
+            assert_eq!(cpu.accumulator, 0x80);
+            assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0xFF)
+                .flags(super::NEGATIVE_FLAG | super::ZERO_FLAG)
+                .build();
+            cpu.and_accumulator(0x01);
+            assert_eq!(cpu.accumulator, 0x01);
+            assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+            assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
         }
     }
 }
