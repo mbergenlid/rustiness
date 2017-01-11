@@ -130,16 +130,39 @@ impl CPU {
     }
 
     pub fn cmp_accumulator(&mut self, value: u8) {
-        if self.accumulator == value {
+        let left = self.accumulator;
+        self.cmp(left, value);
+    }
+
+    pub fn cmp_register_x(&mut self, value: u8) {
+        let left = self.register_x;
+        self.cmp(left, value);
+    }
+
+    fn cmp(&mut self, left: u8, right: u8) {
+        if left == right {
             self.set_flags(ZERO_FLAG | CARRY_FLAG);
             self.clear_flags(NEGATIVE_FLAG);
-        } else if self.accumulator > value {
+        } else if left > right {
             self.set_flags(CARRY_FLAG);
             self.clear_flags(ZERO_FLAG | NEGATIVE_FLAG);
         } else {
             self.set_flags(NEGATIVE_FLAG);
             self.clear_flags(CARRY_FLAG | ZERO_FLAG);
         }
+    }
+
+    pub fn decrement(&mut self, value: u8) -> u8 {
+        if value == 1 {
+            self.set_flags(ZERO_FLAG);
+        } else {
+            self.clear_flags(ZERO_FLAG);
+        }
+        let new_value = value.wrapping_sub(1);
+        if new_value & 0x80 > 0 {
+            self.set_flags(NEGATIVE_FLAG);
+        }
+        new_value
     }
 
     pub fn program_counter(&self) -> Address {
@@ -209,6 +232,24 @@ impl CpuBuilder {
 
 #[cfg(test)]
 mod test {
+
+    #[test]
+    fn test_decrement() {
+        let mut cpu = super::CpuBuilder::new()
+            .build();
+
+        let new_value = cpu.decrement(0x02);
+        assert_eq!(new_value, 0x01);
+
+        let new_value = cpu.decrement(0x01);
+        assert_eq!(new_value, 0x00);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+
+        let new_value = cpu.decrement(0x00);
+        assert_eq!(new_value, 0xFF);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+    }
 
     #[test]
     fn test_cmp_accumulator() {
