@@ -50,7 +50,7 @@ impl CPU {
     }
 
     pub fn add_accumulator(&mut self, value: u8) {
-        let sum = self.accumulator as u16 + value as u16;
+        let sum = self.accumulator as u16 + value as u16 + (self.processor_status & CARRY_FLAG) as u16;
 
         if sum > 0xFF {
             self.set_flags(CARRY_FLAG);
@@ -95,11 +95,38 @@ impl CPU {
     }
 
     pub fn asl_accumulator(&mut self) {
-        self.accumulator <<= 1;
+        let acc = self.accumulator;
+        self.asl_into_accumulator(acc);
     }
 
     pub fn asl_into_accumulator(&mut self, value: u8) {
-        self.accumulator <<= 1;
+        if value & 0x80 == 0 {
+            self.clear_flags(CARRY_FLAG);
+        } else {
+            self.set_flags(CARRY_FLAG);
+        }
+        self.accumulator = value << 1;
+        if self.accumulator == 0 {
+            self.set_flags(ZERO_FLAG);
+        } else {
+            self.clear_flags(ZERO_FLAG);
+        }
+        if self.accumulator & 0x80 == 0 {
+            self.clear_flags(NEGATIVE_FLAG);
+        } else {
+            self.set_flags(NEGATIVE_FLAG);
+        }
+    }
+
+    pub fn bit_test(&mut self, mask: u8) {
+        let value = self.accumulator & mask;
+        if value == 0 {
+            self.set_flags(ZERO_FLAG);
+        } else {
+            self.clear_flags(ZERO_FLAG);
+        }
+
+        self.processor_status = (mask & 0xD0) | (self.processor_status & 0xBF);
     }
 
     pub fn program_counter(&self) -> Address {
@@ -227,6 +254,16 @@ mod test {
     }
 
     #[test]
+    fn add_accumulator_should_use_the_carry_flag() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x01)
+            .flags(super::CARRY_FLAG)
+            .build();
+        cpu.add_accumulator(0x02);
+        assert_eq!(cpu.accumulator, 4);
+    }
+
+    #[test]
     fn add_with_carry_should_set_the_zero_flag() {
         let mut cpu = super::CpuBuilder::new()
             .accumulator(0x01)
@@ -341,5 +378,65 @@ mod test {
             assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
             assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
         }
+    }
+
+    #[test]
+    fn test_asl() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x01)
+            .build();
+        cpu.asl_accumulator();
+        assert_eq!(cpu.accumulator, 0x02);
+    }
+
+    #[test]
+    fn asl_should_set_carry_and_zero_flag() {
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .flags(super::CARRY_FLAG)
+                .build();
+            cpu.asl_into_accumulator(0x01);
+            assert_eq!(cpu.accumulator, 0x02);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .build();
+            cpu.asl_into_accumulator(0x80);
+            assert_eq!(cpu.accumulator, 0x00);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+            assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .build();
+            cpu.asl_into_accumulator(0x40);
+            assert_eq!(cpu.accumulator, 0x80);
+            assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        }
+    }
+
+    #[test]
+    fn test_bit() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x01)
+            .flags(super::CARRY_FLAG)
+            .build();
+        cpu.bit_test(0x02);
+        assert_eq!(cpu.accumulator, 0x01);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+
+        cpu.bit_test(0x01);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+
+        //TODO: test N and V flags.
+        cpu.bit_test(0x40);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+
+        cpu.bit_test(0x80);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
     }
 }
