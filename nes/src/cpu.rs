@@ -68,6 +68,11 @@ impl CPU {
         } else {
             self.clear_flags(OVERFLOW_FLAG);
         }
+        if sum & 0x80 == 0 {
+            self.clear_flags(NEGATIVE_FLAG);
+        } else {
+            self.set_flags(NEGATIVE_FLAG);
+        }
         self.accumulator = sum as u8;
     }
 
@@ -277,5 +282,24 @@ mod test {
             .build();
         cpu.add_accumulator(0x01);
         assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false)
+    }
+
+    #[test]
+    fn add_accumulator_should_clear_set_and_clear_negative_flag() {
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0x01)
+                .build();
+            cpu.add_accumulator(0xFE);
+            assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0xFF)
+                .flags(super::NEGATIVE_FLAG)
+                .build();
+            cpu.add_accumulator(0x02);
+            assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        }
     }
 }
