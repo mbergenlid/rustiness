@@ -129,6 +129,19 @@ impl CPU {
         self.processor_status = (mask & 0xD0) | (self.processor_status & 0xBF);
     }
 
+    pub fn cmp_accumulator(&mut self, value: u8) {
+        if self.accumulator == value {
+            self.set_flags(ZERO_FLAG | CARRY_FLAG);
+            self.clear_flags(NEGATIVE_FLAG);
+        } else if self.accumulator > value {
+            self.set_flags(CARRY_FLAG);
+            self.clear_flags(ZERO_FLAG | NEGATIVE_FLAG);
+        } else {
+            self.set_flags(NEGATIVE_FLAG);
+            self.clear_flags(CARRY_FLAG | ZERO_FLAG);
+        }
+    }
+
     pub fn program_counter(&self) -> Address {
         self.program_counter
     }
@@ -196,6 +209,31 @@ impl CpuBuilder {
 
 #[cfg(test)]
 mod test {
+
+    #[test]
+    fn test_cmp_accumulator() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x0A)
+            .flags(super::OVERFLOW_FLAG)
+            .build();
+        cpu.cmp_accumulator(0x01);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+
+        cpu.cmp_accumulator(0x0A);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+
+        cpu.cmp_accumulator(0x0B);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+    }
 
     #[test]
     fn test_add_with_carry() {
