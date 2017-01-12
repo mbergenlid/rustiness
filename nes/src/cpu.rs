@@ -6,6 +6,19 @@ pub const OVERFLOW_FLAG: u8 = 0b0100_0000;
 pub const ZERO_FLAG: u8 = 0b0000_0010;
 pub const CARRY_FLAG: u8 = 0b0000_0001;
 
+trait NesInteger {
+    fn is_negative(&self) -> bool;
+    fn is_positive(&self) -> bool {
+        !self.is_negative()
+    }
+}
+
+impl NesInteger for u8 {
+    fn is_negative(&self) -> bool {
+        self & 0x80 > 0
+    }
+}
+
 #[derive(Eq, Debug, Clone, Copy)]
 pub struct CPU {
     program_counter: Address,
@@ -76,46 +89,94 @@ impl CPU {
         self.accumulator = sum as u8;
     }
 
-    pub fn and_accumulator(&mut self, value: u8) {
-        self.accumulator &= value;
-        if self.accumulator == 0 {
-            self.set_flags(ZERO_FLAG);
+    pub fn sub_accumulator(&mut self, value: u8) {
+        let borrow = 1 - (self.processor_status & CARRY_FLAG);
+        self.set_flags(CARRY_FLAG);
+        let accumulator = self.accumulator;
+        let accumulator = self.subtract_without_carry(accumulator, borrow);
+
+        let new_value = self.subtract_without_carry(accumulator, value);
+
+        if accumulator.is_negative() && value.is_positive() && new_value < 0x80 ||
+            accumulator.is_positive() && value.is_negative() && new_value >= 0x80 {
+            self.set_flags(OVERFLOW_FLAG);
         } else {
-            self.clear_flags(ZERO_FLAG);
+            self.clear_flags(OVERFLOW_FLAG);
         }
-        if self.accumulator & 0x80 == 0 {
-            self.clear_flags(NEGATIVE_FLAG);
+        self.update_z_and_n_flags(new_value);
+        self.accumulator = new_value;
+    }
+
+    fn subtract_without_carry(&mut self, lhs: u8, rhs: u8) -> u8 {
+        if rhs > lhs {
+            self.clear_flags(CARRY_FLAG);
+            ((lhs as u16 + 0x100) - rhs as u16) as u8
         } else {
-            self.set_flags(NEGATIVE_FLAG);
+            lhs - rhs
         }
     }
 
+    pub fn and_accumulator(&mut self, value: u8) {
+        let new_value = self.accumulator & value;
+        self.update_z_and_n_flags(new_value);
+        self.accumulator = new_value;
+    }
+
     pub fn or_accumulator(&mut self, value: u8) {
-        self.accumulator |= value;
+        let new_value = self.accumulator | value;
+        self.update_z_and_n_flags(new_value);
+        self.accumulator = new_value;
     }
 
     pub fn asl_accumulator(&mut self) {
         let acc = self.accumulator;
-        self.asl_into_accumulator(acc);
+        self.accumulator = self.arithmetic_shift_left(acc);
     }
 
-    pub fn asl_into_accumulator(&mut self, value: u8) {
+    pub fn arithmetic_shift_left(&mut self, value: u8) -> u8 {
         if value & 0x80 == 0 {
             self.clear_flags(CARRY_FLAG);
         } else {
             self.set_flags(CARRY_FLAG);
         }
-        self.accumulator = value << 1;
-        if self.accumulator == 0 {
-            self.set_flags(ZERO_FLAG);
+        let new_value = value << 1;
+        self.update_z_and_n_flags(new_value);
+        return new_value;
+    }
+
+    pub fn logical_shift_right(&mut self, value: u8) -> u8 {
+        if value & 0x01 > 0 {
+            self.set_flags(CARRY_FLAG);
         } else {
-            self.clear_flags(ZERO_FLAG);
+            self.clear_flags(CARRY_FLAG);
         }
-        if self.accumulator & 0x80 == 0 {
-            self.clear_flags(NEGATIVE_FLAG);
+        let new_value = value >> 1;
+        self.update_z_and_n_flags(new_value);
+        return new_value;
+    }
+
+    pub fn rotate_left(&mut self, value: u8) -> u8 {
+        let carry = self.processor_status & CARRY_FLAG;
+        if value & 0x80 == 0 {
+            self.clear_flags(CARRY_FLAG);
         } else {
-            self.set_flags(NEGATIVE_FLAG);
+            self.set_flags(CARRY_FLAG);
         }
+        let new_value = (value << 1) | carry;
+        self.update_z_and_n_flags(new_value);
+        return new_value;
+    }
+
+    pub fn rotate_right(&mut self, value: u8) -> u8 {
+        let carry = (self.processor_status & CARRY_FLAG) << 7;
+        if value & 0x01 == 0 {
+            self.clear_flags(CARRY_FLAG);
+        } else {
+            self.set_flags(CARRY_FLAG);
+        }
+        let new_value = (value >> 1) | carry;
+        self.update_z_and_n_flags(new_value);
+        return new_value;
     }
 
     pub fn bit_test(&mut self, mask: u8) {
@@ -153,15 +214,8 @@ impl CPU {
     }
 
     pub fn decrement(&mut self, value: u8) -> u8 {
-        if value == 1 {
-            self.set_flags(ZERO_FLAG);
-        } else {
-            self.clear_flags(ZERO_FLAG);
-        }
         let new_value = value.wrapping_sub(1);
-        if new_value & 0x80 > 0 {
-            self.set_flags(NEGATIVE_FLAG);
-        }
+        self.update_z_and_n_flags(new_value);
         new_value
     }
 
@@ -176,15 +230,8 @@ impl CPU {
     }
 
     pub fn increment(&mut self, value: u8) -> u8 {
-        if value == 0xFF {
-            self.set_flags(ZERO_FLAG);
-        } else {
-            self.clear_flags(ZERO_FLAG);
-        }
         let new_value = value.wrapping_add(1);
-        if new_value & 0x80 > 0 {
-            self.set_flags(NEGATIVE_FLAG);
-        }
+        self.update_z_and_n_flags(new_value);
         new_value
     }
     pub fn increment_x(&mut self) {
@@ -198,35 +245,28 @@ impl CPU {
     }
 
     pub fn xor_accumulator(&mut self, value: u8) {
-        self.accumulator = self.accumulator ^ value;
-        if self.accumulator & 0x80 > 0 {
-            self.set_flags(NEGATIVE_FLAG);
-        } else {
-            self.clear_flags(NEGATIVE_FLAG);
-        }
-        if self.accumulator == 0 {
-            self.set_flags(ZERO_FLAG);
-        } else {
-            self.clear_flags(ZERO_FLAG);
-        }
+        let new_value = self.accumulator ^ value;
+        self.update_z_and_n_flags(new_value);
+        self.accumulator = new_value;
     }
 
     pub fn load_accumulator(&mut self, value: u8) {
-        self.update_flags(value);
+        self.update_z_and_n_flags(value);
         self.accumulator = value;
     }
 
     pub fn load_x(&mut self, value: u8) {
-        self.update_flags(value);
+        self.update_z_and_n_flags(value);
         self.register_x = value;
     }
 
     pub fn load_y(&mut self, value: u8) {
-        self.update_flags(value);
+        self.update_z_and_n_flags(value);
         self.register_y = value;
     }
 
-    fn update_flags(&mut self, value: u8) {
+
+    fn update_z_and_n_flags(&mut self, value: u8) {
         if value == 0 {
             self.set_flags(ZERO_FLAG);
         } else {
@@ -308,6 +348,187 @@ impl CpuBuilder {
 mod test {
 
     #[test]
+    fn test_sbc() {
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .flags(super::NEGATIVE_FLAG | super::ZERO_FLAG | super::CARRY_FLAG | super::OVERFLOW_FLAG)
+                .accumulator(0x02)
+                .build();
+
+            cpu.sub_accumulator(0x01);
+            assert_eq!(cpu.accumulator, 1);
+            assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+            assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+
+            cpu.sub_accumulator(0x03);
+            assert_eq!(cpu.accumulator, 0xFE);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+
+            //0xFE - 0x01 - 1 =
+            cpu.sub_accumulator(0x01);
+            assert_eq!(cpu.accumulator, 0xFC);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .flags(super::CARRY_FLAG)
+                .accumulator(0x02)
+                .build();
+
+            cpu.sub_accumulator(0x04);
+            assert_eq!(cpu.accumulator, 0xFE);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+
+            //0x1FE - 0x100 = 0xFE
+            cpu.sub_accumulator(0xFF);
+            assert_eq!(cpu.accumulator, 0xFE);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+        }
+
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0x00)
+                .build();
+
+            //0x00 - 1 - 0xFF = 0x100 - 1 - 0xFF = 0xFF - 0xFF
+            cpu.sub_accumulator(0xFF);
+            assert_eq!(cpu.accumulator, 0x00);
+            assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+        }
+    }
+
+    #[test]
+    fn test_sub_overflow_flag() {
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .flags(super::CARRY_FLAG)
+                .accumulator(0)
+                .build();
+            cpu.sub_accumulator(1);
+            assert_eq!(cpu.accumulator, 0xFF);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .flags(super::CARRY_FLAG)
+                .accumulator(0x80)
+                .build();
+            cpu.sub_accumulator(1);
+            assert_eq!(cpu.accumulator, 0x7F);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+        }
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .flags(super::CARRY_FLAG)
+                .accumulator(0x7F)
+                .build();
+
+            //127 - -1 = 0x7F - 0xFF = 0x17F - 0xFF = 128 (V = 1)
+            cpu.sub_accumulator(0xFF);
+            assert_eq!(cpu.accumulator, 0x80);
+            assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+        }
+    }
+
+    #[test]
+    fn test_rotate_right() {
+        let mut cpu = super::CpuBuilder::new()
+            .flags(super::NEGATIVE_FLAG | super::ZERO_FLAG | super::CARRY_FLAG)
+            .build();
+
+        let new_value = cpu.rotate_right(0x04);
+        assert_eq!(new_value, 0x82);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+
+        let new_value = cpu.rotate_right(0x01);
+        assert_eq!(new_value, 0x00);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+
+        let new_value = cpu.rotate_right(0x01);
+        assert_eq!(new_value, 0x80);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_rotate_left() {
+        let mut cpu = super::CpuBuilder::new()
+            .flags(super::NEGATIVE_FLAG | super::ZERO_FLAG | super::CARRY_FLAG)
+            .build();
+
+        let new_value = cpu.rotate_left(0x02);
+        assert_eq!(new_value, 0x05);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+
+        let new_value = cpu.rotate_left(0x80);
+        assert_eq!(new_value, 0x00);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+
+        let new_value = cpu.rotate_left(0x40);
+        assert_eq!(new_value, 0x81);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+    }
+
+    #[test]
+    fn test_or() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x45)
+            .flags(super::ZERO_FLAG)
+            .flags(super::NEGATIVE_FLAG)
+            .build();
+
+        cpu.or_accumulator(0x08);
+        assert_eq!(cpu.accumulator, 0x4D);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+
+        cpu.or_accumulator(0x80);
+        assert_eq!(cpu.accumulator, 0xCD);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+
+        {
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(0x00)
+                .build();
+            cpu.or_accumulator(0x00);
+            assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        }
+    }
+    #[test]
+    fn test_lsr() {
+        let mut cpu = super::CpuBuilder::new().build();
+
+        assert_eq!(cpu.logical_shift_right(0x02), 0x01);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+
+        assert_eq!(cpu.logical_shift_right(0x01), 0x00);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+
+        cpu.logical_shift_right(0xFF);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+    }
+
+    #[test]
     fn test_load() {
         let mut cpu = super::CpuBuilder::new()
             .flags(super::NEGATIVE_FLAG)
@@ -351,10 +572,13 @@ mod test {
     #[test]
     fn test_increment() {
         let mut cpu = super::CpuBuilder::new()
+            .flags(super::NEGATIVE_FLAG)
             .build();
 
         let new_value = cpu.increment(0x02);
         assert_eq!(new_value, 0x03);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
 
         let new_value = cpu.increment(0xFF);
         assert_eq!(new_value, 0x00);
@@ -369,10 +593,14 @@ mod test {
     #[test]
     fn test_decrement() {
         let mut cpu = super::CpuBuilder::new()
+            .flags(super::NEGATIVE_FLAG)
             .build();
 
         let new_value = cpu.decrement(0x02);
         assert_eq!(new_value, 0x01);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+
 
         let new_value = cpu.decrement(0x01);
         assert_eq!(new_value, 0x00);
@@ -563,6 +791,23 @@ mod test {
     }
 
     #[test]
+    fn test_multi_byte_adds() {
+        let mut cpu = super::CpuBuilder::new()
+            .flags(super::CARRY_FLAG)
+            .accumulator(0xFF)
+            .build();
+
+        cpu.add_accumulator(0x01);
+        assert_eq!(cpu.accumulator, 1);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+
+        cpu.add_accumulator(0x01);
+        assert_eq!(cpu.accumulator, 3);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+    }
+
+    #[test]
     fn test_and_accumulator() {
         {
             let mut cpu = super::CpuBuilder::new()
@@ -607,23 +852,23 @@ mod test {
             let mut cpu = super::CpuBuilder::new()
                 .flags(super::CARRY_FLAG)
                 .build();
-            cpu.asl_into_accumulator(0x01);
-            assert_eq!(cpu.accumulator, 0x02);
+            let new_value = cpu.arithmetic_shift_left(0x01);
+            assert_eq!(new_value, 0x02);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
         }
         {
             let mut cpu = super::CpuBuilder::new()
                 .build();
-            cpu.asl_into_accumulator(0x80);
-            assert_eq!(cpu.accumulator, 0x00);
+            let new_value = cpu.arithmetic_shift_left(0x80);
+            assert_eq!(new_value, 0x00);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
             assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
         }
         {
             let mut cpu = super::CpuBuilder::new()
                 .build();
-            cpu.asl_into_accumulator(0x40);
-            assert_eq!(cpu.accumulator, 0x80);
+            let new_value = cpu.arithmetic_shift_left(0x40);
+            assert_eq!(new_value, 0x80);
             assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
         }
     }
