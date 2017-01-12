@@ -30,6 +30,7 @@ impl NES {
         let opcode = memory.get(self.cpu.get_and_increment_pc());
 
         let instr = { self.op_codes.get(opcode) };
+        println!("opcode {:x}", opcode);
         match instr {
             &Some(ref instruction) => instruction.execute(&mut self.cpu, memory),
             &None => println!("Unkown opcode"),
@@ -48,19 +49,41 @@ impl OpCodes {
 
     fn new() -> OpCodes {
         let all_codes: Vec<Box<Instruction>> = vec![
-        Box::new(Branch { op_code: opcodes::BRANCH_PLUS, flag: cpu::NEGATIVE_FLAG, inverted: true }),
-        Box::new(Branch { op_code: opcodes::BRANCH_MINUS, flag: cpu::NEGATIVE_FLAG, inverted: false }),
-        Box::new(Branch { op_code: opcodes::BRANCH_OVERFLOW_SET, flag: cpu::OVERFLOW_FLAG, inverted: false }),
-        Box::new(Branch { op_code: opcodes::BRANCH_OVERFLOW_CLEAR, flag: cpu::OVERFLOW_FLAG, inverted: true }),
-        Box::new(Branch { op_code: opcodes::BRANCH_CARRY_SET, flag: cpu::CARRY_FLAG, inverted: false }),
-        Box::new(Branch { op_code: opcodes::BRANCH_CARRY_CLEAR, flag: cpu::CARRY_FLAG, inverted: true }),
-        Box::new(Branch { op_code: opcodes::BRANCH_NOT_EQUAL, flag: cpu::ZERO_FLAG, inverted: true }),
-        Box::new(Branch { op_code: opcodes::BRANCH_EQUAL, flag: cpu::ZERO_FLAG, inverted: false }),
+            Box::new(Branch { op_code: opcodes::BRANCH_PLUS, flag: cpu::NEGATIVE_FLAG, inverted: true }),
+            Box::new(Branch { op_code: opcodes::BRANCH_MINUS, flag: cpu::NEGATIVE_FLAG, inverted: false }),
+            Box::new(Branch { op_code: opcodes::BRANCH_OVERFLOW_SET, flag: cpu::OVERFLOW_FLAG, inverted: false }),
+            Box::new(Branch { op_code: opcodes::BRANCH_OVERFLOW_CLEAR, flag: cpu::OVERFLOW_FLAG, inverted: true }),
+            Box::new(Branch { op_code: opcodes::BRANCH_CARRY_SET, flag: cpu::CARRY_FLAG, inverted: false }),
+            Box::new(Branch { op_code: opcodes::BRANCH_CARRY_CLEAR, flag: cpu::CARRY_FLAG, inverted: true }),
+            Box::new(Branch { op_code: opcodes::BRANCH_NOT_EQUAL, flag: cpu::ZERO_FLAG, inverted: true }),
+            Box::new(Branch { op_code: opcodes::BRANCH_EQUAL, flag: cpu::ZERO_FLAG, inverted: false }),
 
-        Box::new(ADC {op_code: opcodes::ADC_IMMEDIATE, addressing_mode: AddressingMode::immediate, instruction: adc}),
-        Box::new(ADC {op_code: opcodes::ADC_ZERO_PAGE, addressing_mode: AddressingMode::zero_paged, instruction: adc}),
+            Box::new(ADC {op_code: opcodes::ADC_IMMEDIATE.code, addressing_mode: AddressingMode::immediate, instruction: adc}),
+            Box::new(ADC {op_code: opcodes::ADC_ZERO_PAGE.code, addressing_mode: AddressingMode::zero_paged, instruction: adc}),
 
-        Box::new(ADC {op_code: opcodes::AND_IMMEDIATE, addressing_mode: AddressingMode::immediate, instruction: and}),
+            Box::new(ADC {op_code: opcodes::AND_IMMEDIATE.code, addressing_mode: AddressingMode::immediate, instruction: and}),
+            Box::new(ADC {op_code: opcodes::AND_ZERO_PAGE.code, addressing_mode: AddressingMode::zero_paged, instruction: and}),
+            Box::new(ADC {op_code: opcodes::AND_ZERO_PAGE_X.code, addressing_mode: AddressingMode::zero_paged_index_x, instruction: and}),
+            Box::new(ADC {op_code: opcodes::AND_ABSOLUTE.code, addressing_mode: AddressingMode::absolute_addressing, instruction: and}),
+            Box::new(ADC {op_code: opcodes::AND_ABSOLUTE_X.code, addressing_mode: AddressingMode::absolute_x_addressing, instruction: and}),
+            Box::new(ADC {op_code: opcodes::AND_ABSOLUTE_Y.code, addressing_mode: AddressingMode::absolute_y_addressing, instruction: and}),
+            Box::new(ADC {op_code: opcodes::AND_INDIRECT_X.code, addressing_mode: AddressingMode::indirect_x_addressing, instruction: and}),
+            Box::new(ADC {op_code: opcodes::AND_INDIRECT_Y.code, addressing_mode: AddressingMode::indirect_y_addressing, instruction: and}),
+
+            Box::new(ADC {op_code: opcodes::ORA_IMMEDIATE.code, addressing_mode: AddressingMode::immediate, instruction: or}),
+            Box::new(ADC {op_code: opcodes::ORA_ZERO_PAGE.code, addressing_mode: AddressingMode::zero_paged, instruction: or}),
+            Box::new(ADC {op_code: opcodes::ORA_ZERO_PAGE_X.code, addressing_mode: AddressingMode::zero_paged_index_x, instruction: or}),
+            Box::new(ADC {op_code: opcodes::ORA_ABSOLUTE.code, addressing_mode: AddressingMode::absolute_addressing, instruction: or}),
+            Box::new(ADC {op_code: opcodes::ORA_ABSOLUTE_X.code, addressing_mode: AddressingMode::absolute_x_addressing, instruction: or}),
+            Box::new(ADC {op_code: opcodes::ORA_ABSOLUTE_Y.code, addressing_mode: AddressingMode::absolute_y_addressing, instruction: or}),
+            Box::new(ADC {op_code: opcodes::ORA_INDIRECT_X.code, addressing_mode: AddressingMode::indirect_x_addressing, instruction: or}),
+            Box::new(ADC {op_code: opcodes::ORA_INDIRECT_Y.code, addressing_mode: AddressingMode::indirect_y_addressing, instruction: or}),
+
+            Box::new(Accumulator {op_code: opcodes::ASL_ACCUMULATOR.code, instruction: asl_accumulator }),
+            Box::new(ADC {op_code: opcodes::ASL_ZERO_PAGE.code, addressing_mode: AddressingMode::zero_paged, instruction: asl}),
+            Box::new(ADC {op_code: opcodes::ASL_ZERO_PAGE_X.code, addressing_mode: AddressingMode::zero_paged_index_x, instruction: asl}),
+            Box::new(ADC {op_code: opcodes::ASL_ABSOLUTE.code, addressing_mode: AddressingMode::absolute_addressing, instruction: asl}),
+            Box::new(ADC {op_code: opcodes::ASL_ABSOLUTE_X.code, addressing_mode: AddressingMode::absolute_x_addressing, instruction: asl}),
         ];
 
         let mut codes: Vec<Option<Box<Instruction>>> = vec![];
@@ -139,12 +162,41 @@ impl Instruction for ADC {
     }
 }
 
+
+struct Accumulator {
+    op_code: u8,
+    instruction: fn(&mut CPU, &mut Memory),
+}
+
+impl Instruction for Accumulator {
+    fn op_code(&self) -> u8 {
+        self.op_code
+    }
+
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+        (self.instruction)(cpu, memory);
+    }
+}
+
+fn asl_accumulator(cpu: &mut CPU, memory: &mut Memory) {
+    cpu.asl_accumulator();
+}
+
+fn asl(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    let new_value = cpu.arithmetic_shift_left(memory.get(addressing_mode.operand_address));
+    memory.set(addressing_mode.operand_address, new_value);
+}
+
 fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
     cpu.add_accumulator(memory.get(addressing_mode.operand_address));
 }
 
 fn and(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
     cpu.and_accumulator(memory.get(addressing_mode.operand_address));
+}
+
+fn or(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+    cpu.or_accumulator(memory.get(addressing_mode.operand_address));
 }
 
 #[cfg(test)]
@@ -183,7 +235,12 @@ mod tests {
 
                 //AND $00
                 0x8002 => 0x29,
-                0x8003 => 0x00
+                0x8003 => 0x00,
+                //ORA $05
+                0x8004 => opcodes::ORA_IMMEDIATE.code,
+                0x8005 => 0x05,
+
+                0x8006 => opcodes::ASL_ACCUMULATOR.code
             ),
             &[
                 cpu::CpuBuilder::new()
@@ -192,7 +249,16 @@ mod tests {
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8004)
+                    .flags(cpu::ZERO_FLAG)
                     .accumulator(0x00)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8006)
+                    .accumulator(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8007)
+                    .accumulator(0x0A) //1010
                     .build()
             ]
         )
