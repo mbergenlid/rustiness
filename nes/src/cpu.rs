@@ -211,6 +211,34 @@ impl CPU {
         }
     }
 
+    pub fn load_accumulator(&mut self, value: u8) {
+        self.update_flags(value);
+        self.accumulator = value;
+    }
+
+    pub fn load_x(&mut self, value: u8) {
+        self.update_flags(value);
+        self.register_x = value;
+    }
+
+    pub fn load_y(&mut self, value: u8) {
+        self.update_flags(value);
+        self.register_y = value;
+    }
+
+    fn update_flags(&mut self, value: u8) {
+        if value == 0 {
+            self.set_flags(ZERO_FLAG);
+        } else {
+            self.clear_flags(ZERO_FLAG);
+        }
+        if value & 0x80 > 0 {
+            self.set_flags(NEGATIVE_FLAG);
+        } else {
+            self.clear_flags(NEGATIVE_FLAG);
+        }
+    }
+
     pub fn program_counter(&self) -> Address {
         self.program_counter
     }
@@ -278,6 +306,29 @@ impl CpuBuilder {
 
 #[cfg(test)]
 mod test {
+
+    #[test]
+    fn test_load() {
+        let mut cpu = super::CpuBuilder::new()
+            .flags(super::NEGATIVE_FLAG)
+            .build();
+
+        cpu.load_accumulator(0x00);
+        assert_eq!(cpu.accumulator, 0x00);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+
+        cpu.load_accumulator(0x80);
+        assert_eq!(cpu.accumulator, 0x80);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+
+        cpu.load_x(0x01);
+        assert_eq!(cpu.register_x, 0x01);
+
+        cpu.load_y(0x01);
+        assert_eq!(cpu.register_y, 0x01);
+    }
 
     #[test]
     fn test_xor() {
