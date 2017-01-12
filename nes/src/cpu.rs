@@ -165,6 +165,30 @@ impl CPU {
         new_value
     }
 
+    pub fn decrement_x(&mut self) {
+        let x = self.register_x;
+        self.register_x = self.decrement(x)
+    }
+
+    pub fn decrement_y(&mut self) {
+        let y = self.register_y;
+        self.register_y = self.decrement(y)
+    }
+
+    pub fn xor_accumulator(&mut self, value: u8) {
+        self.accumulator = self.accumulator ^ value;
+        if self.accumulator & 0x80 > 0 {
+            self.set_flags(NEGATIVE_FLAG);
+        } else {
+            self.clear_flags(NEGATIVE_FLAG);
+        }
+        if self.accumulator == 0 {
+            self.set_flags(ZERO_FLAG);
+        } else {
+            self.clear_flags(ZERO_FLAG);
+        }
+    }
+
     pub fn program_counter(&self) -> Address {
         self.program_counter
     }
@@ -232,6 +256,24 @@ impl CpuBuilder {
 
 #[cfg(test)]
 mod test {
+
+    #[test]
+    fn test_xor() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x25)
+            .build();
+        cpu.xor_accumulator(0x01);
+        assert_eq!(cpu.accumulator, 0x25 ^ 0x01);
+
+        cpu.xor_accumulator(0x80);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+
+        let accumulator = cpu.accumulator;
+        cpu.xor_accumulator(accumulator);
+        assert_eq!(cpu.accumulator, 0);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+    }
 
     #[test]
     fn test_decrement() {
