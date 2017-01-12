@@ -175,6 +175,28 @@ impl CPU {
         self.register_y = self.decrement(y)
     }
 
+    pub fn increment(&mut self, value: u8) -> u8 {
+        if value == 0xFF {
+            self.set_flags(ZERO_FLAG);
+        } else {
+            self.clear_flags(ZERO_FLAG);
+        }
+        let new_value = value.wrapping_add(1);
+        if new_value & 0x80 > 0 {
+            self.set_flags(NEGATIVE_FLAG);
+        }
+        new_value
+    }
+    pub fn increment_x(&mut self) {
+        let x = self.register_x;
+        self.register_x = self.increment(x);
+    }
+
+    pub fn increment_y(&mut self) {
+        let y = self.register_y;
+        self.register_y = self.increment(y);
+    }
+
     pub fn xor_accumulator(&mut self, value: u8) {
         self.accumulator = self.accumulator ^ value;
         if self.accumulator & 0x80 > 0 {
@@ -273,6 +295,24 @@ mod test {
         assert_eq!(cpu.accumulator, 0);
         assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
         assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+    }
+
+    #[test]
+    fn test_increment() {
+        let mut cpu = super::CpuBuilder::new()
+            .build();
+
+        let new_value = cpu.increment(0x02);
+        assert_eq!(new_value, 0x03);
+
+        let new_value = cpu.increment(0xFF);
+        assert_eq!(new_value, 0x00);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
+
+        let new_value = cpu.increment(0x7F);
+        assert_eq!(new_value, 0x80);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
     }
 
     #[test]
