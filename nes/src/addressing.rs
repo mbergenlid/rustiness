@@ -14,29 +14,28 @@ impl AddressingMode {
         }
     }
 
-    #[allow(unused_variables)]
-    pub fn immediate(cpu: &mut CPU, ignored: &Memory) -> AddressingMode {
+    pub fn immediate(cpu: &mut CPU) -> AddressingMode {
         let operand_address = cpu.get_and_increment_pc();
         return AddressingMode {
             operand_address: operand_address,
         }
     }
 
-    pub fn zero_paged_index_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn zero_paged_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let operand_address: Address = memory.get(cpu.get_and_increment_pc()) as Address + cpu.register_x() as Address;
         return AddressingMode {
             operand_address: if operand_address > 0xFF { operand_address & 0xFF } else { operand_address }
         }
     }
 
-    pub fn zero_paged_index_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn zero_paged_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let operand_address: Address = memory.get(cpu.get_and_increment_pc()) as Address + cpu.register_y() as Address;
         return AddressingMode {
             operand_address: operand_address & 0xFF
         }
     }
 
-    pub fn absolute_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn absolute(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let lsbs: u8 = memory.get(cpu.get_and_increment_pc());
         let msbs: u8 = memory.get(cpu.get_and_increment_pc());
         return AddressingMode {
@@ -44,7 +43,7 @@ impl AddressingMode {
         }
     }
 
-    pub fn absolute_x_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn absolute_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let lsb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
         let msb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
         let base_address = (msb << 8) | lsb;
@@ -54,7 +53,7 @@ impl AddressingMode {
         }
     }
 
-    pub fn absolute_y_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn absolute_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let lsb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
         let msb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
         let base_address = (msb << 8) | lsb;
@@ -80,7 +79,7 @@ impl AddressingMode {
         }
     }
 
-    pub fn indirect_x_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn indirect_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let index1 = memory.get(cpu.get_and_increment_pc()) as u16;
         let base_address = index1 + cpu.register_x() as u16;
 
@@ -94,7 +93,7 @@ impl AddressingMode {
         }
     }
 
-    pub fn indirect_y_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn indirect_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let base_address = memory.get(cpu.get_and_increment_pc()) as u16;
         let operand_address: u32 = {
             let lsb: u16 = memory.get(base_address) as u16;
@@ -129,12 +128,9 @@ mod test {
 
     #[test]
     fn test_immediate_addressing() {
-        let memory = memory!(
-            0x8000 => 0x05
-        );
         let mut cpu = cpu::CPU::new();
 
-        let addressing = AddressingMode::immediate(&mut cpu, &memory);
+        let addressing = AddressingMode::immediate(&mut cpu);
         assert_eq!(0x8000, addressing.operand_address);
         assert_eq!(cpu.program_counter(), 0x8001);
     }
@@ -148,7 +144,7 @@ mod test {
             let mut cpu = cpu::CpuBuilder::new()
                 .register_x(10)
                 .build();
-            let addressing = AddressingMode::zero_paged_index_x(&mut cpu, &memory);
+            let addressing = AddressingMode::zero_paged_x(&mut cpu, &memory);
             assert_eq!(15, addressing.operand_address);
             assert_eq!(cpu.program_counter(), 0x8001);
         }
@@ -159,7 +155,7 @@ mod test {
             let mut cpu = cpu::CpuBuilder::new()
                 .register_y(10)
                 .build();
-            let addressing = AddressingMode::zero_paged_index_y(&mut cpu, &memory);
+            let addressing = AddressingMode::zero_paged_y(&mut cpu, &memory);
             assert_eq!(15, addressing.operand_address);
             assert_eq!(cpu.program_counter(), 0x8001);
         }
@@ -174,7 +170,7 @@ mod test {
             let mut cpu = cpu::CpuBuilder::new()
                 .register_x(0x12)
                 .build();
-            let addressing = AddressingMode::zero_paged_index_x(&mut cpu, &memory);
+            let addressing = AddressingMode::zero_paged_x(&mut cpu, &memory);
             assert_eq!(2, addressing.operand_address);
             assert_eq!(cpu.program_counter(), 0x8001);
         }
@@ -185,7 +181,7 @@ mod test {
             let mut cpu = cpu::CpuBuilder::new()
                 .register_y(0x12)
                 .build();
-            let addressing = AddressingMode::zero_paged_index_y(&mut cpu, &memory);
+            let addressing = AddressingMode::zero_paged_y(&mut cpu, &memory);
             assert_eq!(2, addressing.operand_address);
             assert_eq!(cpu.program_counter(), 0x8001);
         }
@@ -198,7 +194,7 @@ mod test {
             0x8001 => 0xA0
         );
         let mut cpu = cpu::CpuBuilder::new().build();
-        let addressing = AddressingMode::absolute_addressing(&mut cpu, &memory);
+        let addressing = AddressingMode::absolute(&mut cpu, &memory);
         assert_eq!(0xA005, addressing.operand_address);
         assert_eq!(cpu.program_counter(), 0x8002);
     }
@@ -212,7 +208,7 @@ mod test {
         let mut cpu = cpu::CpuBuilder::new()
             .register_x(2)
             .build();
-        let addressing = AddressingMode::absolute_x_addressing(&mut cpu, &memory);
+        let addressing = AddressingMode::absolute_x(&mut cpu, &memory);
         assert_eq!(0xA007, addressing.operand_address);
         assert_eq!(cpu.program_counter(), 0x8002);
     }
@@ -226,7 +222,7 @@ mod test {
         let mut cpu = cpu::CpuBuilder::new()
             .register_x(0x12)
             .build();
-        let addressing = AddressingMode::absolute_x_addressing(&mut cpu, &memory);
+        let addressing = AddressingMode::absolute_x(&mut cpu, &memory);
         assert_eq!(0x0002, addressing.operand_address);
         assert_eq!(cpu.program_counter(), 0x8002);
     }
@@ -260,7 +256,7 @@ mod test {
         let mut cpu = cpu::CpuBuilder::new()
             .register_x(0x5)
             .build();
-        let addressing = AddressingMode::indirect_x_addressing(&mut cpu, &memory);
+        let addressing = AddressingMode::indirect_x(&mut cpu, &memory);
         assert_eq!(0x1234, addressing.operand_address);
         assert_eq!(cpu.program_counter(), 0x8001);
     }
@@ -277,7 +273,7 @@ mod test {
         let mut cpu = cpu::CpuBuilder::new()
             .register_y(0x04)
             .build();
-        let addressing = AddressingMode::indirect_y_addressing(&mut cpu, &memory);
+        let addressing = AddressingMode::indirect_y(&mut cpu, &memory);
         assert_eq!(0x1234, addressing.operand_address);
         assert_eq!(cpu.program_counter(), 0x8001);
     }
@@ -294,7 +290,7 @@ mod test {
         let mut cpu = cpu::CpuBuilder::new()
             .register_y(0x12)
             .build();
-        let addressing = AddressingMode::indirect_y_addressing(&mut cpu, &memory);
+        let addressing = AddressingMode::indirect_y(&mut cpu, &memory);
         assert_eq!(0x0002, addressing.operand_address);
         assert_eq!(cpu.program_counter(), 0x8001);
     }
