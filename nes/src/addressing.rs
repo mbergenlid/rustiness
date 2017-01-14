@@ -3,20 +3,23 @@ use memory::Memory;
 use memory::Address;
 
 pub struct AddressingMode {
-    pub operand_address: Address
+    pub operand_address: Address,
+    pub cycles: u8,
 }
 
 impl AddressingMode {
-    pub fn zero_paged(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let operand_address = memory.get(cpu.get_and_increment_pc()) as u16;
+    pub fn immediate(cpu: &mut CPU) -> AddressingMode {
+        let operand_address = cpu.get_and_increment_pc();
         return AddressingMode {
+            cycles: 1,
             operand_address: operand_address,
         }
     }
 
-    pub fn immediate(cpu: &mut CPU) -> AddressingMode {
-        let operand_address = cpu.get_and_increment_pc();
+    pub fn zero_paged(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+        let operand_address = memory.get(cpu.get_and_increment_pc()) as u16;
         return AddressingMode {
+            cycles: 2,
             operand_address: operand_address,
         }
     }
@@ -24,6 +27,7 @@ impl AddressingMode {
     pub fn zero_paged_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let operand_address: Address = memory.get(cpu.get_and_increment_pc()) as Address + cpu.register_x() as Address;
         return AddressingMode {
+            cycles: 3,
             operand_address: if operand_address > 0xFF { operand_address & 0xFF } else { operand_address }
         }
     }
@@ -31,6 +35,7 @@ impl AddressingMode {
     pub fn zero_paged_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let operand_address: Address = memory.get(cpu.get_and_increment_pc()) as Address + cpu.register_y() as Address;
         return AddressingMode {
+            cycles: 3,
             operand_address: operand_address & 0xFF
         }
     }
@@ -39,26 +44,28 @@ impl AddressingMode {
         let lsbs: u8 = memory.get(cpu.get_and_increment_pc());
         let msbs: u8 = memory.get(cpu.get_and_increment_pc());
         return AddressingMode {
+            cycles: 3,
             operand_address: (msbs as Address) << 8 | lsbs as Address
         }
     }
 
     pub fn absolute_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let lsb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
-        let msb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
-        let base_address = (msb << 8) | lsb;
-        let operand_address = (base_address as u32) + (cpu.register_x() as u32);
-        return AddressingMode {
-            operand_address: operand_address as u16
-        }
+        let x = cpu.register_x();
+        AddressingMode::absolute_indexed(cpu, memory, x)
     }
 
     pub fn absolute_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+        let y = cpu.register_y();
+        AddressingMode::absolute_indexed(cpu, memory, y)
+    }
+
+    fn absolute_indexed(cpu: &mut CPU, memory: &Memory, index: u8) -> AddressingMode {
         let lsb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
         let msb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
         let base_address = (msb << 8) | lsb;
-        let operand_address = (base_address as u32) + (cpu.register_y() as u32);
+        let operand_address = (base_address as u32) + (index as u32);
         return AddressingMode {
+            cycles: 3 + ((operand_address as u16 >> 8) > msb) as u8,
             operand_address: operand_address as u16
         }
     }
@@ -75,6 +82,7 @@ impl AddressingMode {
             (msb << 8) | lsb
         };
         return AddressingMode {
+            cycles: 5,
             operand_address: operand_address
         }
     }
@@ -89,19 +97,22 @@ impl AddressingMode {
             (msb << 8) | lsb
         };
         return AddressingMode {
+            cycles: 5,
             operand_address: operand_address
         }
     }
 
     pub fn indirect_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let base_address = memory.get(cpu.get_and_increment_pc()) as u16;
-        let operand_address: u32 = {
+        let indexed_address: u32 = {
             let lsb: u16 = memory.get(base_address) as u16;
             let msb: u16 = memory.get(base_address+1) as u16;
             ((msb << 8) | lsb) as u32
         };
+        let operand_address = (indexed_address + cpu.register_y() as u32) as u16;
         return AddressingMode {
-            operand_address: (operand_address + cpu.register_y() as u32) as u16
+            cycles: 4 + ((operand_address >> 8) > (indexed_address as u16 >> 8)) as u8,
+            operand_address: operand_address,
         }
     }
 }
@@ -210,6 +221,22 @@ mod test {
             .build();
         let addressing = AddressingMode::absolute_x(&mut cpu, &memory);
         assert_eq!(0xA007, addressing.operand_address);
+        assert_eq!(3, addressing.cycles);
+        assert_eq!(cpu.program_counter(), 0x8002);
+    }
+
+    #[test]
+    fn indexed_absolute_x_addressing_with_page_crossing() {
+        let memory = memory!(
+            0x8000 => 0xF0,
+            0x8001 => 0xA0
+        );
+        let mut cpu = cpu::CpuBuilder::new()
+            .register_x(0x10)
+            .build();
+        let addressing = AddressingMode::absolute_x(&mut cpu, &memory);
+        assert_eq!(0xA100, addressing.operand_address);
+        assert_eq!(4, addressing.cycles);
         assert_eq!(cpu.program_counter(), 0x8002);
     }
 
@@ -275,6 +302,25 @@ mod test {
             .build();
         let addressing = AddressingMode::indirect_y(&mut cpu, &memory);
         assert_eq!(0x1234, addressing.operand_address);
+        assert_eq!(4, addressing.cycles);
+        assert_eq!(cpu.program_counter(), 0x8001);
+    }
+
+    #[test]
+    fn indirect_indexed_addressing_with_page_crossing() {
+        let memory = memory!(
+            0x8000 => 0xA0,
+
+            0x00A0 => 0xF0,
+            0x00A1 => 0xA0
+
+        );
+        let mut cpu = cpu::CpuBuilder::new()
+            .register_y(0x10)
+            .build();
+        let addressing = AddressingMode::indirect_y(&mut cpu, &memory);
+        assert_eq!(0xA100, addressing.operand_address);
+        assert_eq!(5, addressing.cycles);
         assert_eq!(cpu.program_counter(), 0x8001);
     }
 
