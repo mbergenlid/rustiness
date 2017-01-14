@@ -63,7 +63,7 @@ impl AddressingMode {
         }
     }
 
-    pub fn indirect_addressing(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn indirect(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
         let base_address = {
             let lsb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
             let msb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
@@ -238,7 +238,7 @@ mod test {
 
         );
         let mut cpu = cpu::CpuBuilder::new().build();
-        let addressing = AddressingMode::indirect_addressing(&mut cpu, &memory);
+        let addressing = AddressingMode::indirect(&mut cpu, &memory);
         assert_eq!(0xA005, addressing.operand_address);
         assert_eq!(cpu.program_counter(), 0x8002);
 

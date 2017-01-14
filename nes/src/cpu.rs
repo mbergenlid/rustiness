@@ -5,6 +5,8 @@ pub const NEGATIVE_FLAG: u8 = 0b1000_0000;
 pub const OVERFLOW_FLAG: u8 = 0b0100_0000;
 pub const ZERO_FLAG: u8 = 0b0000_0010;
 pub const CARRY_FLAG: u8 = 0b0000_0001;
+pub const INTERRUPT_DISABLE_FLAG: u8 = 0b0000_0100;
+pub const DECIMAL_FLAG: u8 = 0b0000_1000;
 
 trait NesInteger {
     fn is_negative(&self) -> bool;
@@ -22,7 +24,7 @@ impl NesInteger for u8 {
 #[derive(Eq, Debug, Clone, Copy)]
 pub struct CPU {
     program_counter: Address,
-    //    stack_pointers: u8,
+    pub stack_pointer: u8,
     accumulator: u8,
     register_x: u8,
     register_y: u8,
@@ -33,7 +35,10 @@ impl PartialEq for CPU {
     fn eq(&self, other: &CPU) -> bool {
         self.program_counter == other.program_counter &&
             self.accumulator == other.accumulator &&
-            self.processor_status == other.processor_status
+            self.processor_status == other.processor_status &&
+            self.register_x == other.register_x &&
+            self.register_y == other.register_y &&
+            self.stack_pointer == other.stack_pointer
     }
 }
 
@@ -42,7 +47,7 @@ impl CPU {
     pub fn new() -> CPU {
         return CPU {
             program_counter: 0x8000,
-            //        stack_pointer: 0xFF,
+            stack_pointer: 0x00,
             accumulator: 0,
             register_x: 0,
             register_y: 0,
@@ -144,6 +149,11 @@ impl CPU {
         return new_value;
     }
 
+    pub fn logical_shift_right_accumulator(&mut self) {
+        let acc = self.accumulator;
+        self.accumulator = self.logical_shift_right(acc);
+    }
+
     pub fn logical_shift_right(&mut self, value: u8) -> u8 {
         if value & 0x01 > 0 {
             self.set_flags(CARRY_FLAG);
@@ -153,6 +163,11 @@ impl CPU {
         let new_value = value >> 1;
         self.update_z_and_n_flags(new_value);
         return new_value;
+    }
+
+    pub fn rotate_accumulator_left(&mut self) {
+        let acc = self.accumulator;
+        self.accumulator = self.rotate_left(acc);
     }
 
     pub fn rotate_left(&mut self, value: u8) -> u8 {
@@ -165,6 +180,11 @@ impl CPU {
         let new_value = (value << 1) | carry;
         self.update_z_and_n_flags(new_value);
         return new_value;
+    }
+
+    pub fn rotate_accumulator_right(&mut self) {
+        let acc = self.accumulator;
+        self.accumulator = self.rotate_right(acc);
     }
 
     pub fn rotate_right(&mut self, value: u8) -> u8 {
@@ -197,6 +217,11 @@ impl CPU {
 
     pub fn cmp_register_x(&mut self, value: u8) {
         let left = self.register_x;
+        self.cmp(left, value);
+    }
+
+    pub fn cmp_register_y(&mut self, value: u8) {
+        let left = self.register_y;
         self.cmp(left, value);
     }
 
@@ -283,12 +308,20 @@ impl CPU {
         self.program_counter
     }
 
+    pub fn accumulator(&self) -> u8 {
+        self.accumulator
+    }
+
     pub fn register_x(&self) -> u8 {
         self.register_x
     }
 
     pub fn register_y(&self) -> u8 {
         self.register_y
+    }
+
+    pub fn processor_status(&self) -> u8 {
+        self.processor_status
     }
 
     pub fn get_and_increment_pc(&mut self) -> Address {
@@ -299,6 +332,22 @@ impl CPU {
 
     pub fn add_program_counter(&mut self, value: u16) {
         self.program_counter = self.program_counter.wrapping_add(value);
+    }
+
+    pub fn set_program_counter(&mut self, value: u16) {
+        self.program_counter = value;
+    }
+
+    pub fn push_stack(&mut self) -> u16 {
+        let stack = self.stack_pointer.wrapping_sub(1) as u16 + 0x100;
+        self.stack_pointer = stack as u8;
+        return stack;
+    }
+
+    pub fn pop_stack(&mut self) -> u16 {
+        let stack = self.stack_pointer as u16 + 0x100;
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+        return stack;
     }
 
 }
@@ -336,6 +385,11 @@ impl CpuBuilder {
 
     pub fn flags(&mut self, value: u8) -> &mut CpuBuilder {
         self.cpu.processor_status = value;
+        return self;
+    }
+
+    pub fn stack_pointer(&mut self, value: u8) -> &mut CpuBuilder {
+        self.cpu.stack_pointer = value;
         return self;
     }
 

@@ -35,17 +35,6 @@ mod tests {
     use memory::Memory;
     use opcodes;
 
-    macro_rules! instruction_test {
-        ( $name:expr, $memory:expr, $expected_cpu:expr ) => {
-            {
-                #[test]
-                fn test_$name() {
-                    test_instruction(memory, expected_cpu);
-                }
-            }
-        };
-    }
-
     fn test_program(memory: &mut Memory, expected_cpu_states: &[cpu::CPU]) {
         let mut nes = super::NES::new();
 
@@ -56,9 +45,10 @@ mod tests {
     }
 
     #[test]
-    fn test() {
+    fn instruction_test1() {
         test_program(
             &mut memory!(
+                0x00A5 => 0xF0,
                 //ADC $05
                 0x8000 => 0x69,
                 0x8001 => 0x05,
@@ -70,7 +60,24 @@ mod tests {
                 0x8004 => opcodes::ORA_IMMEDIATE,
                 0x8005 => 0x05,
 
-                0x8006 => opcodes::ASL_ACCUMULATOR
+                0x8006 => opcodes::ASL_ACCUMULATOR,
+
+                0x8007 => opcodes::SEC,
+                //SBC $05
+                0x8008 => opcodes::SBC_IMMEDIATE,
+                0x8009 => 0x05,
+
+                0x800A => opcodes::TAX,
+                0x800B => opcodes::TAY,
+                //STX Y
+                0x800C => opcodes::STX_ZERO_PAGE_Y,
+                0x800D => 0x0A,
+                0x800E => opcodes::AND_IMMEDIATE,
+                0x800F => 0x00,
+                0x8010 => opcodes::TAX,
+                //LDX Y
+                0x8011 => opcodes::LDX_ZERO_PAGE_Y,
+                0x8012 => 0x0A
             ),
             &[
                 cpu::CpuBuilder::new()
@@ -89,7 +96,122 @@ mod tests {
                 cpu::CpuBuilder::new()
                     .program_counter(0x8007)
                     .accumulator(0x0A) //1010
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8008)
+                    .flags(cpu::CARRY_FLAG)
+                    .accumulator(0x0A) //1010
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x800A)
+                    .flags(cpu::CARRY_FLAG)
+                    .accumulator(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x800B)
+                    .flags(cpu::CARRY_FLAG)
+                    .accumulator(0x05)
+                    .register_x(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x800C)
+                    .flags(cpu::CARRY_FLAG)
+                    .accumulator(0x05)
+                    .register_x(0x05)
+                    .register_y(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x800E)
+                    .flags(cpu::CARRY_FLAG)
+                    .accumulator(0x05)
+                    .register_x(0x05)
+                    .register_y(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8010)
+                    .flags(cpu::CARRY_FLAG | cpu::ZERO_FLAG)
+                    .register_x(0x05)
+                    .register_y(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8011)
+                    .flags(cpu::CARRY_FLAG | cpu::ZERO_FLAG)
+                    .register_y(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8013)
+                    .flags(cpu::CARRY_FLAG)
+                    .register_x(0x05)
+                    .register_y(0x05)
                     .build()
+            ]
+        )
+    }
+
+    #[test]
+    fn instruction_test2() {
+        test_program(
+            &mut memory!(
+                //ADC $05
+                0x8000 => 0x69,
+                0x8001 => 0x05,
+
+                0x8002 => opcodes::PHA,
+                0x8003 => opcodes::PLP
+            ),
+            &[
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8002)
+                    .accumulator(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8003)
+                    .stack_pointer(0xFF)
+                    .accumulator(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8004)
+                    .flags(0x05)
+                    .accumulator(0x05)
+                    .build(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_subroutine() {
+        test_program(
+            &mut memory!(
+                0x8000 => opcodes::JSR_ABSOLUTE,
+                0x8001 => 0x20,
+                0x8002 => 0x80,
+
+                0x8003 => opcodes::ADC_IMMEDIATE,
+                0x8004 => 0x05,
+
+                //Sub routine
+                0x8020 => opcodes::LDA_IMMEDIATE,
+                0x8021 => 0x01,
+                0x8022 => opcodes::RTS
+            ),
+            &[
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8020)
+                    .stack_pointer(0xFE)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8022)
+                    .stack_pointer(0xFE)
+                    .accumulator(0x01)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8003)
+                    .accumulator(0x01)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8005)
+                    .accumulator(0x06)
+                    .build(),
             ]
         )
     }
