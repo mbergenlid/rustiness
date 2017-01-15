@@ -8,7 +8,10 @@ use gliumscreen::GliumScreen;
 use std::time::Duration;
 
 fn main() {
+    performance_test();
+}
 
+fn test_ppu() {
     let mut screen = GliumScreen::new(4);
     let mut ppu = PPU::new(
         Box::new(external_memory!(
@@ -51,4 +54,25 @@ fn main() {
     loop {
         std::thread::sleep(Duration::from_millis(500));
     }
+}
+
+fn performance_test() {
+    use std::time::Instant;
+
+    let mut memory = external_memory!(
+            0x00A5 => 0xF0,
+            0x00A6 => 0x10,
+            //ADC $05
+            0x8000 => 0x69,
+            0x8001 => 0x05,
+            0x8002 => 0x10
+        );
+
+    let mut nes = nes::NES::new();
+
+    let start = Instant::now();
+    nes.execute(&mut memory);
+
+    //One cycle: 500 ns,
+    println!("Took {} ns", start.elapsed().subsec_nanos());
 }

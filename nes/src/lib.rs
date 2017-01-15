@@ -11,17 +11,19 @@ use memory::Memory;
 
 pub struct NES {
     cpu: CPU,
+    op_codes: opcodes::OpCodes,
 }
 
 impl NES {
     pub fn new() -> NES {
         NES {
             cpu: CPU::new(),
+            op_codes: opcodes::OpCodes::new(),
         }
     }
 
     pub fn execute(&mut self, memory: &mut Memory) {
-        opcodes::execute_instruction(&mut self.cpu, memory);
+        self.op_codes.execute_instruction(&mut self.cpu, memory);
     }
 
 }
