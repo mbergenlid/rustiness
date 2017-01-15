@@ -3,6 +3,14 @@ pub type Address = u16;
 pub trait Memory {
     fn get(&self, address: Address) -> u8;
     fn set(&mut self, address: Address, value: u8);
+
+    fn set_slice(&mut self, start: Address, data: &[u8]) {
+        let mut address = start;
+        for &d in data {
+            self.set(address, d);
+            address += 1;
+        }
+    }
 }
 
 pub struct BasicMemory {

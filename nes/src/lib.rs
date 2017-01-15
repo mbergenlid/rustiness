@@ -5,6 +5,7 @@ mod opcodes;
 mod instructions;
 pub mod addressing;
 pub mod ppu;
+pub mod ines;
 
 use cpu::CPU;
 use memory::Memory;
