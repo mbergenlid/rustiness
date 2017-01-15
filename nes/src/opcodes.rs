@@ -4,10 +4,6 @@ use cpu::CPU;
 use cpu;
 use memory::Memory;
 
-pub fn execute_instruction(cpu: &mut CPU, memory: &mut Memory) -> u8 {
-    OpCodes::new().execute_instruction(cpu, memory)
-}
-
 pub struct OpCodes {
     codes: Vec<Option<Instruction>>,
 }
@@ -59,7 +55,7 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(AND_ABSOLUTE_Y        , &|cpu, memory| instructions::and(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
     OpCodeInstruction(AND_INDIRECT_X        , &|cpu, memory| instructions::and(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(AND_INDIRECT_Y        , &|cpu, memory| instructions::and(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ASL_ACCUMULATOR       , &|cpu, memory| instructions::asl_accumulator(cpu)),
+    OpCodeInstruction(ASL_ACCUMULATOR       , &|cpu,      _| instructions::asl_accumulator(cpu)),
     OpCodeInstruction(ASL_ZERO_PAGE         , &|cpu, memory| instructions::asl(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(ASL_ZERO_PAGE_X       , &|cpu, memory| instructions::asl(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(ASL_ABSOLUTE          , &|cpu, memory| instructions::asl(AddressingMode::absolute(cpu, memory), cpu, memory)),
@@ -74,7 +70,7 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(BRANCH_CARRY_CLEAR    , &|cpu, memory| instructions::branch(cpu, memory, cpu::CARRY_FLAG, true)),
     OpCodeInstruction(BRANCH_NOT_EQUAL      , &|cpu, memory| instructions::branch(cpu, memory, cpu::ZERO_FLAG, true)),
     OpCodeInstruction(BRANCH_EQUAL          , &|cpu, memory| instructions::branch(cpu, memory, cpu::ZERO_FLAG, false)),
-    OpCodeInstruction(BRK_IMPLIED           , &|cpu, memory| panic!("BRK instruction is not implemented")),
+    OpCodeInstruction(BRK_IMPLIED           , &|  _,      _| panic!("BRK instruction is not implemented")),
     OpCodeInstruction(CMP_IMMEDIATE         , &|cpu, memory| instructions::cmp(AddressingMode::immediate(cpu), cpu, memory)),
     OpCodeInstruction(CMP_ZERO_PAGE         , &|cpu, memory| instructions::cmp(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(CMP_ZERO_PAGE_X       , &|cpu, memory| instructions::cmp(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
@@ -101,13 +97,13 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(EOR_ABSOLUTE_Y        , &|cpu, memory| instructions::eor(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
     OpCodeInstruction(EOR_INDIRECT_X        , &|cpu, memory| instructions::eor(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(EOR_INDIRECT_Y        , &|cpu, memory| instructions::eor(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CLC                   , &|cpu, memory| { cpu.clear_flags(cpu::CARRY_FLAG); 2}),
-    OpCodeInstruction(SEC                   , &|cpu, memory| { cpu.set_flags(cpu::CARRY_FLAG); 2}),
-    OpCodeInstruction(CLI                   , &|cpu, memory| {cpu.clear_flags(cpu::INTERRUPT_DISABLE_FLAG); 2}),
-    OpCodeInstruction(SEI                   , &|cpu, memory| { cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG); 2}),
-    OpCodeInstruction(CLV                   , &|cpu, memory| {cpu.clear_flags(cpu::OVERFLOW_FLAG); 2}),
-    OpCodeInstruction(CLD                   , &|cpu, memory| {cpu.clear_flags(cpu::DECIMAL_FLAG); 2}),
-    OpCodeInstruction(SED                   , &|cpu, memory| { cpu.set_flags(cpu::DECIMAL_FLAG); 2}),
+    OpCodeInstruction(CLC                   , &|cpu,      _| { cpu.clear_flags(cpu::CARRY_FLAG); 2}),
+    OpCodeInstruction(SEC                   , &|cpu,      _| { cpu.set_flags(cpu::CARRY_FLAG); 2}),
+    OpCodeInstruction(CLI                   , &|cpu,      _| {cpu.clear_flags(cpu::INTERRUPT_DISABLE_FLAG); 2}),
+    OpCodeInstruction(SEI                   , &|cpu,      _| { cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG); 2}),
+    OpCodeInstruction(CLV                   , &|cpu,      _| {cpu.clear_flags(cpu::OVERFLOW_FLAG); 2}),
+    OpCodeInstruction(CLD                   , &|cpu,      _| {cpu.clear_flags(cpu::DECIMAL_FLAG); 2}),
+    OpCodeInstruction(SED                   , &|cpu,      _| { cpu.set_flags(cpu::DECIMAL_FLAG); 2}),
     OpCodeInstruction(INC_ZERO_PAGE         , &|cpu, memory| instructions::inc(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(INC_ZERO_PAGE_X       , &|cpu, memory| instructions::inc(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(INC_ABSOLUTE          , &|cpu, memory| instructions::inc(AddressingMode::absolute(cpu, memory), cpu, memory)),
@@ -133,12 +129,12 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(LDY_ZERO_PAGE_X       , &|cpu, memory| instructions::ldy(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(LDY_ABSOLUTE          , &|cpu, memory| instructions::ldy(AddressingMode::absolute(cpu, memory), cpu, memory)),
     OpCodeInstruction(LDY_ABSOLUTE_X        , &|cpu, memory| instructions::ldy(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LSR_ACCUMULATOR       , &|cpu, memory| {cpu.logical_shift_right_accumulator(); 2}),
+    OpCodeInstruction(LSR_ACCUMULATOR       , &|cpu,      _| {cpu.logical_shift_right_accumulator(); 2}),
     OpCodeInstruction(LSR_ZERO_PAGE         , &|cpu, memory| instructions::lsr(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(LSR_ZERO_PAGE_X       , &|cpu, memory| instructions::lsr(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(LSR_ABSOLUTE          , &|cpu, memory| instructions::lsr(AddressingMode::absolute(cpu, memory), cpu, memory)),
     OpCodeInstruction(LSR_ABSOLUTE_X        , &|cpu, memory| {instructions::lsr(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(NOP_IMPLIED           , &|cpu, memory| 2),
+    OpCodeInstruction(NOP_IMPLIED           , &|  _,      _| 2),
     OpCodeInstruction(ORA_IMMEDIATE         , &|cpu, memory| instructions::or(AddressingMode::immediate(cpu), cpu, memory)),
     OpCodeInstruction(ORA_ZERO_PAGE         , &|cpu, memory| instructions::or(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(ORA_ZERO_PAGE_X       , &|cpu, memory| instructions::or(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
@@ -147,25 +143,25 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(ORA_ABSOLUTE_Y        , &|cpu, memory| instructions::or(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
     OpCodeInstruction(ORA_INDIRECT_X        , &|cpu, memory| instructions::or(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(ORA_INDIRECT_Y        , &|cpu, memory| instructions::or(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(TAX                   , &|cpu, memory| { let acc = cpu.accumulator(); cpu.load_x(acc); 2}),
-    OpCodeInstruction(TXA                   , &|cpu, memory| { let temp = cpu.register_x(); cpu.load_accumulator(temp); 2}),
-    OpCodeInstruction(DEX                   , &|cpu, memory| { cpu.decrement_x(); 2 }),
-    OpCodeInstruction(INX                   , &|cpu, memory| { cpu.increment_x(); 2 }),
-    OpCodeInstruction(TAY                   , &|cpu, memory| { let temp = cpu.accumulator(); cpu.load_y(temp); 2}),
-    OpCodeInstruction(TYA                   , &|cpu, memory| { let temp = cpu.register_y(); cpu.load_accumulator(temp); 2}),
-    OpCodeInstruction(DEY                   , &|cpu, memory| { cpu.decrement_y(); 2 }),
-    OpCodeInstruction(INY                   , &|cpu, memory| { cpu.increment_y(); 2 }),
-    OpCodeInstruction(ROL_ACCUMULATOR       , &|cpu, memory| {cpu.rotate_accumulator_left(); 2}),
+    OpCodeInstruction(TAX                   , &|cpu,      _| { let acc = cpu.accumulator(); cpu.load_x(acc); 2}),
+    OpCodeInstruction(TXA                   , &|cpu,      _| { let temp = cpu.register_x(); cpu.load_accumulator(temp); 2}),
+    OpCodeInstruction(DEX                   , &|cpu,      _| { cpu.decrement_x(); 2 }),
+    OpCodeInstruction(INX                   , &|cpu,      _| { cpu.increment_x(); 2 }),
+    OpCodeInstruction(TAY                   , &|cpu,      _| { let temp = cpu.accumulator(); cpu.load_y(temp); 2}),
+    OpCodeInstruction(TYA                   , &|cpu,      _| { let temp = cpu.register_y(); cpu.load_accumulator(temp); 2}),
+    OpCodeInstruction(DEY                   , &|cpu,      _| { cpu.decrement_y(); 2 }),
+    OpCodeInstruction(INY                   , &|cpu,      _| { cpu.increment_y(); 2 }),
+    OpCodeInstruction(ROL_ACCUMULATOR       , &|cpu,      _| {cpu.rotate_accumulator_left(); 2}),
     OpCodeInstruction(ROL_ZERO_PAGE         , &|cpu, memory| instructions::rol(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(ROL_ZERO_PAGE_X       , &|cpu, memory| instructions::rol(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(ROL_ABSOLUTE          , &|cpu, memory| instructions::rol(AddressingMode::absolute(cpu, memory), cpu, memory)),
     OpCodeInstruction(ROL_ABSOLUTE_X        , &|cpu, memory| {instructions::rol(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(ROR_ACCUMULATOR       , &|cpu, memory| {cpu.rotate_accumulator_right(); 2}),
+    OpCodeInstruction(ROR_ACCUMULATOR       , &|cpu,      _| {cpu.rotate_accumulator_right(); 2}),
     OpCodeInstruction(ROR_ZERO_PAGE         , &|cpu, memory| instructions::ror(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(ROR_ZERO_PAGE_X       , &|cpu, memory| instructions::ror(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(ROR_ABSOLUTE          , &|cpu, memory| instructions::ror(AddressingMode::absolute(cpu, memory), cpu, memory)),
     OpCodeInstruction(ROR_ABSOLUTE_X        , &|cpu, memory| {instructions::ror(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(RTI_IMPLIED           , &|cpu, memory| panic!("RTI instruction is not implemented")),
+    OpCodeInstruction(RTI_IMPLIED           , &|_  ,      _| panic!("RTI instruction is not implemented")),
     OpCodeInstruction(RTS                   , &|cpu, memory| instructions::rts(cpu, memory)),
     OpCodeInstruction(SBC_IMMEDIATE         , &|cpu, memory| instructions::sbc(AddressingMode::immediate(cpu), cpu, memory)),
     OpCodeInstruction(SBC_ZERO_PAGE         , &|cpu, memory| instructions::sbc(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
@@ -182,8 +178,8 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(STA_ABSOLUTE_Y        , &|cpu, memory| {instructions::sta(AddressingMode::absolute_y(cpu, memory), cpu, memory); 5}),
     OpCodeInstruction(STA_INDIRECT_X        , &|cpu, memory| {instructions::sta(AddressingMode::indirect_x(cpu, memory), cpu, memory); 6}),
     OpCodeInstruction(STA_INDIRECT_Y        , &|cpu, memory| {instructions::sta(AddressingMode::indirect_y(cpu, memory), cpu, memory); 6}),
-    OpCodeInstruction(TXS                   , &|cpu, memory| { let temp = cpu.register_x(); cpu.stack_pointer = temp; 2}),
-    OpCodeInstruction(TSX                   , &|cpu, memory| { let temp = cpu.stack_pointer; cpu.load_x(temp); 2}),
+    OpCodeInstruction(TXS                   , &|cpu,      _| { let temp = cpu.register_x(); cpu.stack_pointer = temp; 2}),
+    OpCodeInstruction(TSX                   , &|cpu,      _| { let temp = cpu.stack_pointer; cpu.load_x(temp); 2}),
     OpCodeInstruction(PHA                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.accumulator()); 3 }),
     OpCodeInstruction(PLA                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.load_accumulator(temp); 4}),
     OpCodeInstruction(PHP                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.processor_status()); 3 }),
@@ -355,6 +351,10 @@ mod tests {
     use cpu;
     use memory::Memory;
     use opcodes;
+
+    fn execute_instruction(cpu: &mut cpu::CPU, memory: &mut Memory) -> u8 {
+        super::OpCodes::new().execute_instruction(cpu, memory)
+    }
 
     fn test_program(memory: &mut Memory, expected_cpu_states: &[cpu::CPU]) {
         let op_codes = super::OpCodes::new();
@@ -569,7 +569,7 @@ mod tests {
 
     fn test_instruction(memory: &mut Memory, expected_cpu: cpu::CPU) {
         let mut cpu = cpu::CPU::new();
-        super::execute_instruction(&mut cpu, memory);
+        execute_instruction(&mut cpu, memory);
 
         assert_eq!(expected_cpu, cpu);
     }
@@ -596,7 +596,7 @@ mod tests {
 
                 let mut cpu = cpu::CPU::new();
                 cpu.set_flags(flag);
-                super::execute_instruction(&mut cpu, &mut memory);
+                execute_instruction(&mut cpu, &mut memory);
                 if negative {
                     assert_eq!(0x8002, cpu.program_counter());
                 } else {
@@ -612,7 +612,7 @@ mod tests {
 
                 let mut cpu = cpu::CPU::new();
                 cpu.set_flags(flag);
-                super::execute_instruction(&mut cpu, &mut memory);
+                execute_instruction(&mut cpu, &mut memory);
                 if negative {
                     assert_eq!(0x8002, cpu.program_counter());
                 } else {
@@ -630,7 +630,7 @@ mod tests {
 
                 let mut cpu = cpu::CPU::new();
                 cpu.clear_flags(flag);
-                super::execute_instruction(&mut cpu, &mut memory);
+                execute_instruction(&mut cpu, &mut memory);
                 if negative {
                     assert_eq!(0x8008, cpu.program_counter());
                 } else {
@@ -646,7 +646,7 @@ mod tests {
 
                 let mut cpu = cpu::CPU::new();
                 cpu.clear_flags(flag);
-                super::execute_instruction(&mut cpu, &mut memory);
+                execute_instruction(&mut cpu, &mut memory);
                 if negative {
                     assert_eq!(0x7FFC, cpu.program_counter());
                 } else {
