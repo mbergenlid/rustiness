@@ -2,13 +2,15 @@
 extern crate nes;
 extern crate gliumscreen;
 
+mod debugger;
+
 use nes::ppu::PPU;
 use gliumscreen::GliumScreen;
 
 use std::time::Duration;
 
 fn main() {
-    performance_test();
+    debugger::start();
 }
 
 fn test_ppu() {

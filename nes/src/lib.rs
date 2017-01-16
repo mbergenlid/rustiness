@@ -1,7 +1,7 @@
 
 pub mod cpu;
 #[macro_use] pub mod memory;
-mod opcodes;
+pub mod opcodes;
 mod instructions;
 pub mod addressing;
 pub mod ppu;
@@ -11,8 +11,8 @@ use cpu::CPU;
 use memory::Memory;
 
 pub struct NES {
-    cpu: CPU,
-    op_codes: opcodes::OpCodes,
+    pub cpu: CPU,
+    pub op_codes: opcodes::OpCodes,
 }
 
 impl NES {
