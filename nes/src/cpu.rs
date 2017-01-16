@@ -3,10 +3,11 @@ use memory::Address;
 
 pub const NEGATIVE_FLAG: u8 = 0b1000_0000;
 pub const OVERFLOW_FLAG: u8 = 0b0100_0000;
+pub const BREAK_FLAG: u8 = 0b0001_0000;
+pub const DECIMAL_FLAG: u8 = 0b0000_1000;
+pub const INTERRUPT_DISABLE_FLAG: u8 = 0b0000_0100;
 pub const ZERO_FLAG: u8 = 0b0000_0010;
 pub const CARRY_FLAG: u8 = 0b0000_0001;
-pub const INTERRUPT_DISABLE_FLAG: u8 = 0b0000_0100;
-pub const DECIMAL_FLAG: u8 = 0b0000_1000;
 
 trait NesInteger {
     fn is_negative(&self) -> bool;
@@ -322,6 +323,10 @@ impl CPU {
 
     pub fn processor_status(&self) -> u8 {
         self.processor_status
+    }
+
+    pub fn set_processor_status(&mut self, status: u8) {
+        self.processor_status = status;
     }
 
     pub fn get_and_increment_pc(&mut self) -> Address {

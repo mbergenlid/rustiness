@@ -70,7 +70,7 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(BRANCH_CARRY_CLEAR    , &|cpu, memory| instructions::branch(cpu, memory, cpu::CARRY_FLAG, true)),
     OpCodeInstruction(BRANCH_NOT_EQUAL      , &|cpu, memory| instructions::branch(cpu, memory, cpu::ZERO_FLAG, true)),
     OpCodeInstruction(BRANCH_EQUAL          , &|cpu, memory| instructions::branch(cpu, memory, cpu::ZERO_FLAG, false)),
-    OpCodeInstruction(BRK_IMPLIED           , &|  _,      _| panic!("BRK instruction is not implemented")),
+    OpCodeInstruction(BRK                   , &|cpu, memory| instructions::brk(cpu, memory)),
     OpCodeInstruction(CMP_IMMEDIATE         , &|cpu, memory| instructions::cmp(AddressingMode::immediate(cpu), cpu, memory)),
     OpCodeInstruction(CMP_ZERO_PAGE         , &|cpu, memory| instructions::cmp(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(CMP_ZERO_PAGE_X       , &|cpu, memory| instructions::cmp(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
@@ -161,7 +161,7 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(ROR_ZERO_PAGE_X       , &|cpu, memory| instructions::ror(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
     OpCodeInstruction(ROR_ABSOLUTE          , &|cpu, memory| instructions::ror(AddressingMode::absolute(cpu, memory), cpu, memory)),
     OpCodeInstruction(ROR_ABSOLUTE_X        , &|cpu, memory| {instructions::ror(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(RTI_IMPLIED           , &|_  ,      _| panic!("RTI instruction is not implemented")),
+    OpCodeInstruction(RTI                   , &|cpu, memory| instructions::rti(cpu, memory)),
     OpCodeInstruction(RTS                   , &|cpu, memory| instructions::rts(cpu, memory)),
     OpCodeInstruction(SBC_IMMEDIATE         , &|cpu, memory| instructions::sbc(AddressingMode::immediate(cpu), cpu, memory)),
     OpCodeInstruction(SBC_ZERO_PAGE         , &|cpu, memory| instructions::sbc(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
@@ -225,7 +225,7 @@ pub const BRANCH_CARRY_SET: OpCode      = 0xB0;
 pub const BRANCH_CARRY_CLEAR: OpCode    = 0x90;
 pub const BRANCH_NOT_EQUAL: OpCode      = 0xD0;
 pub const BRANCH_EQUAL: OpCode          = 0xF0;
-pub const BRK_IMPLIED: OpCode = 0x00;
+pub const BRK         : OpCode = 0x00;
 pub const CMP_IMMEDIATE: OpCode = 0xC9;
 pub const CMP_ZERO_PAGE: OpCode = 0xC5;
 pub const CMP_ZERO_PAGE_X: OpCode = 0xD5;
@@ -316,7 +316,7 @@ pub const ROR_ZERO_PAGE: OpCode = 0x66;
 pub const ROR_ZERO_PAGE_X: OpCode = 0x76;
 pub const ROR_ABSOLUTE: OpCode = 0x6E;
 pub const ROR_ABSOLUTE_X: OpCode = 0x7E;
-pub const RTI_IMPLIED: OpCode = 0x40;
+pub const RTI        : OpCode = 0x40;
 pub const RTS        : OpCode = 0x60;
 pub const SBC_IMMEDIATE: OpCode = 0xE9;
 pub const SBC_ZERO_PAGE: OpCode = 0xE5;
@@ -532,6 +532,47 @@ mod tests {
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8005)
+                    .accumulator(0x06)
+                    .build(),
+            ]
+        )
+    }
+
+    #[test]
+    fn test_break() {
+        test_program(
+            &mut memory!(
+                0x8000 => opcodes::BRK,
+
+                0x8001 => opcodes::ADC_IMMEDIATE,
+                0x8002 => 0x05,
+
+                //Interrupt routine
+                0x8020 => opcodes::LDA_IMMEDIATE,
+                0x8021 => 0x01,
+                0x8022 => opcodes::RTI,
+
+                0xFFFE => 0x20,
+                0xFFFF => 0x80
+            ),
+            &[
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8020)
+                    .stack_pointer(0xFD)
+                    .flags(cpu::BREAK_FLAG)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8022)
+                    .stack_pointer(0xFD)
+                    .accumulator(0x01)
+                    .flags(cpu::BREAK_FLAG)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8001)
+                    .accumulator(0x01)
+                    .build(),
+                cpu::CpuBuilder::new()
+                    .program_counter(0x8003)
                     .accumulator(0x06)
                     .build(),
             ]
