@@ -31,6 +31,7 @@ impl <'a> INes  {
 
     pub fn load(&self, memory: &mut Memory) {
         memory.set_slice(0x8000, self.prg_rom(0));
+        memory.set_slice(0xC000, self.prg_rom(0));
     }
 }
 
@@ -55,5 +56,10 @@ mod test {
         let mut memory = memory::BasicMemory::new();
         ines.load(&mut memory);
         assert_eq!(ines.buffer[0x10], memory.get(0x8000));
+
+        //should mirror 0xC0000 - 0xFFFF onto 0x8000-0xBFFF
+        for i in 0x8000..0xC000 {
+            assert_eq!(memory.get(i), memory.get(i + 0x4000));
+        }
     }
 }

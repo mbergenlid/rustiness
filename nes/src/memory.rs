@@ -5,10 +5,10 @@ pub trait Memory {
     fn set(&mut self, address: Address, value: u8);
 
     fn set_slice(&mut self, start: Address, data: &[u8]) {
-        let mut address = start;
+        let mut address = start-1;
         for &d in data {
-            self.set(address, d);
             address += 1;
+            self.set(address, d);
         }
     }
 }
