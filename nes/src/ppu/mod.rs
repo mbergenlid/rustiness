@@ -44,7 +44,9 @@ impl<'a> AttributeTable<'a> {
 pub struct PPU<'a> {
     control_register: PPUCtrl,
     memory: Box<Memory>,
-    screen: &'a mut Screen
+    screen: &'a mut Screen,
+    vram_pointer: u16,
+    vram_high_byte: bool,
 }
 
 impl<'a> PPU<'a> {
@@ -53,11 +55,23 @@ impl<'a> PPU<'a> {
             control_register: PPUCtrl::new(),
             memory: memory,
             screen: screen,
+            vram_pointer: 0,
+            vram_high_byte: true, //Big Endian
         }
     }
 
     pub fn set_ppu_ctrl(&mut self, value: u8) {
         self.control_register.value = value;
+    }
+
+    pub fn set_vram(&mut self, value: u8) {
+        self.vram_pointer = self.vram_pointer | ((value as u16) << 8*(self.vram_high_byte as u16));
+        self.vram_high_byte = !self.vram_high_byte;
+    }
+
+    pub fn write_to_vram(&mut self, value: u8) {
+        self.memory.set(self.vram_pointer, value);
+        self.vram_pointer += 1;
     }
 
     pub fn draw(&mut self) {
@@ -114,6 +128,10 @@ impl<'a> PPU<'a> {
         }
 
         self.screen.draw();
+    }
+
+    pub fn memory(&self) -> &Memory {
+        self.memory.as_ref()
     }
 }
 

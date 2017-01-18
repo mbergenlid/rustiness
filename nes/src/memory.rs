@@ -1,3 +1,5 @@
+
+use ppu::PPU;
 pub type Address = u16;
 
 pub trait Memory {
@@ -33,6 +35,38 @@ impl Memory for BasicMemory {
     }
 }
 
+pub struct CPUMemory<'a, 'b: 'a> {
+    data: &'a mut BasicMemory,
+    ppu: &'a mut PPU<'b>,
+}
+
+impl <'a, 'b: 'a> CPUMemory<'a, 'b> {
+    pub fn new(ppu: &'a mut PPU<'b>, memory: &'a mut BasicMemory) -> CPUMemory<'a, 'b> {
+        CPUMemory {
+            data: memory,
+            ppu: ppu,
+        }
+    }
+}
+
+impl <'a, 'b> Memory for CPUMemory<'a, 'b> {
+    fn get(&self, address: Address) -> u8 {
+        self.data.get(address)
+    }
+
+    fn set(&mut self, address: Address, value: u8) {
+        if address == 0x2000 {
+            self.ppu.set_ppu_ctrl(value);
+        } else if address == 0x2006 {
+            self.ppu.set_vram(value);
+        } else if address == 0x2007 {
+            self.ppu.write_to_vram(value);
+        } else {
+            self.data.set(address, value);
+        }
+    }
+}
+
 macro_rules! memory {
     ( $( $x:expr => $y:expr ),* ) => {
         {
@@ -58,4 +92,51 @@ macro_rules! external_memory {
             temp_memory
         }
     };
+}
+
+#[cfg(test)]
+mod test {
+    use ppu::screen::{Color, Screen};
+    use super::BasicMemory;
+    use super::Memory;
+    use ppu::PPU;
+
+    struct ScreenMock {
+        colors: [[Color; 240]; 256],
+    }
+
+    impl Screen for ScreenMock {
+        fn set_color(&mut self, x: usize, y: usize, color: Color) {
+            self.colors[y][x] = color
+        }
+        fn draw(&mut self) {
+
+        }
+    }
+
+    #[test]
+    fn test_write_to_vram() {
+        let mut screen = ScreenMock {colors: [[[0.1, 0.1, 0.1]; 240]; 256]};
+        let mut ppu = PPU::new(
+                Box::new(BasicMemory::new()),
+                &mut screen
+            );
+
+        let mut basic_memory = BasicMemory::new();
+        {
+            let mut memory = super::CPUMemory::new(&mut ppu, &mut basic_memory);
+
+            memory.set(0x2006, 0xFF); //High byte of vram pointer
+            memory.set(0x2006, 0x01); //Low byte of vram pointer
+
+            memory.set(0x2007, 0xA5); //write 0xA5 to PPU-MEM 0xFF01
+        }
+        assert_eq!(0xA5, ppu.memory().get(0xFF01));
+
+        {
+            let mut memory = super::CPUMemory::new(&mut ppu, &mut basic_memory);
+            memory.set(0x2007, 0x3B); //vram pointer should have been increased
+        }
+        assert_eq!(0x3B, ppu.memory().get(0xFF02));
+    }
 }
