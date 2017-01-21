@@ -1,6 +1,8 @@
+#![feature(box_syntax)]
 #[macro_use]
 extern crate nes;
 extern crate gliumscreen;
+
 
 mod debugger;
 
@@ -11,12 +13,13 @@ use std::time::Duration;
 
 fn main() {
     debugger::start();
+//    test_ppu();
 }
 
 fn test_ppu() {
-    let mut screen = GliumScreen::new(4);
+    let screen = box (GliumScreen::new(4));
     let mut ppu = PPU::new(
-        Box::new(external_memory!(
+        box (external_memory!(
                     //Pattern table
                         //Layer 1
                     0x0000 => 0b00011100,
@@ -49,7 +52,7 @@ fn test_ppu() {
                     0x3F02 => 0x00,
                     0x3F03 => 0x20
                 )),
-        &mut screen
+        screen
     );
     ppu.draw();
 
@@ -58,23 +61,23 @@ fn test_ppu() {
     }
 }
 
-fn performance_test() {
-    use std::time::Instant;
-
-    let mut memory = external_memory!(
-            0x00A5 => 0xF0,
-            0x00A6 => 0x10,
-            //ADC $05
-            0x8000 => 0x69,
-            0x8001 => 0x05,
-            0x8002 => 0x10
-        );
-
-    let mut nes = nes::NES::new();
-
-    let start = Instant::now();
-    nes.execute(&mut memory);
-
-    //One cycle: 500 ns,
-    println!("Took {} ns", start.elapsed().subsec_nanos());
-}
+//fn performance_test() {
+//    use std::time::Instant;
+//
+//    let mut memory = external_memory!(
+//            0x00A5 => 0xF0,
+//            0x00A6 => 0x10,
+//            //ADC $05
+//            0x8000 => 0x69,
+//            0x8001 => 0x05,
+//            0x8002 => 0x10
+//        );
+//
+//    let mut nes = nes::NES::new();
+//
+//    let start = Instant::now();
+//    nes.execute(&mut memory);
+//
+//    //One cycle: 500 ns,
+//    println!("Took {} ns", start.elapsed().subsec_nanos());
+//}

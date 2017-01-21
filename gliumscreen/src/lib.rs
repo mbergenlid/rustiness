@@ -103,7 +103,7 @@ impl GliumScreen {
             .flat_map(|p| p.vertices.iter())
             .map(|&v| v)
             .collect();
-        let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
+        let vertex_buffer = glium::VertexBuffer::dynamic(&display, &shape).unwrap();
         let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
 
         let mut indices: Vec<u32> = vec!();
@@ -162,5 +162,9 @@ impl Screen for GliumScreen {
         ).unwrap();
 
         target.finish().unwrap();
+    }
+
+    fn get_row(&self, _: usize) -> &[Color] {
+        unimplemented!()
     }
 }

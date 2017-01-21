@@ -2,7 +2,33 @@ pub type Color = [f32; 3];
 
 pub trait Screen {
     fn set_color(&mut self, x: usize, y: usize, color: Color);
+    fn get_row(&self, row: usize) -> &[Color];
     fn draw(&mut self);
+}
+
+pub struct ScreenMock {
+    pub colors: [[Color; 256]; 240],
+}
+
+impl ScreenMock {
+    pub fn new() -> ScreenMock {
+        ScreenMock {
+            colors: [[[0.0, 0.0, 0.0]; 256]; 240],
+        }
+    }
+}
+
+impl Screen for ScreenMock {
+    fn set_color(&mut self, x: usize, y: usize, color: Color) {
+        self.colors[y][x] = color
+    }
+
+    fn draw(&mut self) {
+
+    }
+    fn get_row(&self, row: usize) -> &[Color] {
+        &self.colors[row]
+    }
 }
 
 pub const BLACK: Color = [0.0, 0.0, 0.0];

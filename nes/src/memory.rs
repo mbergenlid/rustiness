@@ -35,13 +35,13 @@ impl Memory for BasicMemory {
     }
 }
 
-pub struct CPUMemory<'a, 'b: 'a> {
+pub struct CPUMemory<'a> {
     data: &'a mut BasicMemory,
-    ppu: &'a mut PPU<'b>,
+    ppu: &'a mut PPU,
 }
 
-impl <'a, 'b: 'a> CPUMemory<'a, 'b> {
-    pub fn new(ppu: &'a mut PPU<'b>, memory: &'a mut BasicMemory) -> CPUMemory<'a, 'b> {
+impl <'a> CPUMemory<'a> {
+    pub fn new(ppu: &'a mut PPU, memory: &'a mut BasicMemory) -> CPUMemory<'a> {
         CPUMemory {
             data: memory,
             ppu: ppu,
@@ -49,7 +49,7 @@ impl <'a, 'b: 'a> CPUMemory<'a, 'b> {
     }
 }
 
-impl <'a, 'b> Memory for CPUMemory<'a, 'b> {
+impl <'a> Memory for CPUMemory<'a> {
     fn get(&self, address: Address) -> u8 {
         self.data.get(address)
     }
@@ -112,14 +112,16 @@ mod test {
         fn draw(&mut self) {
 
         }
+        fn get_row(&self, _: usize) -> &[Color] {
+            unimplemented!()
+        }
     }
 
     #[test]
     fn test_write_to_vram() {
-        let mut screen = ScreenMock {colors: [[[0.1, 0.1, 0.1]; 240]; 256]};
         let mut ppu = PPU::new(
-                Box::new(BasicMemory::new()),
-                &mut screen
+                box (BasicMemory::new()),
+                box (ScreenMock {colors: [[[0.1, 0.1, 0.1]; 240]; 256]})
             );
 
         let mut basic_memory = BasicMemory::new();

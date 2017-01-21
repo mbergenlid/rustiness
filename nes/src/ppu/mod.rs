@@ -41,16 +41,16 @@ impl<'a> AttributeTable<'a> {
     }
 }
 
-pub struct PPU<'a> {
+pub struct PPU {
     control_register: PPUCtrl,
     memory: Box<Memory>,
-    screen: &'a mut Screen,
+    screen: Box<Screen>,
     vram_pointer: u16,
     vram_high_byte: bool,
 }
 
-impl<'a> PPU<'a> {
-    pub fn new(memory: Box<Memory>, screen: &'a mut Screen) -> PPU<'a> {
+impl PPU {
+    pub fn new(memory: Box<Memory>, screen: Box<Screen>) -> PPU {
         PPU {
             control_register: PPUCtrl::new(),
             memory: memory,
@@ -64,9 +64,17 @@ impl<'a> PPU<'a> {
         self.control_register.value = value;
     }
 
+    pub fn ppu_ctrl(&self) -> u8 {
+        self.control_register.value
+    }
+
     pub fn set_vram(&mut self, value: u8) {
         self.vram_pointer = self.vram_pointer | ((value as u16) << 8*(self.vram_high_byte as u16));
         self.vram_high_byte = !self.vram_high_byte;
+    }
+
+    pub fn vram(&self) -> u16 {
+        self.vram_pointer
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
@@ -78,8 +86,9 @@ impl<'a> PPU<'a> {
         let pattern_table_base_address = self.control_register.background_pattern_table();
         let mut name_table = self.control_register.base_name_table();
 
-        for row in 0..32 {
-            for col in 0..30 {
+        for row in 0..30 {
+            for col in 0..32 {
+                println!("Drawing tile {}, {}", row, col);
                 let pattern_table_address = self.memory.get(name_table) as u16 + pattern_table_base_address;
                 let colour_palette_address = {
                     let attribute_table = AttributeTable {
@@ -100,6 +109,7 @@ impl<'a> PPU<'a> {
                 name_table += 1;
             }
         }
+        self.screen.draw();
     }
 
     fn draw_tile_row(
@@ -126,8 +136,6 @@ impl<'a> PPU<'a> {
             low_bits >>= 1;
             high_bits >>= 1;
         }
-
-        self.screen.draw();
     }
 
     pub fn memory(&self) -> &Memory {
@@ -136,7 +144,7 @@ impl<'a> PPU<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use memory::Memory;
     use super::screen::Color;
     use super::screen::Screen;
@@ -226,131 +234,118 @@ mod tests {
 
     }
 
-    struct ScreenMock {
-        colors: [[Color; 240]; 256],
-    }
-
-    impl Screen for ScreenMock {
-        fn set_color(&mut self, x: usize, y: usize, color: Color) {
-            self.colors[y][x] = color
-        }
-        fn draw(&mut self) {
-
-        }
-    }
+    use ppu::screen::ScreenMock;
 
     #[test]
     fn test() {
-        let mut screen = ScreenMock {colors: [[[0.0, 0.0, 0.0]; 240]; 256]};
-        {
-            //0b00011100
-            //0b00011100
-            //  00 00 00 11 11 11 00 00
-            let mut ppu = PPU::new(
-                Box::new(memory!(
-                    //Pattern table 1
-                        //Layer 1
-                    0x0000 => 0b00011100,
-                    0x0001 => 0b00110010,
-                    0x0002 => 0b00111000,
-                    0x0003 => 0b00011100,
-                    0x0004 => 0b00001110,
-                    0x0005 => 0b00100110,
-                    0x0006 => 0b00011100,
-                    0x0007 => 0b00000000,
-                        //Layer 2
-                    0x0008 => 0b00011100,
-                    0x0009 => 0b00110010,
-                    0x000A => 0b00111000,
-                    0x000B => 0b00011100,
-                    0x000C => 0b00001110,
-                    0x000D => 0b00100110,
-                    0x000E => 0b00011100,
-                    0x000F => 0b00000000,
+        let screen = box (ScreenMock::new());
+        //0b00011100
+        //0b00011100
+        //  00 00 00 11 11 11 00 00
+        let mut ppu = PPU::new(
+            box (memory!(
+                //Pattern table 1
+                    //Layer 1
+                0x0000 => 0b00011100,
+                0x0001 => 0b00110010,
+                0x0002 => 0b00111000,
+                0x0003 => 0b00011100,
+                0x0004 => 0b00001110,
+                0x0005 => 0b00100110,
+                0x0006 => 0b00011100,
+                0x0007 => 0b00000000,
+                    //Layer 2
+                0x0008 => 0b00011100,
+                0x0009 => 0b00110010,
+                0x000A => 0b00111000,
+                0x000B => 0b00011100,
+                0x000C => 0b00001110,
+                0x000D => 0b00100110,
+                0x000E => 0b00011100,
+                0x000F => 0b00000000,
 
-                    //Pattern table 2
-                        //Layer 1
-                    0x0010 => 0b00011100,
-                    0x0011 => 0b00000000,
-                    0x0012 => 0b00111000,
-                    0x0013 => 0b00011100,
-                    0x0014 => 0b00001110,
-                    0x0015 => 0b00100110,
-                    0x0016 => 0b00011100,
-                    0x0017 => 0b00000000,
-                        //Layer 2
-                    0x0018 => 0b00000000,
-                    0x0019 => 0b00110010,
-                    0x001A => 0b00111000,
-                    0x001B => 0b00011100,
-                    0x001C => 0b00001110,
-                    0x001D => 0b00100110,
-                    0x001E => 0b00011100,
-                    0x001F => 0b00000000,
+                //Pattern table 2
+                    //Layer 1
+                0x0010 => 0b00011100,
+                0x0011 => 0b00000000,
+                0x0012 => 0b00111000,
+                0x0013 => 0b00011100,
+                0x0014 => 0b00001110,
+                0x0015 => 0b00100110,
+                0x0016 => 0b00011100,
+                0x0017 => 0b00000000,
+                    //Layer 2
+                0x0018 => 0b00000000,
+                0x0019 => 0b00110010,
+                0x001A => 0b00111000,
+                0x001B => 0b00011100,
+                0x001C => 0b00001110,
+                0x001D => 0b00100110,
+                0x001E => 0b00011100,
+                0x001F => 0b00000000,
 
-                    //Pattern table 3
-                        //Layer 1
-                    0x0020 => 0b00011100,
-                    0x0021 => 0b00110010,
-                    0x0022 => 0b00000000,
-                    0x0023 => 0b00011100,
-                    0x0024 => 0b00001110,
-                    0x0025 => 0b00100110,
-                    0x0026 => 0b00011100,
-                    0x0027 => 0b00000000,
-                        //Layer 2
-                    0x0028 => 0b00011100,
-                    0x0029 => 0b00000000,
-                    0x002A => 0b00111000,
-                    0x002B => 0b00011100,
-                    0x002C => 0b00001110,
-                    0x002D => 0b00100110,
-                    0x002E => 0b00011100,
-                    0x002F => 0b00000000,
-                    //Pattern table end
+                //Pattern table 3
+                    //Layer 1
+                0x0020 => 0b00011100,
+                0x0021 => 0b00110010,
+                0x0022 => 0b00000000,
+                0x0023 => 0b00011100,
+                0x0024 => 0b00001110,
+                0x0025 => 0b00100110,
+                0x0026 => 0b00011100,
+                0x0027 => 0b00000000,
+                    //Layer 2
+                0x0028 => 0b00011100,
+                0x0029 => 0b00000000,
+                0x002A => 0b00111000,
+                0x002B => 0b00011100,
+                0x002C => 0b00001110,
+                0x002D => 0b00100110,
+                0x002E => 0b00011100,
+                0x002F => 0b00000000,
+                //Pattern table end
 
-                    //Name table
-                    0x2000 => 0x00, //points to pattern table
-                    0x2001 => 0x10, //points to pattern table
-                    0x2002 => 0x20, //points to pattern table
-                        //Attribute table
-                    0x23C0 => 0b00_00_01_00,  //points to colour palette
+                //Name table
+                0x2000 => 0x00, //points to pattern table
+                0x2001 => 0x10, //points to pattern table
+                0x2002 => 0x20, //points to pattern table
+                    //Attribute table
+                0x23C0 => 0b00_00_01_00,  //points to colour palette
 
-                    //PPU Palettes
-                    0x3F00 => 0x3F,
-                    0x3F01 => 0x01,
-                    0x3F02 => 0x10,
-                    0x3F03 => 0x20,
+                //PPU Palettes
+                0x3F00 => 0x3F,
+                0x3F01 => 0x01,
+                0x3F02 => 0x10,
+                0x3F03 => 0x20,
 
-                    0x3F04 => 0xFF, //invalid value (should not be referenced)
-                    0x3F05 => 0x0A,
-                    0x3F06 => 0x0B,
-                    0x3F07 => 0x0C
-                )),
-                &mut screen
-            );
-            ppu.draw();
-        }
+                0x3F04 => 0xFF, //invalid value (should not be referenced)
+                0x3F05 => 0x0A,
+                0x3F06 => 0x0B,
+                0x3F07 => 0x0C
+            )),
+            screen
+        );
+        ppu.draw();
 
-        assert_eq!(screen.colors[0][0..8], [BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK]);
-        assert_eq!(screen.colors[1][0..8], [BLACK, WHITE, BLACK, BLACK, WHITE, WHITE, BLACK, BLACK]);
-        assert_eq!(screen.colors[2][0..8], [BLACK, BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK]);
-        assert_eq!(screen.colors[3][0..8], [BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK]);
-        assert_eq!(screen.colors[4][0..8], [BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK, BLACK]);
-        assert_eq!(screen.colors[5][0..8], [BLACK, WHITE, WHITE, BLACK, BLACK, WHITE, BLACK, BLACK]);
-        assert_eq!(screen.colors[6][0..8], [BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK]);
-        assert_eq!(screen.colors[7][0..8], [BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(0)[0..8], [BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(1)[0..8], [BLACK, WHITE, BLACK, BLACK, WHITE, WHITE, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(2)[0..8], [BLACK, BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(3)[0..8], [BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(4)[0..8], [BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(5)[0..8], [BLACK, WHITE, WHITE, BLACK, BLACK, WHITE, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(6)[0..8], [BLACK, BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(7)[0..8], [BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK]);
 
         let color_1 = super::screen::COLOUR_PALETTE[0x01];
         let color_2 = super::screen::COLOUR_PALETTE[0x10];
-        assert_eq!(screen.colors[0][8..16], [BLACK, BLACK, color_1, color_1, color_1, BLACK, BLACK, BLACK]);
-        assert_eq!(screen.colors[1][8..16], [BLACK, color_2, BLACK, BLACK, color_2, color_2, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(0)[8..16], [BLACK, BLACK, color_1, color_1, color_1, BLACK, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(1)[8..16], [BLACK, color_2, BLACK, BLACK, color_2, color_2, BLACK, BLACK]);
 
         let colour_1 = super::screen::COLOUR_PALETTE[0x0A];
         let colour_2 = super::screen::COLOUR_PALETTE[0x0B];
         let colour_3 = super::screen::COLOUR_PALETTE[0x0C];
-        assert_eq!(screen.colors[0][16..24], [BLACK, BLACK, colour_3, colour_3, colour_3, BLACK, BLACK, BLACK]);
-        assert_eq!(screen.colors[1][16..24], [BLACK, colour_1, BLACK, BLACK, colour_1, colour_1, BLACK, BLACK]);
-        assert_eq!(screen.colors[2][16..24], [BLACK, BLACK, BLACK, colour_2, colour_2, colour_2, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(0)[16..24], [BLACK, BLACK, colour_3, colour_3, colour_3, BLACK, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(1)[16..24], [BLACK, colour_1, BLACK, BLACK, colour_1, colour_1, BLACK, BLACK]);
+        assert_eq!(ppu.screen.get_row(2)[16..24], [BLACK, BLACK, BLACK, colour_2, colour_2, colour_2, BLACK, BLACK]);
     }
 }
