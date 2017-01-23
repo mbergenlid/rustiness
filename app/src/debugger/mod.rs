@@ -4,10 +4,9 @@ mod opcodes;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
 use nes::ines::INes;
-use nes::cpu::CPU;
 use nes::ppu::PPU;
 use nes::ppu::screen::ScreenMock;
-use gliumscreen::GliumScreen;
+//use gliumscreen::GliumScreen2;
 
 use std::fs::File;
 use std::env;
@@ -15,27 +14,15 @@ use std::string::String;
 use std::io;
 use std::io::Write;
 
-struct Foo {
-    data: [[[f32; 3]; 256]; 240],
-}
-
-impl Foo {
-    pub fn new() -> Foo {
-        Foo {
-            data: [[[0.0, 0.0, 0.0]; 256]; 240],
-        }
-    }
-}
-
 pub fn start() {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        panic!("Usage: {} FILE", args[0]);
+    if args.len() < 3 {
+        panic!("Usage: {} debug FILE", args[0]);
     }
     let ppu = match args.iter().find(|arg| arg.trim() == "-g") {
         Some(_) => PPU::new(
             box (BasicMemory::new()),
-            box (GliumScreen::new(4))
+            box ScreenMock::new() //box (GliumScreen2::new(4))
         ),
         None => PPU::new(
             box BasicMemory::new(),
@@ -53,7 +40,7 @@ pub fn start() {
         print(&nes);
         print_next_instruction(&nes, memory.as_mut());
         print!(">");
-        io::stdout().flush();
+        io::stdout().flush().unwrap();
         let cmd = read_input();
         match cmd.name() {
             "next" => {

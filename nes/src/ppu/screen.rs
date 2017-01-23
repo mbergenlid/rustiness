@@ -1,5 +1,28 @@
 pub type Color = [f32; 3];
 
+pub struct Tile {
+    pub pattern_index: u32,
+    pub palette_index: u8
+}
+
+pub struct Pattern {
+    pub data: [[u8; 8]; 8],
+}
+
+pub trait Screen2 {
+
+    fn update_tile(&mut self, x: usize, y: usize, tile: &Tile);
+    fn update_patterns(&mut self, pattern: &[Pattern]);
+
+    fn set_universal_background(&mut self, background_value: u8);
+    fn update_palette_0(&mut self, index: u8, palette_value: u8);
+    fn update_palette_1(&mut self, index: u8, palette_value: u8);
+    fn update_palette_2(&mut self, index: u8, palette_value: u8);
+    fn update_palette_3(&mut self, index: u8, palette_value: u8);
+
+    fn draw(&mut self);
+}
+
 pub trait Screen {
     fn set_color(&mut self, x: usize, y: usize, color: Color);
     fn get_row(&self, row: usize) -> &[Color];
