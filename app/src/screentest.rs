@@ -1,54 +1,68 @@
-use nes::ppu::screen::{Screen2, Pattern, Tile};
-use gliumscreen::GliumScreen2;
+use nes::ppu::screen::{Screen, Pattern, Tile};
+use gliumscreen::GliumScreen;
 
 use std;
 use std::time::Duration;
 
 
 pub fn start() {
-    let mut screen = GliumScreen2::new(4);
+    let mut screen = GliumScreen::new(4);
 
     screen.set_universal_background(0x3F);
-    screen.update_palette_0(1, 0x00);
-    screen.update_palette_0(2, 0x00);
-    screen.update_palette_0(3, 0x20);
+    screen.update_palette(0, 1, 0x00);
+    screen.update_palette(0, 2, 0x00);
+    screen.update_palette(0, 3, 0x20);
 
-    screen.update_palette_1(1, 0x00);
-    screen.update_palette_1(2, 0x00);
-    screen.update_palette_1(3, 0x15);
+    screen.update_palette(1, 1, 0x00);
+    screen.update_palette(1, 2, 0x00);
+    screen.update_palette(1, 3, 0x15);
 
-    screen.update_patterns(
-        &[
-            Pattern {
-                data: [
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                ]
-            }, 
-            Pattern {
-                data: [
-                    [0,0,0,3,3,3,0,0],
-                    [0,0,3,3,0,0,3,0],
-                    [0,0,3,3,3,0,0,0],
-                    [0,0,0,3,3,3,0,0],
-                    [0,0,0,0,3,3,3,0],
-                    [0,0,3,0,0,3,3,0],
-                    [0,0,0,3,3,3,0,0],
-                    [0,0,0,0,0,0,0,0],
-                ]
-        }]
+    let mut patterns = vec!(
+        Pattern {
+            data: [
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+            ]
+        },
+        Pattern {
+            data: [
+                [0,0,0,3,3,3,0,0],
+                [0,0,3,3,0,0,3,0],
+                [0,0,3,3,3,0,0,0],
+                [0,0,0,3,3,3,0,0],
+                [0,0,0,0,3,3,3,0],
+                [0,0,3,0,0,3,3,0],
+                [0,0,0,3,3,3,0,0],
+                [0,0,0,0,0,0,0,0],
+            ]
+        }
     );
+    for _ in 0..510 {
+        patterns.push(Pattern {
+            data: [
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0],
+            ]
+        });
+    }
+
+    screen.update_patterns(&patterns);
 
     screen.update_tile(0, 0, &Tile { pattern_index: 1, palette_index: 0 });
     screen.update_tile(0, 1, &Tile { pattern_index: 1, palette_index: 1 });
 
-    screen.draw();
 //    let mut ppu = PPU::new(
 //        box (external_memory!(
 //                    //Pattern table
@@ -87,7 +101,12 @@ pub fn start() {
 //    );
 //    ppu.draw();
 
-    loop {
-        std::thread::sleep(Duration::from_millis(500));
+    for row in 0..32 {
+        for col in 0..30 {
+            screen.draw();
+
+            screen.update_tile(col, row, &Tile { pattern_index: 1, palette_index: 0});
+            std::thread::sleep(Duration::from_millis(50));
+        }
     }
 }

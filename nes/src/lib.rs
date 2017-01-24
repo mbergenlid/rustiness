@@ -45,20 +45,20 @@ impl NES {
 #[cfg(test)]
 mod test {
 
-    use std::time::Instant;
-    use memory::Memory;
-    use ppu::PPU;
-    use memory::BasicMemory;
-    use ppu::screen::ScreenMock;
-
-    impl super::NES {
-        pub fn without_ppu() -> super::NES {
-            super::NES::new(PPU::new(
-                box (BasicMemory::new()),
-                box (ScreenMock::new())
-            ))
-        }
-    }
+//    use std::time::Instant;
+//    use memory::Memory;
+//    use ppu::PPU;
+//    use memory::BasicMemory;
+//    use ppu::screen::ScreenMock;
+//
+//    impl super::NES {
+//        pub fn without_ppu() -> super::NES {
+//            super::NES::new(PPU::new(
+//                box (BasicMemory::new()),
+//                box (ScreenMock::new())
+//            ))
+//        }
+//    }
 
 //    #[test]
 //    fn timing_test() {

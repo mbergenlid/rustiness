@@ -1,56 +1,60 @@
+
 pub type Color = [f32; 3];
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tile {
     pub pattern_index: u32,
     pub palette_index: u8
 }
 
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct Pattern {
     pub data: [[u8; 8]; 8],
 }
 
-pub trait Screen2 {
+use std::fmt;
+use std::fmt::Debug;
+impl Debug for Pattern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for row in self.data.iter() {
+            writeln!(f, "{:?}", row).expect("Failed to write");
+        }
+        Ok(())
+    }
+}
 
+pub trait Screen {
     fn update_tile(&mut self, x: usize, y: usize, tile: &Tile);
     fn update_patterns(&mut self, pattern: &[Pattern]);
 
     fn set_universal_background(&mut self, background_value: u8);
-    fn update_palette_0(&mut self, index: u8, palette_value: u8);
-    fn update_palette_1(&mut self, index: u8, palette_value: u8);
-    fn update_palette_2(&mut self, index: u8, palette_value: u8);
-    fn update_palette_3(&mut self, index: u8, palette_value: u8);
+    fn update_palette(&mut self, palette: u8, index: u8, palette_value: u8);
 
     fn draw(&mut self);
 }
 
-pub trait Screen {
-    fn set_color(&mut self, x: usize, y: usize, color: Color);
-    fn get_row(&self, row: usize) -> &[Color];
-    fn draw(&mut self);
-}
-
-pub struct ScreenMock {
-    pub colors: [[Color; 256]; 240],
-}
+pub struct ScreenMock {}
 
 impl ScreenMock {
     pub fn new() -> ScreenMock {
-        ScreenMock {
-            colors: [[[0.0, 0.0, 0.0]; 256]; 240],
-        }
+        ScreenMock {}
     }
 }
 
 impl Screen for ScreenMock {
-    fn set_color(&mut self, x: usize, y: usize, color: Color) {
-        self.colors[y][x] = color
+    fn update_tile(&mut self, _: usize, _: usize, _: &Tile) {
+    }
+
+    fn update_patterns(&mut self, _: &[Pattern]) {
+    }
+
+    fn set_universal_background(&mut self, _: u8) {
+    }
+
+    fn update_palette(&mut self, _: u8, _: u8, _: u8) {
     }
 
     fn draw(&mut self) {
-
-    }
-    fn get_row(&self, row: usize) -> &[Color] {
-        &self.colors[row]
     }
 }
 

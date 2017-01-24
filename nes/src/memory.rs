@@ -96,32 +96,17 @@ macro_rules! external_memory {
 
 #[cfg(test)]
 mod test {
-    use ppu::screen::{Color, Screen};
+    use ppu::screen::ScreenMock;
     use super::BasicMemory;
     use super::Memory;
     use ppu::PPU;
 
-    struct ScreenMock {
-        colors: [[Color; 240]; 256],
-    }
-
-    impl Screen for ScreenMock {
-        fn set_color(&mut self, x: usize, y: usize, color: Color) {
-            self.colors[y][x] = color
-        }
-        fn draw(&mut self) {
-
-        }
-        fn get_row(&self, _: usize) -> &[Color] {
-            unimplemented!()
-        }
-    }
 
     #[test]
     fn test_write_to_vram() {
         let mut ppu = PPU::new(
                 box (BasicMemory::new()),
-                box (ScreenMock {colors: [[[0.1, 0.1, 0.1]; 240]; 256]})
+                box (ScreenMock::new())
             );
 
         let mut basic_memory = BasicMemory::new();

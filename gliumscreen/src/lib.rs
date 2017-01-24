@@ -6,7 +6,6 @@ use glium::Surface;
 use glium::DisplayBuild;
 
 use nes::ppu::screen::Color;
-use nes::ppu::screen::Screen;
 
 #[derive(Copy, Clone, Debug)]
 struct Vertex {
@@ -88,9 +87,9 @@ const BLACK: [f32; 3] = [0.0, 0.0, 0.0];
 const SCREEN_WIDTH: u32 = 256;
 const SCREEN_HEIGHT: u32 = 240;
 
-use nes::ppu::screen::{Screen2, Tile, Pattern, COLOUR_PALETTE};
+use nes::ppu::screen::{Screen, Tile, Pattern, COLOUR_PALETTE};
 
-pub struct GliumScreen2 {
+pub struct GliumScreen {
     display: glium::Display,
     program: glium::Program,
     vertex_buffer: glium::VertexBuffer<Vertex>,
@@ -101,8 +100,8 @@ pub struct GliumScreen2 {
     pixels: Vec<Vec<Pixel>>,
 }
 
-impl GliumScreen2 {
-    pub fn new(scale: u8) -> GliumScreen2 {
+impl GliumScreen {
+    pub fn new(scale: u8) -> GliumScreen {
         let display: glium::Display = glium::glutin::WindowBuilder::new()
             .with_dimensions(SCREEN_WIDTH*(scale as u32), SCREEN_HEIGHT*(scale as u32))
             .build_glium().unwrap();
@@ -165,7 +164,7 @@ impl GliumScreen2 {
             glium::texture::Texture2dArray::new(&display, vec!(image.clone())).unwrap(),
             glium::texture::Texture2dArray::new(&display, vec!(image.clone())).unwrap(),
         );
-        GliumScreen2 {
+        GliumScreen {
             display: display,
             program: program,
             vertex_buffer: vertex_buffer,
@@ -177,7 +176,7 @@ impl GliumScreen2 {
     }
 }
 
-impl Screen2 for GliumScreen2 {
+impl Screen for GliumScreen {
 
     fn update_tile(&mut self, x: usize, y: usize, tile: &Tile) {
         let top = y;
@@ -210,17 +209,8 @@ impl Screen2 for GliumScreen2 {
         self.palettes[2][0] = COLOUR_PALETTE[background_value as usize];
         self.palettes[3][0] = COLOUR_PALETTE[background_value as usize];
     }
-    fn update_palette_0(&mut self, index: u8, palette_value: u8) {
-        self.palettes[0][index as usize] = COLOUR_PALETTE[palette_value as usize];
-    }
-    fn update_palette_1(&mut self, index: u8, palette_value: u8) {
-        self.palettes[1][index as usize] = COLOUR_PALETTE[palette_value as usize];
-    }
-    fn update_palette_2(&mut self, index: u8, palette_value: u8) {
-        self.palettes[2][index as usize] = COLOUR_PALETTE[palette_value as usize];
-    }
-    fn update_palette_3(&mut self, index: u8, palette_value: u8) {
-        self.palettes[3][index as usize] = COLOUR_PALETTE[palette_value as usize];
+    fn update_palette(&mut self, palette: u8, index: u8, palette_value: u8) {
+        self.palettes[palette as usize][index as usize] = COLOUR_PALETTE[palette_value as usize];
     }
 
     fn draw(&mut self) {
