@@ -25,13 +25,20 @@ impl <'a> INes  {
     }
 
     pub fn prg_rom(&self, index: usize) -> &ROM {
-        let rom_base: usize = 0x10 + index*0x400;
+        let rom_base: usize = 0x10 + index*0x4000;
         &self.buffer[rom_base..(rom_base+0x4000)]
     }
 
-    pub fn load(&self, memory: &mut Memory) {
-        memory.set_slice(0x8000, self.prg_rom(0));
-        memory.set_slice(0xC000, self.prg_rom(0));
+    pub fn chr_rom(&self, index: usize) -> &ROM {
+        let chr_base = 0x10 + (self.num_prg_roms as usize)*0x4000;
+        let rom_base: usize = chr_base + index*0x2000;
+        &self.buffer[rom_base..(rom_base+0x2000)]
+    }
+
+    pub fn load(&self, cpu_memory: &mut Memory, ppu_memory: &mut Memory) {
+        cpu_memory.set_slice(0x8000, self.prg_rom(0));
+        cpu_memory.set_slice(0xC000, self.prg_rom(0));
+        ppu_memory.set_slice(0x0000, self.chr_rom(0));
     }
 }
 
@@ -54,7 +61,7 @@ mod test {
         assert_eq!(ines.buffer[0x10..0x4010], *(ines.prg_rom(0)));
 
         let mut memory = memory::BasicMemory::new();
-        ines.load(&mut memory);
+        ines.load(&mut memory, &mut memory::BasicMemory::new());
         assert_eq!(ines.buffer[0x10], memory.get(0x8000));
 
         //should mirror 0xC0000 - 0xFFFF onto 0x8000-0xBFFF

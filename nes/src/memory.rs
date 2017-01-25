@@ -7,10 +7,10 @@ pub trait Memory {
     fn set(&mut self, address: Address, value: u8);
 
     fn set_slice(&mut self, start: Address, data: &[u8]) {
-        let mut address = start-1;
+        let mut address = start;
         for &d in data {
-            address += 1;
             self.set(address, d);
+            address = address.wrapping_add(1);
         }
     }
 }
@@ -57,6 +57,8 @@ impl <'a> Memory for CPUMemory<'a> {
     fn set(&mut self, address: Address, value: u8) {
         if address == 0x2000 {
             self.ppu.set_ppu_ctrl(value);
+        } else if address == 0x2001 {
+            self.ppu.set_ppu_mask(value);
         } else if address == 0x2006 {
             self.ppu.set_vram(value);
         } else if address == 0x2007 {

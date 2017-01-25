@@ -6,7 +6,7 @@ use nes::memory::Memory;
 use nes::ines::INes;
 use nes::ppu::PPU;
 use nes::ppu::screen::ScreenMock;
-//use gliumscreen::GliumScreen2;
+use gliumscreen::GliumScreen;
 
 use std::fs::File;
 use std::env;
@@ -19,22 +19,26 @@ pub fn start() {
     if args.len() < 3 {
         panic!("Usage: {} debug FILE", args[0]);
     }
+
+    let mut memory = box BasicMemory::new();
+    let mut ppu_memory = box BasicMemory::new();
+
+    let file = File::open(&args[2]).unwrap();
+    let rom_file = box INes::from_file(file);
+    rom_file.load(memory.as_mut(), ppu_memory.as_mut());
+
     let ppu = match args.iter().find(|arg| arg.trim() == "-g") {
         Some(_) => PPU::new(
-            box (BasicMemory::new()),
-            box ScreenMock::new() //box (GliumScreen2::new(4))
+            ppu_memory,
+            box (GliumScreen::new(4))
         ),
         None => PPU::new(
-            box BasicMemory::new(),
+            ppu_memory,
             box ScreenMock::new()
         )
     };
     let mut nes = nes::NES::new(ppu);
-    let file = File::open(&args[1]).unwrap();
 
-    let mut memory = box BasicMemory::new();
-    let rom_file = box INes::from_file(file);
-    rom_file.load(memory.as_mut());
 
     loop {
         print(&nes);
@@ -54,11 +58,35 @@ pub fn start() {
                     nes.execute(memory.as_mut());
                 }
             },
+            "goto" => {
+                match cmd.arg(1).and_then(|s| parse_hex(s)) {
+                    Some(destination_address) => {
+                        println!("Continuing to address 0x{:02X}", destination_address);
+                        while nes.cpu.program_counter() != destination_address {
+                            nes.execute(memory.as_mut());
+                            println!("Current Address: 0x{:02X}", nes.cpu.program_counter());
+                        }
+                    },
+                    None => println!("Please specify address"),
+                };
+            }
             "exit" => break,
             _ => println!("Unknown cmd '{}'", cmd.name()),
         }
 
     }
+}
+
+fn parse_hex(string: &String) -> Option<u16> {
+    let mut value: u16 = 0;
+    for c in string.chars() {
+        let digit = c as u16;
+        if digit < 0x30 || digit > 0x39 {
+            return None;
+        }
+        value = value*16 + (digit - 0x30);
+    }
+    return Some(value)
 }
 
 struct Command {

@@ -16,6 +16,17 @@ impl PPUCtrl {
     fn background_pattern_table(&self) -> u16 {
         (self.value & 0x10) as u16
     }
+
+}
+
+struct PPUMask {
+    value: u8,
+}
+
+impl PPUMask {
+    fn is_drawing_enabled(&self) -> bool {
+        self.value & 0x08 > 0
+    }
 }
 
 const COLOUR_PALETTE_BASE_ADDRESS: u16 = 0x3F00;
@@ -46,6 +57,7 @@ impl<'a> AttributeTable<'a> {
 
 pub struct PPU {
     control_register: PPUCtrl,
+    mask_register: PPUMask,
     memory: Box<Memory>,
     screen: Box<Screen>,
     vram_pointer: u16,
@@ -59,6 +71,7 @@ impl PPU {
     pub fn new(memory: Box<Memory>, screen: Box<Screen>) -> PPU {
         PPU {
             control_register: PPUCtrl::new(),
+            mask_register: PPUMask { value: 0 },
             memory: memory,
             screen: screen,
             vram_pointer: 0,
@@ -75,6 +88,10 @@ impl PPU {
 
     pub fn ppu_ctrl(&self) -> u8 {
         self.control_register.value
+    }
+
+    pub fn set_ppu_mask(&mut self, value: u8) {
+        self.mask_register.value = value;
     }
 
     pub fn set_vram(&mut self, value: u8) {
@@ -116,71 +133,73 @@ impl PPU {
     }
 
     pub fn draw(&mut self) {
-        let pattern_table_base_address = self.control_register.background_pattern_table();
+        if self.mask_register.is_drawing_enabled() {
+            let pattern_table_base_address = self.control_register.background_pattern_table();
 
-        //Patterns
-        if self.pattern_tables_changed {
-            self.screen.set_universal_background(self.memory.get(0x3F00));
-            self.screen.update_palette(0, 0, self.memory.get(0x3F01));
-            self.screen.update_palette(0, 1, self.memory.get(0x3F02));
-            self.screen.update_palette(0, 2, self.memory.get(0x3F03));
+            //Patterns
+            if self.pattern_tables_changed {
+                self.screen.set_universal_background(self.memory.get(0x3F00));
+                self.screen.update_palette(0, 0, self.memory.get(0x3F01));
+                self.screen.update_palette(0, 1, self.memory.get(0x3F02));
+                self.screen.update_palette(0, 2, self.memory.get(0x3F03));
 
-            self.screen.update_palette(1, 0, self.memory.get(0x3F05));
-            self.screen.update_palette(1, 1, self.memory.get(0x3F06));
-            self.screen.update_palette(1, 2, self.memory.get(0x3F07));
+                self.screen.update_palette(1, 0, self.memory.get(0x3F05));
+                self.screen.update_palette(1, 1, self.memory.get(0x3F06));
+                self.screen.update_palette(1, 2, self.memory.get(0x3F07));
 
-            self.screen.update_palette(2, 0, self.memory.get(0x3F09));
-            self.screen.update_palette(2, 1, self.memory.get(0x3F0A));
-            self.screen.update_palette(2, 2, self.memory.get(0x3F0B));
+                self.screen.update_palette(2, 0, self.memory.get(0x3F09));
+                self.screen.update_palette(2, 1, self.memory.get(0x3F0A));
+                self.screen.update_palette(2, 2, self.memory.get(0x3F0B));
 
-            self.screen.update_palette(3, 0, self.memory.get(0x3F0D));
-            self.screen.update_palette(3, 1, self.memory.get(0x3F0E));
-            self.screen.update_palette(3, 2, self.memory.get(0x3F0F));
+                self.screen.update_palette(3, 0, self.memory.get(0x3F0D));
+                self.screen.update_palette(3, 1, self.memory.get(0x3F0E));
+                self.screen.update_palette(3, 2, self.memory.get(0x3F0F));
 
-            let mut patterns = Vec::with_capacity(256);
-            for p_table in 0x00..0x100 {
+                let mut patterns = Vec::with_capacity(256);
+                for p_table in 0x00..0x100 {
 
-                let mut pattern_table_address = pattern_table_base_address | (p_table << 4);
-                let mut pattern: Pattern = Pattern { data: [[0; 8]; 8] };
-                for pattern_row in 0..8 {
-                    let mut low_bits = self.memory.get(pattern_table_address);
-                    let mut high_bits = self.memory.get(pattern_table_address+8);
-                    for bit_index in 0..8 {
-                        let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                    let mut pattern_table_address = pattern_table_base_address | (p_table << 4);
+                    let mut pattern: Pattern = Pattern { data: [[0; 8]; 8] };
+                    for pattern_row in 0..8 {
+                        let mut low_bits = self.memory.get(pattern_table_address);
+                        let mut high_bits = self.memory.get(pattern_table_address+8);
+                        for bit_index in 0..8 {
+                            let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
 
-                        pattern.data[pattern_row][bit_index] = pixel;
-                        low_bits >>= 1;
-                        high_bits >>= 1;
+                            pattern.data[pattern_row][bit_index] = pixel;
+                            low_bits >>= 1;
+                            high_bits >>= 1;
+                        }
+                        pattern_table_address += 1;
                     }
-                    pattern_table_address += 1;
+                    patterns.push(pattern);
                 }
-                patterns.push(pattern);
+                self.screen.update_patterns(&patterns);
+                self.pattern_tables_changed = false;
             }
-            self.screen.update_patterns(&patterns);
-            self.pattern_tables_changed = false;
-        }
 
-        //Tiles
-        if self.name_tables_changed {
-            let mut name_table = self.control_register.base_name_table();
-            for row in 0..30 {
-                for col in 0..32 {
-                    let pattern_table_address = self.memory.get(name_table) as u32;
-                    let colour_palette_index = {
-                        let attribute_table = AttributeTable {
-                            memory: &(*self.memory),
-                            address: 0x23C0,
+            //Tiles
+            if self.name_tables_changed {
+                let mut name_table = self.control_register.base_name_table();
+                for row in 0..30 {
+                    for col in 0..32 {
+                        let pattern_table_address = self.memory.get(name_table) as u32;
+                        let colour_palette_index = {
+                            let attribute_table = AttributeTable {
+                                memory: &(*self.memory),
+                                address: 0x23C0,
+                            };
+                            attribute_table.get_palette_index(row, col)
                         };
-                        attribute_table.get_palette_index(row, col)
-                    };
-                    self.screen.update_tile(col as usize, row as usize, &Tile { pattern_index: pattern_table_address, palette_index: colour_palette_index});
+                        self.screen.update_tile(col as usize, row as usize, &Tile { pattern_index: pattern_table_address, palette_index: colour_palette_index});
 
-                    name_table += 1;
+                        name_table += 1;
+                    }
                 }
+                self.name_tables_changed = false;
             }
-            self.name_tables_changed = false;
+            self.screen.draw();
         }
-        self.screen.draw();
     }
 
     pub fn memory(&self) -> &Memory {
