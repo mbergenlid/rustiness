@@ -14,7 +14,8 @@ pub fn sbc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) 
 }
 
 pub fn inc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
-    cpu.increment(memory.get(addressing_mode.operand_address));
+    let new_value = cpu.increment(memory.get(addressing_mode.operand_address));
+    memory.set(addressing_mode.operand_address, new_value);
     3 + addressing_mode.cycles
 }
 

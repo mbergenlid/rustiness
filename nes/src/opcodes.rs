@@ -608,6 +608,19 @@ mod tests {
         )
     }
 
+    #[test]
+    fn test_incrememnt_memory() {
+        let mut cpu = cpu::CPU::new();
+        let mut memory = &mut memory!(
+            0x0010 => 5,
+            0x8000 => 0xE6, //inc $10
+            0x8001 => 0x10
+        );
+        execute_instruction(&mut cpu, memory);
+
+        assert_eq!(6, memory.get(0x0010));
+    }
+
     fn test_instruction(memory: &mut Memory, expected_cpu: cpu::CPU) {
         let mut cpu = cpu::CPU::new();
         execute_instruction(&mut cpu, memory);
