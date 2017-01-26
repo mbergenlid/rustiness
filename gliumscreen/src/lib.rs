@@ -66,10 +66,10 @@ impl Pixel {
     fn new(left: f32, top: f32, size: f32, texture: u32) -> Pixel {
         Pixel {
             vertices: [
-                Vertex { position: [left, top], text_coords: [0.0, 1.0], texture_index: texture},
-                Vertex { position: [left, top-size], text_coords: [0.0, 0.0], texture_index: texture},
-                Vertex { position: [left+size, top-size], text_coords: [1.0, 0.0], texture_index: texture},
-                Vertex { position: [left+size, top], text_coords: [1.0, 1.0], texture_index: texture},
+                Vertex { position: [left, top], text_coords: [0.0, 0.0], texture_index: texture},
+                Vertex { position: [left, top-size], text_coords: [0.0, 1.0], texture_index: texture},
+                Vertex { position: [left+size, top-size], text_coords: [1.0, 1.0], texture_index: texture},
+                Vertex { position: [left+size, top], text_coords: [1.0, 0.0], texture_index: texture},
             ]
         }
     }
