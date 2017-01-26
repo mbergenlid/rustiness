@@ -59,7 +59,7 @@ pub fn start() {
                 }
             },
             "goto" => {
-                match cmd.arg(1).and_then(|s| parse_hex(s)) {
+                match cmd.hex_arg(1) {
                     Some(destination_address) => {
                         println!("Continuing to address 0x{:02X}", destination_address);
                         while nes.cpu.program_counter() != destination_address {
@@ -69,24 +69,39 @@ pub fn start() {
                     },
                     None => println!("Please specify address"),
                 };
-            }
+            },
+            "pattern" => {
+                match cmd.hex_arg(1) {
+                    Some(pattern) => {
+                        println!("Layer1:\t\tLayer2:\t\tResult:");
+                        for address in pattern..(pattern+8) {
+                            let layer1 = nes.ppu.memory().get(address);
+                            let layer2 = nes.ppu.memory().get(address+8);
+                            println!(
+                                "{:08b}\t{:08b}\tNOT IMPLEMENTED",
+                                layer1,
+                                layer2
+                            );
+                        }
+                    },
+                    None => println!("Not a valid address"),
+                }
+            },
+            "name-table" => {
+                let base_address = 0x2000;
+                for row in 0..30 {
+                    for col in 0..32 {
+                        let tile = nes.ppu.memory().get(base_address + row*32 + col);
+                        print!("{:02x} ", tile);
+                    }
+                    println!("");
+                }
+            },
             "exit" => break,
             _ => println!("Unknown cmd '{}'", cmd.name()),
         }
 
     }
-}
-
-fn parse_hex(string: &String) -> Option<u16> {
-    let mut value: u16 = 0;
-    for c in string.chars() {
-        let digit = c as u16;
-        if digit < 0x30 || digit > 0x39 {
-            return None;
-        }
-        value = value*16 + (digit - 0x30);
-    }
-    return Some(value)
 }
 
 struct Command {
@@ -105,6 +120,22 @@ impl Command {
 
     pub fn arg(&self, index: usize) -> Option<&String> {
         self.value.get(index)
+    }
+
+    pub fn hex_arg(&self, index: usize) -> Option<u16> {
+        self.arg(index).and_then(|s| Command::parse_hex(s))
+    }
+
+    fn parse_hex(string: &String) -> Option<u16> {
+        let mut value: u16 = 0;
+        for c in string.chars() {
+            let digit = c as u16;
+            if digit < 0x30 || digit > 0x39 {
+                return None;
+            }
+            value = value*16 + (digit - 0x30);
+        }
+        return Some(value)
     }
 }
 
