@@ -90,6 +90,7 @@ const SCREEN_HEIGHT: u32 = 240;
 use nes::ppu::screen::{Screen, Tile, Pattern, COLOUR_PALETTE};
 
 pub struct GliumScreen {
+    scale: usize,
     display: glium::Display,
     program: glium::Program,
     vertex_buffer: glium::VertexBuffer<Vertex>,
@@ -165,6 +166,7 @@ impl GliumScreen {
             glium::texture::Texture2dArray::new(&display, vec!(image.clone())).unwrap(),
         );
         GliumScreen {
+            scale: scale as usize,
             display: display,
             program: program,
             vertex_buffer: vertex_buffer,
@@ -189,13 +191,17 @@ impl Screen for GliumScreen {
         //Create an image for each palette
         for palette in 0..4 {
 
-            let textures = patterns.iter().map(|pattern| {
-                let image: Vec<Vec<(f32, f32, f32)>>  = pattern.data.iter().map(|row|
-                    row.iter().map(|&pixel| {
+            let textures: Vec<Vec<Vec<(f32, f32, f32)>>> = patterns.iter().map(|pattern| {
+                let mut image: Vec<Vec<(f32, f32, f32)>> = vec!();
+                for row in 0..(8*self.scale) {
+                    let mut row_vec = vec!();
+                    for col in 0..(8*self.scale) {
+                        let pixel = pattern.data[row/self.scale][col/self.scale];
                         let colour = self.palettes[palette][pixel as usize];
-                        (colour[0], colour[1], colour[2])
-                    }).collect()
-                ).collect();
+                        row_vec.push((colour[0], colour[1], colour[2]));
+                    }
+                    image.push(row_vec);
+                }
                 image
             }).collect();
 
