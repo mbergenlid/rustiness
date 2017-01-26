@@ -77,8 +77,8 @@ impl PPU {
             vram_pointer: 0,
             vram_high_byte: true, //Big Endian
 
-            pattern_tables_changed: false,
-            name_tables_changed: false,
+            pattern_tables_changed: true,
+            name_tables_changed: true,
         }
     }
 
@@ -166,7 +166,7 @@ impl PPU {
                         for bit_index in 0..8 {
                             let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
 
-                            pattern.data[pattern_row][bit_index] = pixel;
+                            pattern.data[pattern_row][7-bit_index] = pixel;
                             low_bits >>= 1;
                             high_bits >>= 1;
                         }
@@ -293,114 +293,86 @@ pub mod tests {
         assert_eq!(attribute_table.get_palette_address(7, 7), 0x3F0C);
     }
 
-    struct PPUTestScreen<'a> {
-        initiated: bool,
-
-        expected_tiles: &'a [(usize, usize, Tile)],
-        expected_patterns: &'a [Pattern],
-        expected_background: Option<u8>,
-        expected_palettes: Option<[[u8;3]; 4]>
+    struct PPUTestScreenData {
+        tiles: Vec<(usize, usize, Tile)>,
+        patterns: Vec<Pattern>,
+        background: Option<u8>,
+        palettes: Vec<Vec<u8>>
     }
 
-    impl <'a> PPUTestScreen<'a> {
-        pub fn with_expected_tiles<'b>(tiles: &'b [(usize, usize, Tile)]) -> PPUTestScreen<'b> {
+    use std::rc::Rc;
+    use std::cell::{RefCell, Ref};
+
+    #[derive(Clone)]
+    struct PPUTestScreen {
+        data: Rc<RefCell<PPUTestScreenData>>,
+    }
+
+    impl PPUTestScreen {
+        pub fn new() -> PPUTestScreen {
             PPUTestScreen {
-                initiated: false,
-                expected_tiles: tiles,
-                expected_patterns: &[],
-                expected_background: None,
-                expected_palettes: None,
+                data: Rc::new(RefCell::new(PPUTestScreenData {
+                    tiles: vec!(),
+                    patterns: vec!(),
+                    background: None,
+                    palettes: vec!(
+                        vec!(0, 0, 0),
+                        vec!(0, 0, 0),
+                        vec!(0, 0, 0),
+                        vec!(0, 0, 0)
+                    ),
+                })),
             }
         }
 
-        pub fn with_expected_patterns<'b>(patterns: &'b [Pattern]) -> PPUTestScreen<'b> {
-            PPUTestScreen {
-                initiated: false,
-                expected_tiles: &[],
-                expected_patterns: patterns,
-                expected_background: None,
-                expected_palettes: None,
-            }
+        pub fn background(&self) -> Option<u8> {
+            self.data.borrow().background
         }
 
-        pub fn with_expected_palettes<'b>(background: u8, palettes: [[u8; 3]; 4]) -> PPUTestScreen<'b> {
-            PPUTestScreen {
-                initiated: false,
-                expected_tiles: &[],
-                expected_patterns: &[],
-                expected_background: Some(background),
-                expected_palettes: Some(palettes),
-            }
+        pub fn data(&self) -> Ref<PPUTestScreenData> {
+            self.data.borrow()
         }
     }
 
-    impl <'a> Screen for PPUTestScreen<'a> {
+    impl Screen for PPUTestScreen {
         fn update_tile(&mut self, x: usize, y: usize, tile: &Tile) {
-            if self.initiated {
-                if self.expected_tiles.len() == 0 {
-                    panic!("Unexpected call to method screen.update_tile");
-                } else {
-                    let tile_optional = self.expected_tiles.iter().find(|t| t.0 == x && t.1 == y);
-                    match tile_optional {
-                        Some(t) => assert_eq!(t.2, *tile),
-                        None => assert_eq!(Tile { pattern_index: 0, palette_index: 0}, *tile),
-                    }
-                }
+            self.data.borrow_mut().tiles.push((x, y, *tile))
+        }
+
+        fn update_patterns(&mut self, pattern: &[Pattern]) {
+            let ref mut patterns = self.data.borrow_mut().patterns;
+            for &p in pattern {
+                patterns.push(p);
             }
         }
 
-        fn update_patterns(&mut self, patterns: &[Pattern]) {
-            if self.initiated {
-                if self.expected_patterns.len() == 0 {
-                    panic!("Unexpected call to method screen.update_patterns");
-                } else {
-                    assert_eq!(256, patterns.len());
-
-                    for i in 0..self.expected_patterns.len() {
-                        assert_eq!(self.expected_patterns[i], patterns[i], "Pattern {} is differs", i);
-                    }
-                }
-            }
-        }
-
-        fn set_universal_background(&mut self, background: u8) {
-            match self.expected_background {
-                Some(bg) => assert_eq!(bg, background),
-                None => ()
-            }
+        fn set_universal_background(&mut self, background_value: u8) {
+            self.data.borrow_mut().background = Some(background_value);
         }
 
         fn update_palette(&mut self, palette: u8, index: u8, palette_value: u8) {
-            match self.expected_palettes {
-                Some(palettes) => {
-                    let expected_value = palettes[palette as usize][index as usize];
-                    assert_eq!(expected_value, palette_value, "Failed on palette {}, {}", palette, index);
-                },
-                None => ()
-            }
+            self.data.borrow_mut().palettes[palette as usize][index as usize] = palette_value;
         }
 
         fn draw(&mut self) {
-            self.initiated = true;
+//            unimplemented!()
         }
     }
 
-
-
     #[test]
     fn write_to_name_table() {
-        static EXPECTED_TILES: [(usize, usize, Tile); 6] = [
+        let expected_tiles: Vec<(usize, usize, Tile)> = vec!(
             (0, 0, Tile { pattern_index: 0, palette_index: 0}),
             (1, 0, Tile { pattern_index: 0x10, palette_index: 0}),
             (2, 0, Tile { pattern_index: 0x20, palette_index: 1}),
             (3, 0, Tile { pattern_index: 0, palette_index: 1}),
             (2, 1, Tile { pattern_index: 0, palette_index: 1}),
             (3, 1, Tile { pattern_index: 0, palette_index: 1}),
-
-        ];
-        let screen = PPUTestScreen::with_expected_tiles(&EXPECTED_TILES);
-        let mut ppu = PPU::new(box BasicMemory::new(), box screen);
+        );
+        let screen = PPUTestScreen::new();
+        let mut ppu = PPU::new(box BasicMemory::new(), box screen.clone());
         ppu.draw();
+        ppu.set_ppu_mask(0x08);
 
         ppu.set_vram(0x20);
         ppu.set_vram(0x00);
@@ -414,12 +386,30 @@ pub mod tests {
         ppu.write_to_vram(0b00_00_01_00);
 
         ppu.draw();
+
+        let ref tiles = screen.data().tiles;
+
+        for &tile in tiles.iter() {
+            let expected_tile = expected_tiles.iter()
+                .find(|t| t.0 == tile.0 && t.1 == tile.1)
+                .map(|t| t.2)
+                .unwrap_or(Tile { pattern_index: 0, palette_index: 0})
+            ;
+            assert_eq!(expected_tile, tile.2, "Tile x: {}, y: {} is not what was expected", tile.0, tile.1);
+        }
     }
 
     #[test]
     fn write_palettes() {
-        let screen = PPUTestScreen::with_expected_palettes(0x0E, [[0x0A, 0x0B, 0x0C], [0x1A, 0x1B, 0x1C], [0x2A, 0x2B, 0x2C], [0x3A, 0x3B, 0x3C]]);
-        let mut ppu = PPU::new(box BasicMemory::new(), box screen);
+        let expected_background = 0x0E;
+        let expected_palettes: Vec<Vec<u8>> = vec!(
+            vec!(0x0A, 0x0B, 0x0C),
+            vec!(0x1A, 0x1B, 0x1C),
+            vec!(0x2A, 0x2B, 0x2C),
+            vec!(0x3A, 0x3B, 0x3C),
+        );
+        let screen = PPUTestScreen::new();
+        let mut ppu = PPU::new(box BasicMemory::new(), box screen.clone());
         ppu.set_vram(0x3F);
         ppu.set_vram(0x00);
 
@@ -443,47 +433,54 @@ pub mod tests {
         ppu.write_to_vram(0x3B);
         ppu.write_to_vram(0x3C);
 
+        ppu.set_ppu_mask(0x08);
         ppu.draw();
 
+        assert_eq!(expected_background, screen.background().unwrap());
+
+        let ref palettes = screen.data().palettes;
+        assert_eq!(expected_palettes, *palettes);
     }
 
     #[test]
-    fn test() {
-        static EXPECTED_PATTERNS: [Pattern; 3] = [
+    fn test_patterns() {
+        let expected_patterns: [Pattern; 3] = [
             Pattern { data: [
-                [0,0,3,3,3,0,0,0],
-                [0,3,0,0,3,3,0,0],
                 [0,0,0,3,3,3,0,0],
+                [0,0,3,3,0,0,3,0],
                 [0,0,3,3,3,0,0,0],
-                [0,3,3,3,0,0,0,0],
-                [0,3,3,0,0,3,0,0],
-                [0,0,3,3,3,0,0,0],
+                [0,0,0,3,3,3,0,0],
+                [0,0,0,0,3,3,3,0],
+                [0,0,3,0,0,3,3,0],
+                [0,0,0,3,3,3,0,0],
                 [0,0,0,0,0,0,0,0],
             ]},
             Pattern { data: [
-                [0,0,1,1,1,0,0,0],
-                [0,2,0,0,2,2,0,0],
+                [0,0,0,1,1,1,0,0],
+                [0,0,2,2,0,0,2,0],
+                [0,0,3,3,3,0,0,0],
                 [0,0,0,3,3,3,0,0],
-                [0,0,3,3,3,0,0,0],
-                [0,3,3,3,0,0,0,0],
-                [0,3,3,0,0,3,0,0],
-                [0,0,3,3,3,0,0,0],
+                [0,0,0,0,3,3,3,0],
+                [0,0,3,0,0,3,3,0],
+                [0,0,0,3,3,3,0,0],
                 [0,0,0,0,0,0,0,0],
             ]},
             Pattern { data: [
-                [0,0,3,3,3,0,0,0],
-                [0,1,0,0,1,1,0,0],
-                [0,0,0,2,2,2,0,0],
-                [0,0,3,3,3,0,0,0],
-                [0,3,3,3,0,0,0,0],
-                [0,3,3,0,0,3,0,0],
-                [0,0,3,3,3,0,0,0],
+                [0,0,0,3,3,3,0,0],
+                [0,0,1,1,0,0,1,0],
+                [0,0,2,2,2,0,0,0],
+                [0,0,0,3,3,3,0,0],
+                [0,0,0,0,3,3,3,0],
+                [0,0,3,0,0,3,3,0],
+                [0,0,0,3,3,3,0,0],
                 [0,0,0,0,0,0,0,0],
             ]},
         ];
-        let screen = PPUTestScreen::with_expected_patterns(&EXPECTED_PATTERNS);
-        let mut ppu = PPU::new(box BasicMemory::new(), Box::new(screen));
+
+        let screen = PPUTestScreen::new();
+        let mut ppu = PPU::new(box BasicMemory::new(), box screen.clone());
         ppu.draw();
+        ppu.set_ppu_mask(0x08);
 
         ppu.load(
             0,
@@ -509,5 +506,12 @@ pub mod tests {
             ]
         );
         ppu.draw();
+
+        let ref patterns = screen.data().patterns;
+        assert_eq!(256, patterns.len());
+
+        for i in 0..expected_patterns.len() {
+            assert_eq!(expected_patterns[i], patterns[i], "Pattern {} differs", i);
+        }
     }
 }
