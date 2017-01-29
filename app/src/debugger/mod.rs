@@ -30,7 +30,7 @@ pub fn start() {
     let ppu = match args.iter().find(|arg| arg.trim() == "-g") {
         Some(_) => PPU::new(
             ppu_memory,
-            box (GliumScreen::new(4))
+            box (GliumScreen::new(2))
         ),
         None => PPU::new(
             ppu_memory,

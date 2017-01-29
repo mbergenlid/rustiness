@@ -10,16 +10,21 @@ use nes::ppu::screen::Color;
 #[derive(Copy, Clone, Debug)]
 struct Vertex {
     position: [f32; 2],
+    vertex_index: u32,
     text_coords: [f32; 2],
     texture_index: u32,
 }
 
-implement_vertex!(Vertex, position, text_coords, texture_index);
+implement_vertex!(Vertex, position, vertex_index, text_coords, texture_index);
 
 const VERTEX_SHADER_SRC: &'static str = r#"
         #version 410
 
+        uniform mat4 scale;
+        uniform mat4 translation;
+        uniform mat4 scroll;
         in vec2 position;
+        in uint vertex_index;
         in vec2 text_coords;
         in int texture_index;
 
@@ -27,7 +32,23 @@ const VERTEX_SHADER_SRC: &'static str = r#"
         out vec2 v_text_coords;
 
         void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
+            vec4 new_position = scroll * vec4(position, 0.0, 1.0);
+            if(new_position.x >= 63) {
+                new_position.x = new_position.x - 64;
+            }
+            if(new_position.y <= -29) {
+                new_position.y = new_position.y + 30;
+            }
+            if(vertex_index == 0) {
+                gl_Position = vec4(new_position.x, new_position.y, 1.0, 1.0);
+            } else  if(vertex_index == 1) {
+                gl_Position = vec4(new_position.x, new_position.y-1, 1.0, 1.0);
+            } else if(vertex_index == 2) {
+                gl_Position = vec4(new_position.x+1, new_position.y-1, 1.0, 1.0);
+            } else if(vertex_index == 3) {
+                gl_Position = vec4(new_position.x+1, new_position.y, 1.0, 1.0);
+            }
+            gl_Position = scale * translation * gl_Position;
             index = texture_index;
             v_text_coords = text_coords;
         }
@@ -66,10 +87,10 @@ impl Pixel {
     fn new(left: f32, top: f32, size: f32, texture: u32) -> Pixel {
         Pixel {
             vertices: [
-                Vertex { position: [left, top], text_coords: [0.0, 0.0], texture_index: texture},
-                Vertex { position: [left, top-size], text_coords: [0.0, 1.0], texture_index: texture},
-                Vertex { position: [left+size, top-size], text_coords: [1.0, 1.0], texture_index: texture},
-                Vertex { position: [left+size, top], text_coords: [1.0, 0.0], texture_index: texture},
+                Vertex { position: [left, top], vertex_index: 0, text_coords: [0.0, 0.0], texture_index: texture},
+                Vertex { position: [left, top], vertex_index: 1, text_coords: [0.0, 1.0], texture_index: texture},
+                Vertex { position: [left, top], vertex_index: 2, text_coords: [1.0, 1.0], texture_index: texture},
+                Vertex { position: [left, top], vertex_index: 3, text_coords: [1.0, 0.0], texture_index: texture},
             ]
         }
     }
@@ -87,10 +108,16 @@ const BLACK: [f32; 3] = [0.0, 0.0, 0.0];
 const SCREEN_WIDTH: u32 = 256;
 const SCREEN_HEIGHT: u32 = 240;
 
+const AREA_WIDTH_IN_TILES: u32 = 64;
+const AREA_HEIGHT_IN_TILES: u32 = 60;
+
+
 use nes::ppu::screen::{Screen, Tile, Pattern, COLOUR_PALETTE};
 
 pub struct GliumScreen {
     scale: usize,
+    x_offset: f32,
+    y_offset: f32,
     display: glium::Display,
     program: glium::Program,
     vertex_buffer: glium::VertexBuffer<Vertex>,
@@ -104,19 +131,21 @@ pub struct GliumScreen {
 impl GliumScreen {
     pub fn new(scale: u8) -> GliumScreen {
         let display: glium::Display = glium::glutin::WindowBuilder::new()
+            .with_depth_buffer(24)
             .with_dimensions(SCREEN_WIDTH*(scale as u32), SCREEN_HEIGHT*(scale as u32))
             .build_glium().unwrap();
 
+        GliumScreen::init_bottom_bar(&display);
+
         let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
 
-
-        let tile_size: f32 = 2.0 / (SCREEN_WIDTH as f32) * 8.0;
-        let tiles: Vec<Vec<Pixel>> = (0..30)
+        let tile_size: f32 = 1.0;//2.0 / (SCREEN_WIDTH as f32) * 8.0;
+        let tiles: Vec<Vec<Pixel>> = (0..AREA_HEIGHT_IN_TILES)
             .map(|row| {
-                let top = 1.0 - (row as f32 * tile_size);
-                (0..32)
+                let top = row; //if row >= 30 { row + 2 } else { row };
+                (0..AREA_WIDTH_IN_TILES)
                     .map(|col| {
-                        Pixel::new((col as f32)*tile_size - 1.0, top, tile_size, 0)
+                        Pixel::new(col as f32, -(top as f32), tile_size, 0)
                     })
                     .collect()
             })
@@ -130,9 +159,10 @@ impl GliumScreen {
             glium::VertexBuffer::new(&display, &shape).unwrap()
         };
 
+
         let index_buffer = {
             let mut indices: Vec<u32> = vec!();
-            for index in 0..(30*32) {
+            for index in 0..(AREA_HEIGHT_IN_TILES*AREA_WIDTH_IN_TILES) {
                 let base = index*4;
                 indices.push(base);
                 indices.push(base+1);
@@ -167,6 +197,8 @@ impl GliumScreen {
         );
         GliumScreen {
             scale: scale as usize,
+            x_offset: 0.0,
+            y_offset: 0.0,
             display: display,
             program: program,
             vertex_buffer: vertex_buffer,
@@ -176,6 +208,68 @@ impl GliumScreen {
             pixels: tiles,
         }
     }
+
+    fn init_bottom_bar(display: &glium::Display) {
+        let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+        #[derive(Copy, Clone, Debug)]
+        struct Vertex {
+            position: [f32; 2],
+        }
+        implement_vertex!(Vertex, position);
+        let vertex_buffer = {
+            let shape = vec![
+                Vertex { position: [-1.0, -0.875] },
+                Vertex { position: [-1.0, -1.0] },
+                Vertex { position: [1.0, -1.0] },
+
+                Vertex { position: [-1.0, -0.875] },
+                Vertex { position: [1.0,  -1.0] },
+                Vertex { position: [1.0, -0.875] },
+            ];
+            glium::VertexBuffer::new(display, &shape).unwrap()
+        };
+       let vertex_shader_src = r#"
+            #version 410
+
+            in vec2 position;
+
+            void main() {
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        "#;
+        let fragment_shader_src = r#"
+            #version 140
+
+            out vec4 color;
+
+            void main() {
+                color = vec4(0.0, 0.0, 1.0, 1.0);
+            }
+        "#;
+        let program = glium::Program::from_source(display, vertex_shader_src, fragment_shader_src, None).unwrap();
+
+        //Draw the bottom area into both buffers.
+        for _ in 0..2 {
+            let mut target = display.draw();
+            target.clear_color_and_depth((0.0, 0.0, 0.0, 1.0), 1.0);
+            target.draw(
+                &vertex_buffer,
+                &indices,
+                &program,
+                &glium::uniforms::EmptyUniforms,
+                &glium::DrawParameters {
+                    depth: glium::Depth {
+                        test: glium::draw_parameters::DepthTest::IfLess,
+                        write: true,
+                        .. Default::default()
+                    },
+                    .. Default::default()
+                }
+            ).unwrap();
+
+            target.finish().unwrap();
+        }
+    }
 }
 
 impl Screen for GliumScreen {
@@ -183,7 +277,7 @@ impl Screen for GliumScreen {
     fn update_tile(&mut self, x: usize, y: usize, tile: &Tile) {
         let top = y;
         let left = x;
-        let start_index = top*(32 as usize*4) + (left*4);
+        let start_index = top*(AREA_WIDTH_IN_TILES as usize*4) + (left*4);
         self.pixels[y][x].set_texture(&mut self.vertex_buffer, start_index, (tile.palette_index as u32)*512 + tile.pattern_index);
     }
 
@@ -219,10 +313,15 @@ impl Screen for GliumScreen {
         self.palettes[palette as usize][index as usize] = COLOUR_PALETTE[palette_value as usize];
     }
 
+    fn set_background_offset(&mut self, x: usize, y: usize) {
+        self.x_offset = (x % 256) as f32 / 8.0;
+        self.y_offset = -((y % 249) as f32 / 8.0);
+    }
+
     fn draw(&mut self) {
         let mut target = self.display.draw();
-//        target.clear_color(0.0, 0.0, 1.0, 1.0);
 
+        let scale = 1.0/(2.0 / (SCREEN_WIDTH as f32) * 8.0);
         target.draw(
             &self.vertex_buffer,
             &self.index_buffer,
@@ -232,8 +331,33 @@ impl Screen for GliumScreen {
                 texture_2: &(self.texture_buffer[1]),
                 texture_3: &(self.texture_buffer[2]),
                 texture_4: &(self.texture_buffer[3]),
+                scale: [
+                    [0.0625, 0.0, 0.0, 0.0],
+                    [0.0, 0.0625, 0.0, 0.0],
+                    [0.0, 0.0, 0.0625, 0.0],
+                    [0.0, 0.0, 0.0, 1.0f32],
+                ],
+                translation: [
+                    [1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [-16.0, 16.0, 0.0, 1.0f32],
+                ],
+                scroll: [
+                    [1.0,           0.0, 0.0, 0.0],
+                    [0.0,           1.0, 0.0, 0.0],
+                    [0.0,           0.0, 1.0, 0.0],
+                    [self.x_offset, self.y_offset, 0.0, 1.0],
+                ],
             },
-            &Default::default()
+            &glium::DrawParameters {
+                depth: glium::Depth {
+                    test: glium::draw_parameters::DepthTest::IfLess,
+                    write: false,
+                    .. Default::default()
+                },
+                .. Default::default()
+            }
         ).unwrap();
 
         target.finish().unwrap();

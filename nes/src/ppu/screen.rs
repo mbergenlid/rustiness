@@ -30,6 +30,8 @@ pub trait Screen {
     fn set_universal_background(&mut self, background_value: u8);
     fn update_palette(&mut self, palette: u8, index: u8, palette_value: u8);
 
+    fn set_background_offset(&mut self, x: usize, y: usize);
+
     fn draw(&mut self);
 }
 
@@ -55,6 +57,9 @@ impl Screen for ScreenMock {
     }
 
     fn draw(&mut self) {
+    }
+    fn set_background_offset(&mut self, _: usize, _: usize) {
+        unimplemented!()
     }
 }
 

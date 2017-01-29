@@ -191,13 +191,22 @@ impl PPU {
                             };
                             attribute_table.get_palette_index(row, col)
                         };
-                        self.screen.update_tile(col as usize, row as usize, &Tile { pattern_index: pattern_table_address, palette_index: colour_palette_index});
+//                        println!("Screen update {}, {}, {:?}", col, row, (pattern_table_address, colour_palette_index));
+                        self.screen.update_tile(
+                            col as usize,
+                            row as usize,
+                            &Tile {
+                                pattern_index: pattern_table_address,
+                                palette_index: colour_palette_index
+                            }
+                        );
 
                         name_table += 1;
                     }
                 }
                 self.name_tables_changed = false;
             }
+//            self.screen.set_background_offset(256, 0);
             self.screen.draw();
         }
     }
