@@ -171,14 +171,15 @@ pub fn start() {
 
     for i in 0..30 {
         screen.update_tile(0, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
-        screen.update_tile(32, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
+//        screen.update_tile(32, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
     }
 
-    for i in 30..60 {
-        screen.update_tile(0, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
-        screen.update_tile(32, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
-    }
+//    for i in 30..60 {
+//        screen.update_tile(0, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
+////        screen.update_tile(32, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
+//    }
 
+    screen.set_background_offset(10, 10);
     let mut y_scroll = 0;
     let mut x_scroll = 0;
     screen.draw();

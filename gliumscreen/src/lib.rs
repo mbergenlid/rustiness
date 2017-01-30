@@ -198,7 +198,7 @@ impl GliumScreen {
         GliumScreen {
             scale: scale as usize,
             x_offset: 0.0,
-            y_offset: 0.0,
+            y_offset: -30.0,
             display: display,
             program: program,
             vertex_buffer: vertex_buffer,
@@ -314,8 +314,8 @@ impl Screen for GliumScreen {
     }
 
     fn set_background_offset(&mut self, x: usize, y: usize) {
-        self.x_offset = (x % 256) as f32 / 8.0;
-        self.y_offset = -((y % 249) as f32 / 8.0);
+        self.x_offset = (x % 512) as f32 / 8.0;
+        self.y_offset = -(((y+240) % 480) as f32 / 8.0);
     }
 
     fn draw(&mut self) {
