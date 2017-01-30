@@ -21,11 +21,11 @@ pub fn start() {
     }
 
     let mut memory = box BasicMemory::new();
-    let mut ppu_memory = box BasicMemory::new();
 
     let file = File::open(&args[2]).unwrap();
     let rom_file = box INes::from_file(file);
-    rom_file.load(memory.as_mut(), ppu_memory.as_mut());
+    rom_file.load(memory.as_mut());
+    let mut ppu_memory = rom_file.ppu_memory();
 
     let ppu = match args.iter().find(|arg| arg.trim() == "-g") {
         Some(_) => PPU::new(
@@ -88,7 +88,8 @@ pub fn start() {
                 }
             },
             "name-table" => {
-                let base_address = 0x2000;
+                let arg: u16 = cmd.arg(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
+                let base_address = 0x2000 + (arg*0x400);
                 for row in 0..30 {
                     for col in 0..32 {
                         let tile = nes.ppu.memory().get(base_address + row*32 + col);

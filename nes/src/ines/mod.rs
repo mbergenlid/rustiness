@@ -2,6 +2,7 @@
 use std::fs::File;
 use std::io::Read;
 use memory::Memory;
+use ppu::ppumemory::{PPUMemory, Mirroring};
 
 pub type ROM = [u8];
 
@@ -35,10 +36,16 @@ impl <'a> INes  {
         &self.buffer[rom_base..(rom_base+0x2000)]
     }
 
-    pub fn load(&self, cpu_memory: &mut Memory, ppu_memory: &mut Memory) {
+    pub fn load(&self, cpu_memory: &mut Memory) {
         cpu_memory.set_slice(0x8000, self.prg_rom(0));
         cpu_memory.set_slice(0xC000, self.prg_rom(0));
-        ppu_memory.set_slice(0x0000, self.chr_rom(0));
+    }
+
+    pub fn ppu_memory(&self) -> Box<PPUMemory> {
+        let mirroring = if self.buffer[6] & 0x01 == 0 { Mirroring::Horizontal } else { Mirroring::Vertical };
+        let mut ppu_mem = box PPUMemory::new(mirroring);
+        ppu_mem.set_slice(0x0000, self.chr_rom(0));
+        return ppu_mem;
     }
 }
 
@@ -61,7 +68,7 @@ mod test {
         assert_eq!(ines.buffer[0x10..0x4010], *(ines.prg_rom(0)));
 
         let mut memory = memory::BasicMemory::new();
-        ines.load(&mut memory, &mut memory::BasicMemory::new());
+        ines.load(&mut memory);
         assert_eq!(ines.buffer[0x10], memory.get(0x8000));
 
         //should mirror 0xC0000 - 0xFFFF onto 0x8000-0xBFFF
