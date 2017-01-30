@@ -1,4 +1,5 @@
 pub mod screen;
+pub mod ppumemory;
 
 use memory::Memory;
 use ppu::screen::{Screen, Pattern, Tile};
@@ -191,7 +192,6 @@ impl PPU {
                             };
                             attribute_table.get_palette_index(row, col)
                         };
-//                        println!("Screen update {}, {}, {:?}", col, row, (pattern_table_address, colour_palette_index));
                         self.screen.update_tile(
                             col as usize,
                             row as usize,
@@ -206,7 +206,6 @@ impl PPU {
                 }
                 self.name_tables_changed = false;
             }
-//            self.screen.set_background_offset(256, 0);
             self.screen.draw();
         }
     }
