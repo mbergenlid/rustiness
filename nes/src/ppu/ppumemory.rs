@@ -30,6 +30,10 @@ impl Memory for PPUMemory {
             self.basic_memory.get(address & self.name_table_mirror_mask)
         } else if address >= 0x3000 && address < 0x3F00 {
             self.get(address & 0xEFFF)
+        } else if address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
+            self.get(0x3F00)
+        } else if address >= 0x3F20 && address < 0x4000 {
+            self.get(address & 0xFF1F)
         } else {
             self.basic_memory.get(address)
         }
@@ -39,6 +43,10 @@ impl Memory for PPUMemory {
             self.basic_memory.set(address & self.name_table_mirror_mask, value);
         } else if address >= 0x3000 && address < 0x3F00 {
             self.set(address & 0xEFFF, value);
+        } else if address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
+            self.basic_memory.set(0x3F00, value);
+        } else if address >= 0x3F20 && address < 0x4000 {
+            self.set(address & 0xFF1F, value);
         } else {
             self.basic_memory.set(address, value);
         }
@@ -199,6 +207,35 @@ pub mod tests {
 
     #[test]
     fn test_palette_mirroring() {
+        let mut ppu_mem = PPUMemory::new(Mirroring::Horizontal);
+
+        //$3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C
+        assert_mirrored_addresses(&mut ppu_mem, 0x3F10, 0x3F00);
+        assert_mirrored_addresses(&mut ppu_mem, 0x3F14, 0x3F00);
+        assert_mirrored_addresses(&mut ppu_mem, 0x3F18, 0x3F00);
+        assert_mirrored_addresses(&mut ppu_mem, 0x3F1C, 0x3F00);
+
+        for address in 0x3F00..0x3F20 {
+            assert_mirrored_addresses(&mut ppu_mem, address, address+0x20*1);
+            assert_mirrored_addresses(&mut ppu_mem, address, address+0x20*2);
+            assert_mirrored_addresses(&mut ppu_mem, address, address+0x20*3);
+            assert_mirrored_addresses(&mut ppu_mem, address, address+0x20*4);
+            assert_mirrored_addresses(&mut ppu_mem, address, address+0x20*5);
+            assert_mirrored_addresses(&mut ppu_mem, address, address+0x20*6);
+        }
+    }
+
+    use memory::Address;
+    fn assert_mirrored_addresses(ppu_mem: &mut PPUMemory, address1: Address, address2: Address) {
+        let value1 = rand::random::<u8>();
+        ppu_mem.set(address1, value1);
+        assert_eq!(value1, ppu_mem.get(address1), "value is not written to original address 0x{:x}", address1);
+        assert_eq!(value1, ppu_mem.get(address2), "value is not mirrored from 0x{:x} to 0x{:x}", address1, address2);
+
+        let value2 = rand::random::<u8>();
+        ppu_mem.set(address2, value2);
+        assert_eq!(value2, ppu_mem.get(address2), "value is not written to original address 0x{:x}", address2);
+        assert_eq!(value2, ppu_mem.get(address1), "value is not mirrored from 0x{:x} to 0x{:x}", address2, address1);
 
     }
 }

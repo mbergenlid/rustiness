@@ -365,6 +365,9 @@ pub mod tests {
         fn draw(&mut self) {
 //            unimplemented!()
         }
+        fn set_background_offset(&mut self, _: usize, _: usize) {
+            unimplemented!()
+        }
     }
 
     #[test]
