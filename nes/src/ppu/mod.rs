@@ -166,7 +166,6 @@ impl PPU {
      * Returns true if a VBLANK should be generated.
      */
     pub fn update(&mut self, cpu_cycle_count: u32) -> bool {
-        self.draw();
         self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
         if !self.status_register.is_vblank() && self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME {
             self.status_register = self.status_register | 0x80;
@@ -174,6 +173,7 @@ impl PPU {
         } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.status_register = self.status_register & 0x7F;
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
+            self.draw();
             return false
         } else {
             return false;

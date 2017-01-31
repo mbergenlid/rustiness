@@ -29,14 +29,8 @@ impl NES {
     }
 
     pub fn execute(&mut self, memory: &mut BasicMemory) {
-        if self.cycle_count == 0 {
-            self.ppu.draw();
-        }
-        if self.cycle_count > 113 {
-            self.ppu.draw();
-            self.cycle_count -= 113;
-        }
         let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut CPUMemory::new(&mut self.ppu, memory));
+        self.ppu.update(cycles as u32);
         self.cycle_count += cycles as u64;
     }
 
