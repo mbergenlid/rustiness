@@ -30,6 +30,17 @@ impl PPUMask {
     }
 }
 
+trait PPUStatus {
+    fn is_vblank(&self) -> bool;
+}
+
+impl PPUStatus for u8 {
+    fn is_vblank(&self) -> bool {
+        return self & 0x80 != 0;
+    }
+}
+
+
 const COLOUR_PALETTE_BASE_ADDRESS: u16 = 0x3F00;
 pub struct AttributeTable<'a> {
     memory: &'a Memory,
@@ -59,6 +70,7 @@ impl<'a> AttributeTable<'a> {
 pub struct PPU {
     control_register: PPUCtrl,
     mask_register: PPUMask,
+    status_register: u8,
     memory: Box<Memory>,
     screen: Box<Screen>,
     vram_pointer: u16,
@@ -66,13 +78,22 @@ pub struct PPU {
 
     pattern_tables_changed: bool,
     name_tables_changed: bool,
+
+    cycle_count: u32,
 }
+
+const PPU_CYCLES_PER_CPU_CYCLE: u32 = 3;
+const PPU_CYCLES_PER_SCANLINE: u32 = 341;
+const SCANLINES_PER_VBLANK: u32 = 20;
+const SCANLINES_PER_FRAME: u32 = 262;
+const PPU_CYCLES_PER_VISIBLE_FRAME: u32 = (SCANLINES_PER_FRAME-SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE;
 
 impl PPU {
     pub fn new(memory: Box<Memory>, screen: Box<Screen>) -> PPU {
         PPU {
             control_register: PPUCtrl::new(),
             mask_register: PPUMask { value: 0 },
+            status_register: 0,
             memory: memory,
             screen: screen,
             vram_pointer: 0,
@@ -80,6 +101,8 @@ impl PPU {
 
             pattern_tables_changed: true,
             name_tables_changed: true,
+
+            cycle_count: 0,
         }
     }
 
@@ -93,6 +116,10 @@ impl PPU {
 
     pub fn set_ppu_mask(&mut self, value: u8) {
         self.mask_register.value = value;
+    }
+
+    pub fn status(&self) -> u8 {
+        return self.status_register;
     }
 
     pub fn set_vram(&mut self, value: u8) {
@@ -131,6 +158,24 @@ impl PPU {
         }
 
         self.vram_pointer = current_vram;
+    }
+
+    /**
+     * Returns true if a VBLANK should be generated.
+     */
+    pub fn update(&mut self, cpu_cycle_count: u32) -> bool {
+        self.draw();
+        self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
+        if !self.status_register.is_vblank() && self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME {
+            self.status_register = self.status_register | 0x80;
+            return true;
+        } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
+            self.status_register = self.status_register & 0x7F;
+            self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
+            return false
+        } else {
+            return false;
+        }
     }
 
     pub fn draw(&mut self) {
@@ -219,9 +264,40 @@ impl PPU {
 pub mod tests {
     use memory::{Memory, BasicMemory};
     use super::screen::{Pattern, Screen, Tile};
-    use super::PPU;
+    use super::{PPU, PPUStatus};
 
     use super::AttributeTable;
+
+    #[test]
+    fn test_vblank() {
+        let mut ppu = PPU::new(box BasicMemory::new(), box PPUTestScreen::new());
+        assert_eq!(false, ppu.update(45)); //cycle count = 135
+        assert_eq!(true, ppu.update(27_508-45)); //cycle count = 82_524
+
+        assert_eq!(true, ppu.status().is_vblank());
+
+        assert_eq!(false, ppu.update(50)); //cycle count = 82 674
+        assert_eq!(true, ppu.status().is_vblank());
+
+        assert_eq!(false, ppu.update(2_223));  //cycle count = 89 343
+        assert_eq!(false, ppu.status().is_vblank());
+
+        //89 342 ppu cycles per frame
+        //Total cpu cycles 29_781 = 89_343 ppu cycles
+        assert_eq!(false, ppu.update(45)); // cycle count = 136
+
+        assert_eq!(true, ppu.update(27_462)); //cycle count = 82 522
+        assert_eq!(true, ppu.status().is_vblank());
+
+        assert_eq!(false, ppu.update(50)); //cycle count = 82 672
+        assert_eq!(true, ppu.status().is_vblank());
+
+        assert_eq!(false, ppu.update(2_223)); //cycle count = 89 341
+        assert_eq!(true, ppu.status().is_vblank());
+
+        assert_eq!(false, ppu.update(1));
+        assert_eq!(false, ppu.status().is_vblank());
+    }
 
     #[test]
     fn test_attribute_table() {
