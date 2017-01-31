@@ -170,35 +170,16 @@ pub fn start() {
 
 
     for i in 0..30 {
-        screen.update_tile(0, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
-//        screen.update_tile(32, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
+        screen.update_tile(1, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
     }
 
-//    for i in 30..60 {
-//        screen.update_tile(0, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
-////        screen.update_tile(32, i, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
-//    }
+    for i in 0..32 {
+        screen.update_tile(i, 1, &Tile { pattern_index: (i % 10) as u32+1, palette_index: 0 });
+    }
 
-    screen.set_background_offset(10, 10);
-    let mut y_scroll = 0;
-    let mut x_scroll = 0;
+    screen.set_background_offset(8, 8);
     screen.draw();
     loop {
-
         std::thread::sleep(Duration::from_millis(50));
-
-//        y_scroll += 1;
-//        x_scroll += 1;
-//        screen.set_background_offset(x_scroll, y_scroll);
-//        screen.draw();
     }
-//    screen.draw();
-//    for row in 0..32 {
-//        for col in 0..30 {
-//            screen.draw();
-//
-//            screen.update_tile(col, row, &Tile { pattern_index: 1, palette_index: 0});
-//            std::thread::sleep(Duration::from_millis(50));
-//        }
-//    }
 }

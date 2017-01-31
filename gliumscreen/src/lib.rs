@@ -84,7 +84,7 @@ struct Pixel {
 }
 
 impl Pixel {
-    fn new(left: f32, top: f32, size: f32, texture: u32) -> Pixel {
+    fn new(left: f32, top: f32, texture: u32) -> Pixel {
         Pixel {
             vertices: [
                 Vertex { position: [left, top], vertex_index: 0, text_coords: [0.0, 0.0], texture_index: texture},
@@ -139,13 +139,12 @@ impl GliumScreen {
 
         let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
 
-        let tile_size: f32 = 1.0;//2.0 / (SCREEN_WIDTH as f32) * 8.0;
         let tiles: Vec<Vec<Pixel>> = (0..AREA_HEIGHT_IN_TILES)
             .map(|row| {
                 let top = row; //if row >= 30 { row + 2 } else { row };
                 (0..AREA_WIDTH_IN_TILES)
                     .map(|col| {
-                        Pixel::new(col as f32, -(top as f32), tile_size, 0)
+                        Pixel::new(col as f32, -(top as f32), 0)
                     })
                     .collect()
             })
@@ -315,13 +314,12 @@ impl Screen for GliumScreen {
 
     fn set_background_offset(&mut self, x: usize, y: usize) {
         self.x_offset = (x % 512) as f32 / 8.0;
-        self.y_offset = -(((y+240) % 480) as f32 / 8.0);
+        self.y_offset = -(((240 - y) % 480) as f32 / 8.0);
     }
 
     fn draw(&mut self) {
         let mut target = self.display.draw();
 
-        let scale = 1.0/(2.0 / (SCREEN_WIDTH as f32) * 8.0);
         target.draw(
             &self.vertex_buffer,
             &self.index_buffer,
@@ -347,7 +345,7 @@ impl Screen for GliumScreen {
                     [1.0,           0.0, 0.0, 0.0],
                     [0.0,           1.0, 0.0, 0.0],
                     [0.0,           0.0, 1.0, 0.0],
-                    [self.x_offset, self.y_offset, 0.0, 1.0],
+                    [-self.x_offset, self.y_offset, 0.0, 1.0],
                 ],
             },
             &glium::DrawParameters {

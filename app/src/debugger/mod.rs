@@ -25,7 +25,7 @@ pub fn start() {
     let file = File::open(&args[2]).unwrap();
     let rom_file = box INes::from_file(file);
     rom_file.load(memory.as_mut());
-    let mut ppu_memory = rom_file.ppu_memory();
+    let ppu_memory = rom_file.ppu_memory();
 
     let ppu = match args.iter().find(|arg| arg.trim() == "-g") {
         Some(_) => PPU::new(
