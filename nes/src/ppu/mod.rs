@@ -228,32 +228,40 @@ impl PPU {
 
             //Tiles
             if self.name_tables_changed {
-                let mut name_table = self.control_register.base_name_table();
-                for row in 0..30 {
-                    for col in 0..32 {
-                        let pattern_table_address = self.memory.get(name_table) as u32;
-                        let colour_palette_index = {
-                            let attribute_table = AttributeTable {
-                                memory: &(*self.memory),
-                                address: 0x23C0,
-                            };
-                            attribute_table.get_palette_index(row, col)
-                        };
-                        self.screen.update_tile(
-                            col as usize,
-                            row as usize,
-                            &Tile {
-                                pattern_index: pattern_table_address,
-                                palette_index: colour_palette_index
-                            }
-                        );
-
-                        name_table += 1;
-                    }
-                }
+                self.update_tile_for_nametable(0);
+                self.update_tile_for_nametable(1);
+                self.update_tile_for_nametable(2);
+                self.update_tile_for_nametable(3);
                 self.name_tables_changed = false;
             }
             self.screen.draw();
+        }
+    }
+
+    fn update_tile_for_nametable(&mut self, name_table_index: u16) {
+        let name_table_base = 0x2000 + name_table_index*0x400;
+        let mut name_table = name_table_base;
+        for row in 0..30 {
+            for col in 0..32 {
+                let pattern_table_address = self.memory.get(name_table) as u32;
+                let colour_palette_index = {
+                    let attribute_table = AttributeTable {
+                        memory: &(*self.memory),
+                        address: name_table_base + 0x3C0,
+                    };
+                    attribute_table.get_palette_index(row, col)
+                };
+                self.screen.update_tile(
+                    (32*(name_table_index % 2) + col) as usize,
+                    (30*(name_table_index / 2) + row) as usize,
+                    &Tile {
+                        pattern_index: pattern_table_address,
+                        palette_index: colour_palette_index
+                    }
+                );
+
+                name_table += 1;
+            }
         }
     }
 
@@ -466,6 +474,13 @@ pub mod tests {
             (3, 0, Tile { pattern_index: 0, palette_index: 1}),
             (2, 1, Tile { pattern_index: 0, palette_index: 1}),
             (3, 1, Tile { pattern_index: 0, palette_index: 1}),
+
+            (0, 30, Tile { pattern_index: 0, palette_index: 0}),
+            (1, 30, Tile { pattern_index: 0x10, palette_index: 0}),
+            (2, 30, Tile { pattern_index: 0x20, palette_index: 1}),
+            (3, 30, Tile { pattern_index: 0, palette_index: 1}),
+            (2, 31, Tile { pattern_index: 0, palette_index: 1}),
+            (3, 31, Tile { pattern_index: 0, palette_index: 1}),
         );
         let screen = PPUTestScreen::new();
         let mut ppu = PPU::new(box BasicMemory::new(), box screen.clone());
@@ -480,6 +495,17 @@ pub mod tests {
         ppu.write_to_vram(0x20);
 //        //0x23C0 => 0b00_00_01_00
         ppu.set_vram(0x23);
+        ppu.set_vram(0xC0);
+        ppu.write_to_vram(0b00_00_01_00);
+
+
+        ppu.set_vram(0x28);
+        ppu.set_vram(0x00);
+        ppu.write_to_vram(0x00);
+        ppu.write_to_vram(0x10);
+        ppu.write_to_vram(0x20);
+
+        ppu.set_vram(0x2B);
         ppu.set_vram(0xC0);
         ppu.write_to_vram(0b00_00_01_00);
 
