@@ -118,8 +118,10 @@ impl PPU {
         self.mask_register.value = value;
     }
 
-    pub fn status(&self) -> u8 {
-        return self.status_register;
+    pub fn status(&mut self) -> u8 {
+        let status_register = self.status_register;
+        self.status_register &= 0x7F;
+        return status_register;
     }
 
     pub fn set_vram(&mut self, value: u8) {
@@ -269,34 +271,43 @@ pub mod tests {
     use super::AttributeTable;
 
     #[test]
+    fn reading_status_register_should_clear_vblank() {
+        let mut ppu = PPU::new(box BasicMemory::new(), box PPUTestScreen::new());
+        ppu.status_register = 0b1100_0000;
+
+        assert_eq!(true, ppu.status().is_vblank());
+        assert_eq!(0b0100_0000, ppu.status_register);
+    }
+
+    #[test]
     fn test_vblank() {
         let mut ppu = PPU::new(box BasicMemory::new(), box PPUTestScreen::new());
         assert_eq!(false, ppu.update(45)); //cycle count = 135
         assert_eq!(true, ppu.update(27_508-45)); //cycle count = 82_524
 
-        assert_eq!(true, ppu.status().is_vblank());
+        assert_eq!(true, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(50)); //cycle count = 82 674
-        assert_eq!(true, ppu.status().is_vblank());
+        assert_eq!(true, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(2_223));  //cycle count = 89 343
-        assert_eq!(false, ppu.status().is_vblank());
+        assert_eq!(false, ppu.status_register.is_vblank());
 
         //89 342 ppu cycles per frame
         //Total cpu cycles 29_781 = 89_343 ppu cycles
         assert_eq!(false, ppu.update(45)); // cycle count = 136
 
         assert_eq!(true, ppu.update(27_462)); //cycle count = 82 522
-        assert_eq!(true, ppu.status().is_vblank());
+        assert_eq!(true, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(50)); //cycle count = 82 672
-        assert_eq!(true, ppu.status().is_vblank());
+        assert_eq!(true, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(2_223)); //cycle count = 89 341
-        assert_eq!(true, ppu.status().is_vblank());
+        assert_eq!(true, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(1));
-        assert_eq!(false, ppu.status().is_vblank());
+        assert_eq!(false, ppu.status_register.is_vblank());
     }
 
     #[test]
