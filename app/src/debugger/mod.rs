@@ -70,6 +70,13 @@ pub fn start() {
                     None => println!("Please specify address"),
                 };
             },
+            "run" => {
+                let cycle: u64 = cmd.arg(1).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+                while nes.cycle_count < cycle {
+                    nes.execute(memory.as_mut());
+                    println!("Cycle count: {}", nes.cycle_count);
+                }
+            },
             "pattern" => {
                 match cmd.hex_arg(1) {
                     Some(pattern) => {
