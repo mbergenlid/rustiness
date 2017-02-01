@@ -72,10 +72,16 @@ pub fn start() {
             },
             "run" => {
                 let cycle: u64 = cmd.arg(1).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+                use std::time::Instant;
+                let start = Instant::now();
                 while nes.cycle_count < cycle {
                     nes.execute(memory.as_mut());
-                    println!("Cycle count: {}", nes.cycle_count);
                 }
+                println!(
+                    "Took {}.{} seconds",
+                    start.elapsed().as_secs(),
+                    start.elapsed().subsec_nanos()
+                );
             },
             "pattern" => {
                 match cmd.hex_arg(1) {
