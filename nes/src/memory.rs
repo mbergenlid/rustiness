@@ -59,6 +59,8 @@ impl <'a> Memory for CPUMemory<'a> {
             self.ppu.set_ppu_ctrl(value);
         } else if address == 0x2001 {
             self.ppu.set_ppu_mask(value);
+        } else if address == 0x2005 {
+            self.ppu.set_scroll(value);
         } else if address == 0x2006 {
             self.ppu.set_vram(value);
         } else if address == 0x2007 {
