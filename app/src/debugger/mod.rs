@@ -145,25 +145,24 @@ fn print(nes: &nes::NES) {
     print_cpu_and_ppu(nes);
 }
 
+use std::io::{BufReader, BufRead};
 fn print_cpu_and_ppu(nes: &nes::NES) {
-    use nes::cpu;
     let cpu = &nes.cpu;
     let ppu = &nes.ppu;
-    println!("CPU:\t\t\t\t\t|\tPPU:");
-    println!("\tProgram counter:  0x{:4X}\t|\t\tControl register: 0b{:08b}", cpu.program_counter(), ppu.ppu_ctrl());
-    println!("\tProcessor status: N O B D I Z C\t|\t\tVRAM Pointer: 0x{:08x}", ppu.vram());
-    println!("\t                  {} {} {} {} {} {} {}\t|",
-             cpu.is_flag_set(cpu::NEGATIVE_FLAG) as u8,
-             cpu.is_flag_set(cpu::OVERFLOW_FLAG) as u8,
-             cpu.is_flag_set(cpu::BREAK_FLAG) as u8 ,
-             cpu.is_flag_set(cpu::DECIMAL_FLAG) as u8,
-             cpu.is_flag_set(cpu::INTERRUPT_DISABLE_FLAG) as u8,
-             cpu.is_flag_set(cpu::ZERO_FLAG) as u8,
-             cpu.is_flag_set(cpu::CARRY_FLAG) as u8
-    );
-    println!("\tAccumulator:      0x{:02X}\t\t|", cpu.accumulator());
-    println!("\tRegister X:       0x{:02X}\t\t|", cpu.register_x());
-    println!("\tRegister Y:       0x{:02X}\t\t|", cpu.register_y());
+
+    let mut cpu_buffer = Vec::new();
+    cpu_buffer.write_fmt(format_args!("{}", cpu)).unwrap();
+    let mut ppu_buffer = Vec::new();
+    ppu_buffer.write_fmt(format_args!("{}", ppu)).unwrap();
+
+    let cpu_buf_reader = BufReader::new(cpu_buffer.as_slice());
+    let ppu_buf_reader = BufReader::new(ppu_buffer.as_slice());
+
+    let mut ppu_lines = ppu_buf_reader.lines();
+    for line in cpu_buf_reader.lines() {
+        print!("{}\t", line.unwrap());
+        println!("{}", ppu_lines.next().map(|r| r.unwrap()).unwrap_or(String::new()));
+    }
 }
 
 fn print_next_instruction(nes: &nes::NES, memory: &Memory) {

@@ -43,6 +43,33 @@ impl PartialEq for CPU {
     }
 }
 
+use std::fmt::{Formatter, Error, Display};
+impl Display for CPU {
+    fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
+        formatter.write_str("CPU:\t\t\t\t\t|\n").unwrap();
+        formatter.write_fmt(
+            format_args!("\tProgram counter:  0x{:4X}\t|\n", self.program_counter)
+        ).unwrap();
+
+        formatter.write_str("\tProcessor status: N O B D I Z C\t|\n").unwrap();
+        formatter.write_fmt(format_args!("\t                  {} {} {} {} {} {} {}\t|\n",
+                 self.is_flag_set(NEGATIVE_FLAG) as u8,
+                 self.is_flag_set(OVERFLOW_FLAG) as u8,
+                 self.is_flag_set(BREAK_FLAG) as u8 ,
+                 self.is_flag_set(DECIMAL_FLAG) as u8,
+                 self.is_flag_set(INTERRUPT_DISABLE_FLAG) as u8,
+                 self.is_flag_set(ZERO_FLAG) as u8,
+                 self.is_flag_set(CARRY_FLAG) as u8,
+        )).unwrap();
+        formatter.write_fmt(
+            format_args!("\tAccumulator:      0x{:02X}\t\t|\n", self.accumulator())).unwrap();
+        formatter.write_fmt(
+            format_args!("\tRegister X:       0x{:02X}\t\t|\n", self.register_x())).unwrap();
+        formatter.write_fmt(
+            format_args!("\tRegister Y:       0x{:02X}\t\t|\n", self.register_y()))
+    }
+}
+
 impl CPU {
 
     pub fn new() -> CPU {

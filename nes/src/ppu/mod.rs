@@ -86,6 +86,21 @@ pub struct PPU {
     cycle_count: u32,
 }
 
+use std::fmt::{Formatter, Error, Display};
+impl Display for PPU {
+    fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
+        formatter.write_str("PPU:\n").unwrap();
+        formatter.write_fmt(
+            format_args!("\tControl register: 0b{:08b}\n", self.ppu_ctrl())).unwrap();
+        formatter.write_fmt(
+            format_args!("\tVRAM Pointer:     0x{:08x}\t\n", self.vram())).unwrap();
+        formatter.write_fmt(
+            format_args!("\tStatus register:  0b{:08b}\t\n", self.status_register)).unwrap();
+        formatter.write_fmt(
+            format_args!("\tscroll (x, y):    ({}, {})\t\n", self.x_scroll, self.y_scroll))
+    }
+}
+
 const PPU_CYCLES_PER_CPU_CYCLE: u32 = 3;
 const PPU_CYCLES_PER_SCANLINE: u32 = 341;
 const SCANLINES_PER_VBLANK: u32 = 20;
