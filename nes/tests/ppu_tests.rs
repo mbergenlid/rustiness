@@ -7,6 +7,21 @@ use nes::memory::BasicMemory;
 use nes::ppu::PPU;
 
 #[test]
+fn test_scroll_and_vram() {
+    let screen = PPUTestScreen::new();
+    let mut ppu = PPU::new(box BasicMemory::new(), box screen.clone());
+    ppu.set_ppu_mask(0x08);
+
+    ppu.set_scroll(0x02);
+    ppu.set_scroll(0x01);
+
+    ppu.draw();
+
+    assert_eq!(0x2, screen.data().x_scroll);
+    assert_eq!(0x1, screen.data().y_scroll);
+}
+
+#[test]
 fn write_to_name_table() {
     let expected_tiles: Vec<(usize, usize, Tile)> = vec!(
         (0, 0, Tile { pattern_index: 0, palette_index: 0}),
@@ -184,7 +199,9 @@ struct PPUTestScreenData {
     tiles: Vec<(usize, usize, Tile)>,
     patterns: Vec<Pattern>,
     background: Option<u8>,
-    palettes: Vec<Vec<u8>>
+    palettes: Vec<Vec<u8>>,
+    x_scroll: usize,
+    y_scroll: usize,
 }
 
 use std::rc::Rc;
@@ -208,6 +225,8 @@ impl PPUTestScreen {
                     vec!(0, 0, 0),
                     vec!(0, 0, 0)
                 ),
+                x_scroll: 0,
+                y_scroll: 0
             })),
         }
     }
@@ -244,7 +263,8 @@ impl Screen for PPUTestScreen {
     fn draw(&mut self) {
         //            unimplemented!()
     }
-    fn set_background_offset(&mut self, _: usize, _: usize) {
-        unimplemented!()
+    fn set_background_offset(&mut self, x: usize, y: usize) {
+        self.data.borrow_mut().x_scroll = x;
+        self.data.borrow_mut().y_scroll = y;
     }
 }

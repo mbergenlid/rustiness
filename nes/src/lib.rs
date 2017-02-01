@@ -30,8 +30,15 @@ impl NES {
 
     pub fn execute(&mut self, memory: &mut BasicMemory) {
         let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut CPUMemory::new(&mut self.ppu, memory));
-        self.ppu.update(cycles as u32);
+        let nmi = self.ppu.update(cycles as u32);
         self.cycle_count += cycles as u64;
+
+        if nmi {
+            let cycles =
+                instructions::nmi(&mut self.cpu, &mut CPUMemory::new(&mut self.ppu, memory)) as u64;
+            self.ppu.update(cycles as u32);
+            self.cycle_count += cycles;
+        }
     }
 
 }

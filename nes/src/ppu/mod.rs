@@ -15,6 +15,10 @@ impl PPUCtrl {
         (self.value & 0x10) as u16
     }
 
+    fn nmi_enabled(&self) -> bool {
+        (self.value & 0x80) != 0
+    }
+
 }
 
 struct PPUMask {
@@ -73,6 +77,9 @@ pub struct PPU {
     vram_pointer: u16,
     vram_high_byte: bool,
 
+    x_scroll: u8,
+    y_scroll: u8,
+
     pattern_tables_changed: bool,
     name_tables_changed: bool,
 
@@ -94,6 +101,8 @@ impl PPU {
             memory: memory,
             screen: screen,
             vram_pointer: 0,
+            x_scroll: 0,
+            y_scroll: 0,
             vram_high_byte: true, //Big Endian
 
             pattern_tables_changed: true,
@@ -118,6 +127,7 @@ impl PPU {
     pub fn status(&mut self) -> u8 {
         let status_register = self.status_register;
         self.status_register &= 0x7F;
+        self.vram_high_byte = true;
         return status_register;
     }
 
@@ -134,6 +144,16 @@ impl PPU {
 
     pub fn vram(&self) -> u16 {
         self.vram_pointer
+    }
+
+    pub fn set_scroll(&mut self, value: u8) {
+        if self.vram_high_byte {
+            self.x_scroll = value;
+            self.vram_high_byte = false;
+        } else {
+            self.y_scroll = value;
+            self.vram_high_byte = true;
+        }
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
@@ -166,7 +186,7 @@ impl PPU {
         self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
         if !self.status_register.is_vblank() && self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME {
             self.status_register = self.status_register | 0x80;
-            return true;
+            return self.control_register.nmi_enabled();
         } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.status_register = self.status_register & 0x7F;
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
@@ -231,6 +251,8 @@ impl PPU {
                 self.update_tile_for_nametable(3);
                 self.name_tables_changed = false;
             }
+
+            self.screen.set_background_offset(self.x_scroll as usize, self.y_scroll as usize);
             self.screen.draw();
         }
     }
@@ -276,6 +298,16 @@ pub mod tests {
     use super::AttributeTable;
 
     #[test]
+    fn reading_status_register_should_reset_vram_high_byte() {
+        let mut ppu = PPU::new(box BasicMemory::new(), box ScreenMock::new());
+
+        ppu.set_vram(1);
+        assert_eq!(false, ppu.vram_high_byte);
+        ppu.status();
+        assert_eq!(true, ppu.vram_high_byte);
+    }
+
+    #[test]
     fn reading_status_register_should_clear_vblank() {
         let mut ppu = PPU::new(box BasicMemory::new(), box ScreenMock::new());
         ppu.status_register = 0b1100_0000;
@@ -285,8 +317,17 @@ pub mod tests {
     }
 
     #[test]
+    fn should_not_cause_nmi_if_disabled() {
+        let mut ppu = PPU::new(box BasicMemory::new(), box ScreenMock::new());
+        ppu.set_ppu_ctrl(0x00); //Disable NMI
+
+        assert_eq!(false, ppu.update(29_000));
+    }
+
+    #[test]
     fn test_vblank() {
         let mut ppu = PPU::new(box BasicMemory::new(), box ScreenMock::new());
+        ppu.set_ppu_ctrl(0x80);
         assert_eq!(false, ppu.update(45)); //cycle count = 135
         assert_eq!(true, ppu.update(27_508-45)); //cycle count = 82_524
 
