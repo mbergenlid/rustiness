@@ -11,7 +11,7 @@ pub fn debug_instruction(op_code: u8, cpu: &CPU, memory: &Memory) {
     cloned_cpu.get_and_increment_pc();
     match OP_CODES.iter().find(|opd| opd.0 == op_code) {
         Some(&OpCodeDebug(_, name, args)) => println!("Next instruction: {} (0x{:x}): {}", name, op_code, args(&mut cloned_cpu, memory)),
-        None => println!("Next instruction is unknown"),
+        None => println!("Next instruction is unknown: {:x}", op_code),
     }
 }
 
@@ -19,7 +19,7 @@ fn debug_immediate(addressing_mode: AddressingMode, memory: &Memory) -> String {
     return format!("address 0x{:x} = 0x{:x}", addressing_mode.operand_address, memory.get(addressing_mode.operand_address));
 }
 
-const OP_CODES: [OpCodeDebug; 151] = [
+const OP_CODES: [OpCodeDebug; 154] = [
     OpCodeDebug(nes::opcodes::ADC_IMMEDIATE         , "ADC_IMMEDIATE", &|cpu, memory| debug_immediate(AddressingMode::immediate(cpu), memory)),
     OpCodeDebug(nes::opcodes::ADC_ZERO_PAGE         , "ADC_ZERO_PAGE", &|cpu, memory| debug_immediate(AddressingMode::zero_paged(cpu, memory), memory)),
     OpCodeDebug(nes::opcodes::ADC_ZERO_PAGE_X       , "ADC_ZERO_PAGE_X", &|cpu, memory| debug_immediate(AddressingMode::zero_paged_x(cpu, memory), memory)),
@@ -171,4 +171,7 @@ const OP_CODES: [OpCodeDebug; 151] = [
     OpCodeDebug(nes::opcodes::STY_ZERO_PAGE         , "STY_ZERO_PAGE", &|cpu, memory| debug_immediate(AddressingMode::zero_paged(cpu, memory), memory)),
     OpCodeDebug(nes::opcodes::STY_ZERO_PAGE_X       , "STY_ZERO_PAGE_X", &|cpu, memory| debug_immediate(AddressingMode::zero_paged_x(cpu, memory), memory)),
     OpCodeDebug(nes::opcodes::STY_ABSOLUTE          , "STY_ABSOLUTE", &|cpu, memory| debug_immediate(AddressingMode::absolute(cpu, memory), memory)),
+    OpCodeDebug(nes::opcodes::ISC_INDIRECT_X        , "ISC_INDIRECT_X", &|cpu, memory| debug_immediate(AddressingMode::indirect_x(cpu, memory), memory)),
+    OpCodeDebug(nes::opcodes::ISC_ABSOLUTE_X        , "ISC_ABSOLUTE_X", &|cpu, memory| debug_immediate(AddressingMode::absolute_x(cpu, memory), memory)),
+    OpCodeDebug(nes::opcodes::SRE_INDIRECT_X        , "SRE_INDIRECT_X", &|cpu, memory| debug_immediate(AddressingMode::absolute_x(cpu, memory), memory)),
 ];
