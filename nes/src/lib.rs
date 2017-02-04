@@ -8,7 +8,7 @@ pub mod ppu;
 pub mod ines;
 
 use cpu::CPU;
-use memory::{BasicMemory, CPUMemory};
+use memory::{BasicMemory, CPUMemory, Memory};
 use ppu::PPU;
 
 pub struct NES {
@@ -19,9 +19,14 @@ pub struct NES {
 }
 
 impl NES {
-    pub fn new(ppu: PPU) -> NES {
+    pub fn new(ppu: PPU, memory: &Memory) -> NES {
+        let cpu_start = {
+            let lsbs: u8 = memory.get(0xFFFC);
+            let msbs: u8 = memory.get(0xFFFD);
+            (msbs as u16) << 8 | lsbs as u16
+        };
         NES {
-            cpu: CPU::new(),
+            cpu: CPU::new(cpu_start),
             cycle_count: 0,
             ppu: ppu,
             op_codes: opcodes::OpCodes::new(),

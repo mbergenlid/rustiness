@@ -37,7 +37,7 @@ pub fn start() {
             box ScreenMock::new()
         )
     };
-    let mut nes = nes::NES::new(ppu);
+    let mut nes = nes::NES::new(ppu, memory.as_ref());
 
 
     loop {
