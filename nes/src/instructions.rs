@@ -185,3 +185,19 @@ pub fn cpy(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) 
     cpu.cmp_register_y(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
+
+//Unofficial
+pub fn isc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+    let new_value = cpu.increment(memory.get(addressing_mode.operand_address));
+    memory.set(addressing_mode.operand_address, new_value);
+    cpu.sub_accumulator(new_value);
+    3 + addressing_mode.cycles
+}
+
+const DO_NOT_KNOW: u8 = 0;
+pub fn sre(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+    let new_value = cpu.logical_shift_right(memory.get(addressing_mode.operand_address));
+    memory.set(addressing_mode.operand_address, new_value);
+    cpu.xor_accumulator(memory.get(addressing_mode.operand_address));
+    DO_NOT_KNOW
+}

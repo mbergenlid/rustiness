@@ -11,7 +11,7 @@ pub struct OpCodes {
 impl OpCodes {
     pub fn new() -> OpCodes {
         let mut codes: Vec<Option<Instruction>> = vec![];
-        for _ in 0..0xFF {
+        for _ in 0..0x100 {
             codes.push(None);
         }
 
@@ -38,7 +38,7 @@ impl OpCodes {
 type Instruction = &'static Fn(&mut CPU, &mut Memory) -> u8;
 struct OpCodeInstruction(OpCode, &'static Fn(&mut CPU, &mut Memory) -> u8);
 
-const OP_CODES: [OpCodeInstruction; 151] = [
+const OP_CODES: [OpCodeInstruction; 156] = [
     OpCodeInstruction(ADC_IMMEDIATE         , &|cpu, memory| instructions::adc(AddressingMode::immediate(cpu), cpu, memory)),
     OpCodeInstruction(ADC_ZERO_PAGE         , &|cpu, memory| instructions::adc(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
     OpCodeInstruction(ADC_ZERO_PAGE_X       , &|cpu, memory| instructions::adc(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
@@ -189,7 +189,13 @@ const OP_CODES: [OpCodeInstruction; 151] = [
     OpCodeInstruction(STX_ABSOLUTE          , &|cpu, memory| {instructions::stx(AddressingMode::absolute(cpu, memory), cpu, memory); 4}),
     OpCodeInstruction(STY_ZERO_PAGE         , &|cpu, memory| {instructions::sty(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}),
     OpCodeInstruction(STY_ZERO_PAGE_X       , &|cpu, memory| {instructions::sty(AddressingMode::zero_paged_x(cpu, memory), cpu, memory); 4}),
-    OpCodeInstruction(STY_ABSOLUTE          , &|cpu, memory| {instructions::sty(AddressingMode::absolute(cpu, memory), cpu, memory); 4})
+    OpCodeInstruction(STY_ABSOLUTE          , &|cpu, memory| {instructions::sty(AddressingMode::absolute(cpu, memory), cpu, memory); 4}),
+
+    OpCodeInstruction(ISC_INDIRECT_X        , &|cpu, memory| {instructions::isc(AddressingMode::indirect_x(cpu, memory), cpu, memory)}),
+    OpCodeInstruction(IGN_INDIRECT_X_1      , &|cpu, memory| {AddressingMode::indirect_x(cpu, memory); 4}),
+    OpCodeInstruction(IGN_INDIRECT_X_3      , &|cpu, memory| {AddressingMode::indirect_x(cpu, memory); 4}),
+    OpCodeInstruction(ISC_ABSOLUTE_X        , &|cpu, memory| {instructions::isc(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
+    OpCodeInstruction(SRE_INDIRECT_X        , &|cpu, memory| {instructions::sre(AddressingMode::indirect_x(cpu, memory), cpu, memory); 6}),
 ];
 
 pub type OpCode = u8;
@@ -345,6 +351,15 @@ pub const STX_ABSOLUTE: OpCode = 0x8E;
 pub const STY_ZERO_PAGE: OpCode = 0x84;
 pub const STY_ZERO_PAGE_X: OpCode = 0x94;
 pub const STY_ABSOLUTE: OpCode = 0x8C;
+
+
+//Unofficial opcodes
+pub const ISC_INDIRECT_X: OpCode = 0xE3;
+pub const IGN_INDIRECT_X_1: OpCode = 0x14;
+pub const IGN_INDIRECT_X_3: OpCode = 0x54;
+pub const ISC_ABSOLUTE_X: OpCode = 0xFF;
+pub const SRE_INDIRECT_X: OpCode = 0x57;
+
 
 #[cfg(test)]
 mod tests {
