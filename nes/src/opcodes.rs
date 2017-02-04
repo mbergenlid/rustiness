@@ -358,7 +358,7 @@ mod tests {
 
     fn test_program(memory: &mut Memory, expected_cpu_states: &[cpu::CPU]) {
         let op_codes = super::OpCodes::new();
-        let mut cpu = cpu::CPU::new();
+        let mut cpu = cpu::CPU::new(0x8000);
 
         for &expected_cpu in expected_cpu_states.iter() {
             op_codes.execute_instruction(&mut cpu, memory);
@@ -408,11 +408,12 @@ mod tests {
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8004)
-                    .flags(cpu::ZERO_FLAG)
+                    .flags(0x34 | cpu::ZERO_FLAG)
                     .accumulator(0x00)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8006)
+//                    .flags(0x34 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
@@ -421,48 +422,48 @@ mod tests {
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8008)
-                    .flags(cpu::CARRY_FLAG)
+                    .flags(0x34 | cpu::CARRY_FLAG)
                     .accumulator(0x0A) //1010
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x800A)
-                    .flags(cpu::CARRY_FLAG)
+                    .flags(0x34 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x800B)
-                    .flags(cpu::CARRY_FLAG)
+                    .flags(0x34 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .register_x(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x800C)
-                    .flags(cpu::CARRY_FLAG)
+                    .flags(0x34 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .register_x(0x05)
                     .register_y(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x800E)
-                    .flags(cpu::CARRY_FLAG)
+                    .flags(0x34 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .register_x(0x05)
                     .register_y(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8010)
-                    .flags(cpu::CARRY_FLAG | cpu::ZERO_FLAG)
+                    .flags(0x34 | cpu::CARRY_FLAG | cpu::ZERO_FLAG)
                     .register_x(0x05)
                     .register_y(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8011)
-                    .flags(cpu::CARRY_FLAG | cpu::ZERO_FLAG)
+                    .flags(0x34 | cpu::CARRY_FLAG | cpu::ZERO_FLAG)
                     .register_y(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8013)
-                    .flags(cpu::CARRY_FLAG)
+                    .flags(0x34 | cpu::CARRY_FLAG)
                     .register_x(0x05)
                     .register_y(0x05)
                     .build()
@@ -559,13 +560,13 @@ mod tests {
                 cpu::CpuBuilder::new()
                     .program_counter(0x8020)
                     .stack_pointer(0xFD)
-                    .flags(cpu::BREAK_FLAG)
+                    .flags(0x34 | cpu::BREAK_FLAG)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8022)
                     .stack_pointer(0xFD)
                     .accumulator(0x01)
-                    .flags(cpu::BREAK_FLAG)
+                    .flags(0x34 | cpu::BREAK_FLAG)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8001)
@@ -610,7 +611,7 @@ mod tests {
 
     #[test]
     fn test_incrememnt_memory() {
-        let mut cpu = cpu::CPU::new();
+        let mut cpu = cpu::CPU::new(0x8000);
         let mut memory = &mut memory!(
             0x0010 => 5,
             0x8000 => 0xE6, //inc $10
@@ -622,7 +623,7 @@ mod tests {
     }
 
     fn test_instruction(memory: &mut Memory, expected_cpu: cpu::CPU) {
-        let mut cpu = cpu::CPU::new();
+        let mut cpu = cpu::CPU::new(0x8000);
         execute_instruction(&mut cpu, memory);
 
         assert_eq!(expected_cpu, cpu);
@@ -648,7 +649,7 @@ mod tests {
                     0x8001 => 0x06
                 );
 
-                let mut cpu = cpu::CPU::new();
+                let mut cpu = cpu::CPU::new(0x8000);
                 cpu.set_flags(flag);
                 execute_instruction(&mut cpu, &mut memory);
                 if negative {
@@ -664,7 +665,7 @@ mod tests {
                     0x8001 => 0b1111_1010 // -6
                 );
 
-                let mut cpu = cpu::CPU::new();
+                let mut cpu = cpu::CPU::new(0x8000);
                 cpu.set_flags(flag);
                 execute_instruction(&mut cpu, &mut memory);
                 if negative {
@@ -682,7 +683,7 @@ mod tests {
                     0x8001 => 0x06
                 );
 
-                let mut cpu = cpu::CPU::new();
+                let mut cpu = cpu::CPU::new(0x8000);
                 cpu.clear_flags(flag);
                 execute_instruction(&mut cpu, &mut memory);
                 if negative {
@@ -698,7 +699,7 @@ mod tests {
                     0x8001 => 0b1111_1010 // -6
                 );
 
-                let mut cpu = cpu::CPU::new();
+                let mut cpu = cpu::CPU::new(0x8000);
                 cpu.clear_flags(flag);
                 execute_instruction(&mut cpu, &mut memory);
                 if negative {

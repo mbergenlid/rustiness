@@ -71,15 +71,14 @@ impl Display for CPU {
 }
 
 impl CPU {
-
-    pub fn new() -> CPU {
+    pub fn new(start_address: u16) -> CPU {
         return CPU {
-            program_counter: 0x8000,
+            program_counter: start_address,
             stack_pointer: 0x00,
             accumulator: 0,
             register_x: 0,
             register_y: 0,
-            processor_status: 0
+            processor_status: 0x34,
         }
     }
 
@@ -391,7 +390,7 @@ pub struct CpuBuilder {
 impl CpuBuilder {
     pub fn new() -> CpuBuilder {
         CpuBuilder {
-            cpu: CPU::new(),
+            cpu: CPU::new(0x8000),
         }
     }
 

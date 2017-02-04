@@ -130,7 +130,7 @@ mod test {
             0x00AC => 0x0A
         );
 
-        let mut cpu = cpu::CPU::new();
+        let mut cpu = cpu::CPU::new(0x8000);
 
         let addressing = AddressingMode::zero_paged(&mut cpu, &memory);
         assert_eq!(0x00AC, addressing.operand_address);
@@ -139,7 +139,7 @@ mod test {
 
     #[test]
     fn test_immediate_addressing() {
-        let mut cpu = cpu::CPU::new();
+        let mut cpu = cpu::CPU::new(0x8000);
 
         let addressing = AddressingMode::immediate(&mut cpu);
         assert_eq!(0x8000, addressing.operand_address);
