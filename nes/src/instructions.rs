@@ -95,16 +95,19 @@ pub fn jmp(addressing_mode: AddressingMode, cpu: &mut CPU) {
 }
 
 pub fn brk(cpu: &mut CPU, memory: &mut Memory) -> u8 {
-    let current_pc = cpu.program_counter();
-    memory.set(cpu.push_stack(), (current_pc >> 8) as u8);
-    memory.set(cpu.push_stack(), current_pc as u8);
-    memory.set(cpu.push_stack(), cpu.processor_status());
+    if !cpu.is_flag_set(cpu::INTERRUPT_DISABLE_FLAG) {
+        let current_pc = cpu.program_counter();
+        memory.set(cpu.push_stack(), (current_pc >> 8) as u8);
+        memory.set(cpu.push_stack(), current_pc as u8);
+        memory.set(cpu.push_stack(), cpu.processor_status());
 
-    let lsbs: u8 = memory.get(0xFFFE);
-    let msbs: u8 = memory.get(0xFFFF);
-    cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
-    cpu.set_flags(cpu::BREAK_FLAG);
-    return 7;
+        let lsbs: u8 = memory.get(0xFFFE);
+        let msbs: u8 = memory.get(0xFFFF);
+        cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
+        cpu.set_flags(cpu::BREAK_FLAG);
+        return 7;
+    }
+    return 1;
 }
 
 pub fn nmi(cpu: &mut CPU, memory: &mut Memory) -> u8 {
