@@ -19,6 +19,25 @@ fn debug_immediate(addressing_mode: AddressingMode, memory: &Memory) -> String {
     return format!("address 0x{:x} = 0x{:x}", addressing_mode.operand_address, memory.get(addressing_mode.operand_address));
 }
 
+fn debug_indirect_y(cpu: &CPU, memory: &Memory) -> String {
+    let base_address = memory.get(cpu.program_counter()) as u16;
+    let lsb: u16 = memory.get(base_address) as u16;
+    let msb: u16 = memory.get(base_address+1) as u16;
+    let indexed_address: u32 = ((msb << 8) | lsb) as u32;
+
+    let operand_address = (indexed_address + cpu.register_y() as u32) as u16;
+
+    return format!(
+        "address 0x{:04x} -> 0x{:x} (Base: 0x{:02x} -> {:02x},{:02x} ({:04x}))",
+        operand_address,
+        memory.get(operand_address),
+        base_address,
+        lsb,
+        msb,
+        indexed_address
+    );
+}
+
 const OP_CODES: [OpCodeDebug; 154] = [
     OpCodeDebug(nes::opcodes::ADC_IMMEDIATE         , "ADC_IMMEDIATE", &|cpu, memory| debug_immediate(AddressingMode::immediate(cpu), memory)),
     OpCodeDebug(nes::opcodes::ADC_ZERO_PAGE         , "ADC_ZERO_PAGE", &|cpu, memory| debug_immediate(AddressingMode::zero_paged(cpu, memory), memory)),
@@ -99,7 +118,7 @@ const OP_CODES: [OpCodeDebug; 154] = [
     OpCodeDebug(nes::opcodes::LDA_ABSOLUTE_X        , "LDA_ABSOLUTE_X", &|cpu, memory| debug_immediate(AddressingMode::absolute_x(cpu, memory), memory)),
     OpCodeDebug(nes::opcodes::LDA_ABSOLUTE_Y        , "LDA_ABSOLUTE_Y", &|cpu, memory| debug_immediate(AddressingMode::absolute_y(cpu, memory), memory)),
     OpCodeDebug(nes::opcodes::LDA_INDIRECT_X        , "LDA_INDIRECT_X", &|cpu, memory| debug_immediate(AddressingMode::indirect_x(cpu, memory), memory)),
-    OpCodeDebug(nes::opcodes::LDA_INDIRECT_Y        , "LDA_INDIRECT_Y", &|cpu, memory| debug_immediate(AddressingMode::indirect_y(cpu, memory), memory)),
+    OpCodeDebug(nes::opcodes::LDA_INDIRECT_Y        , "LDA_INDIRECT_Y", &|cpu, memory| debug_indirect_y(cpu, memory)),
     OpCodeDebug(nes::opcodes::LDX_IMMEDIATE         , "LDX_IMMEDIATE", &|cpu, memory| debug_immediate(AddressingMode::immediate(cpu), memory)),
     OpCodeDebug(nes::opcodes::LDX_ZERO_PAGE         , "LDX_ZERO_PAGE", &|cpu, memory| debug_immediate(AddressingMode::zero_paged(cpu, memory), memory)),
     OpCodeDebug(nes::opcodes::LDX_ZERO_PAGE_Y       , "LDX_ZERO_PAGE_Y", &|cpu, memory| debug_immediate(AddressingMode::zero_paged_y(cpu, memory), memory)),
