@@ -46,7 +46,7 @@ fn write_to_name_table() {
     ppu.set_vram(0x20);
     ppu.set_vram(0x00);
 
-    ppu.write_to_vram(0x00);
+        ppu.write_to_vram(0x00);
     ppu.write_to_vram(0x10);
     ppu.write_to_vram(0x20);
     //        //0x23C0 => 0b00_00_01_00
@@ -83,10 +83,10 @@ fn write_to_name_table() {
 fn write_palettes() {
     let expected_background = 0x0E;
     let expected_palettes: Vec<Vec<u8>> = vec!(
-        vec!(0x0A, 0x0B, 0x0C),
-        vec!(0x1A, 0x1B, 0x1C),
-        vec!(0x2A, 0x2B, 0x2C),
-        vec!(0x3A, 0x3B, 0x3C),
+        vec!(0, 0x0A, 0x0B, 0x0C),
+        vec!(0, 0x1A, 0x1B, 0x1C),
+        vec!(0, 0x2A, 0x2B, 0x2C),
+        vec!(0, 0x3A, 0x3B, 0x3C),
     );
     let screen = PPUTestScreen::new();
     let mut ppu = PPU::new(box BasicMemory::new(), box screen.clone());
@@ -220,10 +220,10 @@ impl PPUTestScreen {
                 patterns: vec!(),
                 background: None,
                 palettes: vec!(
-                    vec!(0, 0, 0),
-                    vec!(0, 0, 0),
-                    vec!(0, 0, 0),
-                    vec!(0, 0, 0)
+                    vec!(0, 0, 0, 0),
+                    vec!(0, 0, 0, 0),
+                    vec!(0, 0, 0, 0),
+                    vec!(0, 0, 0, 0)
                 ),
                 x_scroll: 0,
                 y_scroll: 0
