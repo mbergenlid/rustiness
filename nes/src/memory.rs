@@ -35,36 +35,43 @@ impl Memory for BasicMemory {
     }
 }
 
+use std::cell::RefCell;
 pub struct CPUMemory<'a> {
     data: &'a mut BasicMemory,
-    ppu: &'a mut PPU,
+    ppu: RefCell<&'a mut PPU>,
 }
 
 impl <'a> CPUMemory<'a> {
     pub fn new(ppu: &'a mut PPU, memory: &'a mut BasicMemory) -> CPUMemory<'a> {
         CPUMemory {
             data: memory,
-            ppu: ppu,
+            ppu: RefCell::new(ppu),
         }
     }
 }
 
 impl <'a> Memory for CPUMemory<'a> {
     fn get(&self, address: Address) -> u8 {
-        self.data.get(address)
+        if address == 0x2000 {
+            self.ppu.borrow().ppu_ctrl()
+        } else if address == 0x2002 {
+            self.ppu.borrow_mut().status()
+        } else {
+            self.data.get(address)
+        }
     }
 
     fn set(&mut self, address: Address, value: u8) {
         if address == 0x2000 {
-            self.ppu.set_ppu_ctrl(value);
+            self.ppu.borrow_mut().set_ppu_ctrl(value);
         } else if address == 0x2001 {
-            self.ppu.set_ppu_mask(value);
+            self.ppu.borrow_mut().set_ppu_mask(value);
         } else if address == 0x2005 {
-            self.ppu.set_scroll(value);
+            self.ppu.borrow_mut().set_scroll(value);
         } else if address == 0x2006 {
-            self.ppu.set_vram(value);
+            self.ppu.borrow_mut().set_vram(value);
         } else if address == 0x2007 {
-            self.ppu.write_to_vram(value);
+            self.ppu.borrow_mut().write_to_vram(value);
         } else {
             self.data.set(address, value);
         }
