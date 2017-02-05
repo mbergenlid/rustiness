@@ -95,10 +95,9 @@ impl Pixel {
         }
     }
 
-    fn set_texture(&mut self, vertex_buffer: &mut glium::VertexBuffer<Vertex>, start_index: usize, texture: u32) {
+    fn set_texture(&mut self, texture: u32) {
         for index in 0..4 {
             self.vertices[index].texture_index = texture;
-            vertex_buffer.map_write().set(start_index + index, self.vertices[index]);
         }
     }
 }
@@ -274,10 +273,7 @@ impl GliumScreen {
 impl Screen for GliumScreen {
 
     fn update_tile(&mut self, x: usize, y: usize, tile: &Tile) {
-        let top = y;
-        let left = x;
-        let start_index = top*(AREA_WIDTH_IN_TILES as usize*4) + (left*4);
-        self.pixels[y][x].set_texture(&mut self.vertex_buffer, start_index, (tile.palette_index as u32)*512 + tile.pattern_index);
+        self.pixels[y][x].set_texture((tile.palette_index as u32)*512 + tile.pattern_index);
     }
 
     fn update_patterns(&mut self, patterns: &[Pattern]) {
@@ -319,6 +315,15 @@ impl Screen for GliumScreen {
 
     fn draw(&mut self) {
         let mut target = self.display.draw();
+
+        self.vertex_buffer = {
+            let shape: Vec<Vertex> = self.pixels.iter()
+                .flat_map(|p| p.iter())
+                .flat_map(|p| p.vertices.iter())
+                .map(|&v| v)
+                .collect();
+            glium::VertexBuffer::new(&self.display, &shape).unwrap()
+        };
 
         target.draw(
             &self.vertex_buffer,
