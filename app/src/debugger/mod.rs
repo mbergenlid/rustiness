@@ -4,8 +4,8 @@ mod opcodes;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
 use nes::ines::INes;
-use nes::ppu::PPU;
-use nes::ppu::screen::ScreenMock;
+use nes::ppu::{PPU, AttributeTable};
+use nes::ppu::screen::{ScreenMock, COLOUR_PALETTE};
 use gliumscreen::GliumScreen;
 
 use std::fs::File;
@@ -64,17 +64,18 @@ pub fn start() {
                         println!("Continuing to address 0x{:02X}", destination_address);
                         while nes.cpu.program_counter() != destination_address {
                             nes.execute(memory.as_mut());
-                            println!("Current Address: 0x{:02X}", nes.cpu.program_counter());
                         }
                     },
                     None => println!("Please specify address"),
                 };
             },
             "run" => {
-                let cycle: u64 = cmd.arg(1).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+                let cycles: u64 = cmd.arg(1).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+                let end_cycle = nes.cycle_count + cycles;
+                println!("Running to cycle {}", end_cycle);
                 use std::time::Instant;
                 let start = Instant::now();
-                while nes.cycle_count < cycle {
+                while nes.cycle_count < end_cycle {
                     nes.execute(memory.as_mut());
                 }
                 println!(
@@ -103,6 +104,7 @@ pub fn start() {
             "name-table" => {
                 let arg: u16 = cmd.arg(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
                 let base_address = 0x2000 + (arg*0x400);
+                println!("Name Table:");
                 for row in 0..30 {
                     for col in 0..32 {
                         let tile = nes.ppu.memory().get(base_address + row*32 + col);
@@ -110,7 +112,32 @@ pub fn start() {
                     }
                     println!("");
                 }
+                println!("Attribute Table:");
+                for row in 0..15 {
+                    for col in 0..16 {
+                        let colour_palette_index = {
+                            let attribute_table = AttributeTable {
+                                memory: nes.ppu.memory(),
+                                address: base_address + 0x3C0,
+                            };
+                            attribute_table.get_palette_index(row*2, col*2)
+                        };
+                        print!("{:02x} ", colour_palette_index);
+                    }
+                    println!("");
+                }
             },
+            "palette" => {
+                let palette: u16 = cmd.arg(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
+                for i in 0..4 {
+                    let palette_value = nes.ppu.memory().get(0x3F00 + 4*palette + i) as usize;
+                    println!("Palette value: {:x}: Colour {:?}", palette_value, COLOUR_PALETTE[palette_value]);
+                }
+            },
+            "mem" => {
+                let address = cmd.hex_arg(1).unwrap_or(0);
+                println!("Memory 0x{:04x} -> 0x{:02x}", address, memory.get(address));
+            }
             "exit" => break,
             _ => println!("Unknown cmd '{}'", cmd.name()),
         }
@@ -144,12 +171,15 @@ impl Command {
         let mut value: u16 = 0;
         for c in string.chars() {
             let digit = c as u16;
-            if digit < 0x30 || digit > 0x39 {
+            if digit >= 0x30 && digit <= 0x39 {
+                value = value*16 + (digit - 0x30);
+            } else if digit >= 0x41 && digit <= 0x46 {
+                value = value*16 + (digit - 0x41 + 10);
+            } else {
                 return None;
             }
-            value = value*16 + (digit - 0x30);
         }
-        return Some(value)
+        return Some(value);
     }
 }
 
