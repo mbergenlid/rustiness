@@ -357,7 +357,7 @@ impl CPU {
 
     pub fn get_and_increment_pc(&mut self) -> Address {
         let old_value = self.program_counter;
-        self.program_counter += 1;
+        self.program_counter = self.program_counter.wrapping_add(1);
         old_value
     }
 
