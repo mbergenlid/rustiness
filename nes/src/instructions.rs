@@ -20,7 +20,8 @@ pub fn inc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) 
 }
 
 pub fn dec(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
-    cpu.decrement(memory.get(addressing_mode.operand_address));
+    let new_value = cpu.decrement(memory.get(addressing_mode.operand_address));
+    memory.set(addressing_mode.operand_address, new_value);
     3 + addressing_mode.cycles
 }
 

@@ -12,11 +12,15 @@ impl PPUCtrl {
     fn new() -> PPUCtrl { PPUCtrl {value: 0} }
 
     fn background_pattern_table(&self) -> u16 {
-        (self.value & 0x10) as u16
+        ((self.value & 0x10) as u16) << 8
     }
 
     fn nmi_enabled(&self) -> bool {
         (self.value & 0x80) != 0
+    }
+
+    fn vram_pointer_increment(&self) -> u16 {
+        if self.value & 0x04 == 0 { 1 } else { 32 }
     }
 
 }
@@ -44,8 +48,8 @@ impl PPUStatus for u8 {
 
 const COLOUR_PALETTE_BASE_ADDRESS: u16 = 0x3F00;
 pub struct AttributeTable<'a> {
-    memory: &'a Memory,
-    address: u16
+    pub memory: &'a Memory,
+    pub address: u16
 }
 
 impl<'a> AttributeTable<'a> {
@@ -180,7 +184,7 @@ impl PPU {
             self.pattern_tables_changed = true;
         }
         self.memory.set(self.vram_pointer, value);
-        self.vram_pointer += 1;
+        self.vram_pointer += self.control_register.vram_pointer_increment();
     }
 
     pub fn load(&mut self, base_address: u16, rom: &[u8]) {

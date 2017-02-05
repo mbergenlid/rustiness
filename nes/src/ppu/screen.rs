@@ -59,7 +59,6 @@ impl Screen for ScreenMock {
     fn draw(&mut self) {
     }
     fn set_background_offset(&mut self, _: usize, _: usize) {
-        unimplemented!()
     }
 }
 
