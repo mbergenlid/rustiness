@@ -219,21 +219,21 @@ impl PPU {
             //Patterns
             if self.pattern_tables_changed {
                 self.screen.set_universal_background(self.memory.get(0x3F00));
-                self.screen.update_palette(0, 0, self.memory.get(0x3F01));
-                self.screen.update_palette(0, 1, self.memory.get(0x3F02));
-                self.screen.update_palette(0, 2, self.memory.get(0x3F03));
+                self.screen.update_palette(0, 1, self.memory.get(0x3F01));
+                self.screen.update_palette(0, 2, self.memory.get(0x3F02));
+                self.screen.update_palette(0, 3, self.memory.get(0x3F03));
 
-                self.screen.update_palette(1, 0, self.memory.get(0x3F05));
-                self.screen.update_palette(1, 1, self.memory.get(0x3F06));
-                self.screen.update_palette(1, 2, self.memory.get(0x3F07));
+                self.screen.update_palette(1, 1, self.memory.get(0x3F05));
+                self.screen.update_palette(1, 2, self.memory.get(0x3F06));
+                self.screen.update_palette(1, 3, self.memory.get(0x3F07));
 
-                self.screen.update_palette(2, 0, self.memory.get(0x3F09));
-                self.screen.update_palette(2, 1, self.memory.get(0x3F0A));
-                self.screen.update_palette(2, 2, self.memory.get(0x3F0B));
+                self.screen.update_palette(2, 1, self.memory.get(0x3F09));
+                self.screen.update_palette(2, 2, self.memory.get(0x3F0A));
+                self.screen.update_palette(2, 3, self.memory.get(0x3F0B));
 
-                self.screen.update_palette(3, 0, self.memory.get(0x3F0D));
-                self.screen.update_palette(3, 1, self.memory.get(0x3F0E));
-                self.screen.update_palette(3, 2, self.memory.get(0x3F0F));
+                self.screen.update_palette(3, 1, self.memory.get(0x3F0D));
+                self.screen.update_palette(3, 2, self.memory.get(0x3F0E));
+                self.screen.update_palette(3, 3, self.memory.get(0x3F0F));
 
                 let mut patterns = Vec::with_capacity(256);
                 for p_table in 0x00..0x100 {
