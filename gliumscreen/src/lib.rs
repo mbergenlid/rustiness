@@ -3,6 +3,7 @@ extern crate glium;
 extern crate nes;
 
 mod background;
+mod sprites;
 
 use glium::Surface;
 use glium::DisplayBuild;
@@ -17,6 +18,7 @@ const SCREEN_HEIGHT: u32 = 240;
 
 use nes::ppu::screen::{Screen, Tile, Pattern, COLOUR_PALETTE};
 use background::Background;
+use sprites::Sprites;
 
 pub struct GliumScreen {
     scale: usize,
@@ -25,6 +27,7 @@ pub struct GliumScreen {
     palettes: [[Color; 4]; 4],
 
     background: Background,
+    sprites: Sprites,
 }
 
 impl GliumScreen {
@@ -54,12 +57,14 @@ impl GliumScreen {
             glium::texture::Texture2dArray::new(&display, vec!(image.clone())).unwrap(),
         );
         let background = Background::new(&display);
+        let sprites = Sprites::new(&display);
         GliumScreen {
             scale: scale as usize,
             display: display,
             texture_buffer: texture_buffer,
             palettes: [[BLACK; 4]; 4],
             background: background,
+            sprites: sprites,
         }
     }
 
@@ -126,10 +131,15 @@ impl GliumScreen {
     }
 }
 
+use nes::ppu::screen;
 impl Screen for GliumScreen {
 
     fn update_tile(&mut self, x: usize, y: usize, tile: &Tile) {
         self.background.update_tile(x, y, tile);
+    }
+
+    fn update_sprite(&mut self, index: usize, sprite: &screen::Sprite) {
+        self.sprites.update_sprite(index, sprite);
     }
 
     fn update_patterns(&mut self, patterns: &[Pattern]) {
@@ -170,9 +180,11 @@ impl Screen for GliumScreen {
 
     fn draw(&mut self) {
         self.background.upload_data(&mut self.display);
+        self.sprites.upload_data(&mut self.display);
         let mut target: glium::Frame = self.display.draw();
 
         self.background.draw(&mut target, self.texture_buffer.as_ref());
+        self.sprites.draw(&mut target, self.texture_buffer.as_ref());
 
         target.finish().unwrap();
     }

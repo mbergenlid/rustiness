@@ -12,6 +12,14 @@ pub struct Pattern {
     pub data: [[u8; 8]; 8],
 }
 
+pub struct Sprite {
+    pub y_position: u8,
+    pub x_position: u8,
+    pub pattern_index: u32,
+    pub palette_index: u8,
+}
+
+
 use std::fmt;
 use std::fmt::Debug;
 impl Debug for Pattern {
@@ -25,6 +33,7 @@ impl Debug for Pattern {
 
 pub trait Screen {
     fn update_tile(&mut self, x: usize, y: usize, tile: &Tile);
+    fn update_sprite(&mut self, index: usize, sprite: &Sprite);
     fn update_patterns(&mut self, pattern: &[Pattern]);
 
     fn set_universal_background(&mut self, background_value: u8);
@@ -46,6 +55,8 @@ impl ScreenMock {
 impl Screen for ScreenMock {
     fn update_tile(&mut self, _: usize, _: usize, _: &Tile) {
     }
+
+    fn update_sprite(&mut self, _: usize, _: &Sprite) {}
 
     fn update_patterns(&mut self, _: &[Pattern]) {
     }
