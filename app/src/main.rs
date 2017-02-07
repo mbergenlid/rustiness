@@ -5,6 +5,7 @@ extern crate gliumscreen;
 
 mod debugger;
 mod screentest;
+mod screen2test;
 
 use std::env;
 
@@ -17,6 +18,7 @@ fn main() {
     match args[1].trim() {
         "debug" => debugger::start(),
         "screen" => screentest::start(),
+        "screen2" => screen2test::start(),
         _ => panic!("Unknown command {}", args[1]),
     }
 }

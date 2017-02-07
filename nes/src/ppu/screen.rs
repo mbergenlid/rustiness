@@ -35,6 +35,11 @@ pub trait Screen {
     fn draw(&mut self);
 }
 
+pub trait Screen2 {
+    fn set_pixel(&mut self, x: usize, y: usize, color: Color);
+    fn draw(&mut self);
+}
+
 pub struct ScreenMock {}
 
 impl ScreenMock {

@@ -6,6 +6,7 @@ use glium::Surface;
 use glium::DisplayBuild;
 
 use nes::ppu::screen::Color;
+use nes::ppu::screen::Screen2;
 
 #[derive(Copy, Clone, Debug)]
 struct Vertex {
@@ -17,67 +18,118 @@ struct Vertex {
 
 implement_vertex!(Vertex, position, vertex_index, text_coords, texture_index);
 
+#[derive(Copy, Clone, Debug)]
+struct Vertex2 {
+    position: [f32; 2],
+    text_coords: [f32; 2],
+}
+
+implement_vertex!(Vertex2, position, text_coords);
+
 const VERTEX_SHADER_SRC: &'static str = r#"
         #version 410
 
-        uniform mat4 scale;
-        uniform mat4 translation;
-        uniform mat4 scroll;
         in vec2 position;
-        in uint vertex_index;
         in vec2 text_coords;
-        in int texture_index;
 
-        flat out int index;
         out vec2 v_text_coords;
 
         void main() {
-            vec4 new_position = scroll * vec4(position, 0.0, 1.0);
-            if(new_position.x >= 63) {
-                new_position.x = new_position.x - 64;
-            }
-            if(new_position.y <= -29) {
-                new_position.y = new_position.y + 30;
-            }
-            if(vertex_index == 0) {
-                gl_Position = vec4(new_position.x, new_position.y, 1.0, 1.0);
-            } else  if(vertex_index == 1) {
-                gl_Position = vec4(new_position.x, new_position.y-1, 1.0, 1.0);
-            } else if(vertex_index == 2) {
-                gl_Position = vec4(new_position.x+1, new_position.y-1, 1.0, 1.0);
-            } else if(vertex_index == 3) {
-                gl_Position = vec4(new_position.x+1, new_position.y, 1.0, 1.0);
-            }
-            gl_Position = scale * translation * gl_Position;
-            index = texture_index;
+            gl_Position = vec4(position, 0.0, 1.0);
             v_text_coords = text_coords;
         }
     "#;
 const FRAGMENT_SHADER_SRC: &'static str = r#"
         #version 140
 
-        uniform sampler2DArray texture_1;
-        uniform sampler2DArray texture_2;
-        uniform sampler2DArray texture_3;
-        uniform sampler2DArray texture_4;
+        uniform sampler2D tex;
         in vec2 v_text_coords;
-        flat in int index;
 
         out vec4 color;
 
         void main() {
-            int palette = index / 512;
-            if(palette == 0) {
-                color = texture(texture_1, vec3(v_text_coords, index % 512));
-            } else if (palette == 1) {
-                color = texture(texture_2, vec3(v_text_coords, index % 512));
-            } else if (palette == 2) {
-                color = texture(texture_3, vec3(v_text_coords, index % 512));
-            } else {
-                color = texture(texture_4, vec3(v_text_coords, index % 512));
-            }
+            color = texture(tex, v_text_coords);
         }
     "#;
+
+pub struct GliumScreen2 {
+    scale: usize,
+    display: glium::Display,
+    program: glium::Program,
+    vertex_buffer: glium::VertexBuffer<Vertex2>,
+    index_buffer: glium::IndexBuffer<u32>,
+    image: Vec<Vec<(f32, f32, f32)>>,
+}
+
+impl GliumScreen2 {
+    pub fn new(scale: u8) -> GliumScreen2 {
+        let display: glium::Display = glium::glutin::WindowBuilder::new()
+            .with_dimensions(SCREEN_WIDTH*(scale as u32), SCREEN_HEIGHT*(scale as u32))
+            .build_glium().unwrap();
+        let program = glium::Program::from_source(&display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
+
+        let vertex_buffer = {
+            let shape: Vec<Vertex2> = vec!(
+                Vertex2 { position: [-1.0, 1.0],    text_coords: [0.0, 0.0] },
+                Vertex2 { position: [-1.0, -1.0],   text_coords: [0.0, 1.0] },
+                Vertex2 { position: [1.0, -1.0],    text_coords: [1.0, 1.0] },
+                Vertex2 { position: [1.0, 1.0],     text_coords: [1.0, 0.0] },
+            );
+            glium::VertexBuffer::new(&display, &shape).unwrap()
+        };
+
+        let index_buffer = {
+            let indices: Vec<u32> = vec!(0, 1, 3, 3, 1, 2);
+            glium::index::IndexBuffer::new(
+                &display,
+                glium::index::PrimitiveType::TrianglesList,
+                &indices
+            ).unwrap()
+        };
+
+        let scale: u32 = scale as u32;
+        let image: Vec<Vec<(f32, f32, f32)>> = (0..SCREEN_HEIGHT*scale)
+            .map(|_| {
+                (0..SCREEN_WIDTH*scale).map(|_| (0.0, 0.0, 0.0)).collect()
+            }).collect();
+
+        GliumScreen2 {
+            scale: scale as usize,
+            display: display,
+            program: program,
+            vertex_buffer: vertex_buffer,
+            index_buffer: index_buffer,
+            image: image,
+        }
+    }
+}
+
+impl Screen2 for GliumScreen2 {
+    fn set_pixel(&mut self, x: usize, y: usize, color: Color) {
+        let scale = self.scale;
+        for j in x*scale..(x*scale+scale) {
+            for i in y*scale..(y*scale+scale) {
+                self.image[i][j] = (color[0], color[1], color[2]);
+            }
+        }
+    }
+
+    fn draw(&mut self) {
+        let mut target = self.display.draw();
+        let image_buffer = glium::texture::Texture2d::new(&self.display, self.image.clone()).unwrap();
+        target.draw(
+            &self.vertex_buffer,
+            &self.index_buffer,
+            &self.program,
+            &uniform! {
+                tex: &image_buffer,
+            },
+            &Default::default()
+        ).unwrap();
+
+        target.finish().unwrap();
+    }
+}
 
 struct Pixel {
     vertices: [Vertex; 4]
