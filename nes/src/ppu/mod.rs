@@ -248,7 +248,7 @@ impl PPU {
                         pixel_buffer.set_pixel(
                             (tile_x*8 + (7-bit_index)) as usize,
                             (tile_y*8 + pattern_row) as usize,
-                            ((colour[0]*255.0) as u8, (colour[1]*255.0) as u8, (colour[2]*255.0) as u8)
+                            colour
                         );
                         low_bits >>= 1;
                         high_bits >>= 1;
