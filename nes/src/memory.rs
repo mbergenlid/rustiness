@@ -107,7 +107,6 @@ macro_rules! external_memory {
 
 #[cfg(test)]
 mod test {
-    use ppu::screen::ScreenMock;
     use super::BasicMemory;
     use super::Memory;
     use ppu::PPU;
@@ -115,10 +114,7 @@ mod test {
 
     #[test]
     fn test_write_to_vram() {
-        let mut ppu = PPU::new(
-                box (BasicMemory::new()),
-                box (ScreenMock::new())
-            );
+        let mut ppu = PPU::new(box BasicMemory::new());
 
         let mut basic_memory = BasicMemory::new();
         {

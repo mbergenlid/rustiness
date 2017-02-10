@@ -23,16 +23,35 @@ impl Debug for Pattern {
     }
 }
 
+pub struct PixelBuffer<'a> {
+    pub buffer: &'a mut [u8],
+    pub pitch: usize,
+    pub scale: u8,
+}
+
+impl <'a> PixelBuffer<'a> {
+    pub fn set_pixel(&mut self, x: usize, y: usize, colour: (u8, u8, u8)) {
+        let scale = self.scale as usize;
+        let offset = y*self.pitch*scale + x*3*scale;
+        self.buffer[offset + 0] = colour.0;
+        self.buffer[offset + 1] = colour.1;
+        self.buffer[offset + 2] = colour.2;
+
+//        self.buffer[offset + 3] = colour.0;
+//        self.buffer[offset + 4] = colour.1;
+//        self.buffer[offset + 5] = colour.2;
+
+//        self.buffer[offset + self.pitch + 0] = colour.0;
+//        self.buffer[offset + self.pitch + 1] = colour.1;
+//        self.buffer[offset + self.pitch + 2] = colour.2;
+//        self.buffer[offset + self.pitch + 3] = colour.0;
+//        self.buffer[offset + self.pitch + 4] = colour.1;
+//        self.buffer[offset + self.pitch + 5] = colour.2;
+    }
+}
+
 pub trait Screen {
-    fn update_tile(&mut self, x: usize, y: usize, tile: &Tile);
-    fn update_patterns(&mut self, pattern: &[Pattern]);
-
-    fn set_universal_background(&mut self, background_value: u8);
-    fn update_palette(&mut self, palette: u8, index: u8, palette_value: u8);
-
-    fn set_background_offset(&mut self, x: usize, y: usize);
-
-    fn draw(&mut self);
+    fn draw(&mut self, func: &FnOnce(&mut PixelBuffer));
 }
 
 pub struct ScreenMock {}
@@ -44,21 +63,7 @@ impl ScreenMock {
 }
 
 impl Screen for ScreenMock {
-    fn update_tile(&mut self, _: usize, _: usize, _: &Tile) {
-    }
-
-    fn update_patterns(&mut self, _: &[Pattern]) {
-    }
-
-    fn set_universal_background(&mut self, _: u8) {
-    }
-
-    fn update_palette(&mut self, _: u8, _: u8, _: u8) {
-    }
-
-    fn draw(&mut self) {
-    }
-    fn set_background_offset(&mut self, _: usize, _: usize) {
+    fn draw(&mut self, _: &FnOnce(&mut PixelBuffer)) {
     }
 }
 

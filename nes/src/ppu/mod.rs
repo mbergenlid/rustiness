@@ -2,7 +2,7 @@ pub mod screen;
 pub mod ppumemory;
 
 use memory::Memory;
-use ppu::screen::{Screen, Pattern, Tile};
+use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer};
 
 struct PPUCtrl {
     value: u8,
@@ -10,6 +10,10 @@ struct PPUCtrl {
 
 impl PPUCtrl {
     fn new() -> PPUCtrl { PPUCtrl {value: 0} }
+
+    fn name_table_base(&self) -> u16 {
+        0x2000 + 0x400*((self.value & 0x03) as u16)
+    }
 
     fn background_pattern_table(&self) -> u16 {
         ((self.value & 0x10) as u16) << 8
@@ -77,7 +81,6 @@ pub struct PPU {
     mask_register: PPUMask,
     status_register: u8,
     memory: Box<Memory>,
-    screen: Box<Screen>,
     vram_pointer: u16,
     vram_high_byte: bool,
 
@@ -112,13 +115,12 @@ const SCANLINES_PER_FRAME: u32 = 262;
 const PPU_CYCLES_PER_VISIBLE_FRAME: u32 = (SCANLINES_PER_FRAME-SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE;
 
 impl PPU {
-    pub fn new(memory: Box<Memory>, screen: Box<Screen>) -> PPU {
+    pub fn new(memory: Box<Memory>) -> PPU {
         PPU {
             control_register: PPUCtrl::new(),
             mask_register: PPUMask { value: 0 },
             status_register: 0,
             memory: memory,
-            screen: screen,
             vram_pointer: 0,
             x_scroll: 0,
             y_scroll: 0,
@@ -201,7 +203,7 @@ impl PPU {
     /**
      * Returns true if a VBLANK should be generated.
      */
-    pub fn update(&mut self, cpu_cycle_count: u32) -> bool {
+    pub fn update(&mut self, cpu_cycle_count: u32, screen: &mut Screen) -> bool {
         self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
         if !self.status_register.is_vblank() && self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME {
             self.status_register = self.status_register | 0x80;
@@ -209,94 +211,50 @@ impl PPU {
         } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.status_register = self.status_register & 0x7F;
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
-            self.draw();
+            if self.mask_register.is_drawing_enabled() {
+                screen.draw(&|buffer| self.draw_buffer(buffer));
+            }
             return false
         } else {
             return false;
         }
     }
 
-    pub fn draw(&mut self) {
-        if self.mask_register.is_drawing_enabled() {
-            let pattern_table_base_address = self.control_register.background_pattern_table();
 
-            //Patterns
-            if self.pattern_tables_changed {
-                self.screen.set_universal_background(self.memory.get(0x3F00));
-                self.screen.update_palette(0, 1, self.memory.get(0x3F01));
-                self.screen.update_palette(0, 2, self.memory.get(0x3F02));
-                self.screen.update_palette(0, 3, self.memory.get(0x3F03));
-
-                self.screen.update_palette(1, 1, self.memory.get(0x3F05));
-                self.screen.update_palette(1, 2, self.memory.get(0x3F06));
-                self.screen.update_palette(1, 3, self.memory.get(0x3F07));
-
-                self.screen.update_palette(2, 1, self.memory.get(0x3F09));
-                self.screen.update_palette(2, 2, self.memory.get(0x3F0A));
-                self.screen.update_palette(2, 3, self.memory.get(0x3F0B));
-
-                self.screen.update_palette(3, 1, self.memory.get(0x3F0D));
-                self.screen.update_palette(3, 2, self.memory.get(0x3F0E));
-                self.screen.update_palette(3, 3, self.memory.get(0x3F0F));
-
-                let mut patterns = Vec::with_capacity(256);
-                for p_table in 0x00..0x100 {
-
-                    let mut pattern_table_address = pattern_table_base_address | (p_table << 4);
-                    let mut pattern: Pattern = Pattern { data: [[0; 8]; 8] };
-                    for pattern_row in 0..8 {
-                        let mut low_bits = self.memory.get(pattern_table_address);
-                        let mut high_bits = self.memory.get(pattern_table_address+8);
-                        for bit_index in 0..8 {
-                            let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
-
-                            pattern.data[pattern_row][7-bit_index] = pixel;
-                            low_bits >>= 1;
-                            high_bits >>= 1;
-                        }
-                        pattern_table_address += 1;
-                    }
-                    patterns.push(pattern);
-                }
-                self.screen.update_patterns(&patterns);
-                self.pattern_tables_changed = false;
-            }
-
-            //Tiles
-            if self.name_tables_changed {
-                self.update_tile_for_nametable(0);
-                self.update_tile_for_nametable(1);
-                self.update_tile_for_nametable(2);
-                self.update_tile_for_nametable(3);
-                self.name_tables_changed = false;
-            }
-
-            self.screen.set_background_offset(self.x_scroll as usize, self.y_scroll as usize);
-            self.screen.draw();
-        }
-    }
-
-    fn update_tile_for_nametable(&mut self, name_table_index: u16) {
-        let name_table_base = 0x2000 + name_table_index*0x400;
+    pub fn draw_buffer(&self, pixel_buffer: &mut PixelBuffer) {
+        let pattern_table_base_address = self.control_register.background_pattern_table();
+        let name_table_base = self.control_register.name_table_base();
         let mut name_table = name_table_base;
-        for row in 0..30 {
-            for col in 0..32 {
-                let pattern_table_address = self.memory.get(name_table) as u32;
-                let colour_palette_index = {
+        for tile_y in 0..30 {
+            for tile_x in 0..32 {
+                let pattern_table_address = self.memory.get(name_table) as u16;
+                let colour_palette = {
                     let attribute_table = AttributeTable {
                         memory: &(*self.memory),
                         address: name_table_base + 0x3C0,
                     };
-                    attribute_table.get_palette_index(row, col)
+                    attribute_table.get_palette_address(tile_y, tile_x)
                 };
-                self.screen.update_tile(
-                    (32*(name_table_index % 2) + col) as usize,
-                    (30*(name_table_index / 2) + row) as usize,
-                    &Tile {
-                        pattern_index: pattern_table_address,
-                        palette_index: colour_palette_index
+
+                let mut pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
+                for pattern_row in 0..8 {
+                    let mut low_bits = self.memory.get(pattern_table_address);
+                    let mut high_bits = self.memory.get(pattern_table_address+8);
+                    for bit_index in 0..8 {
+                        let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                        let colour_address = if pixel == 0 { 0x3F00 } else { colour_palette + pixel as u16 };
+
+                        let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                        pixel_buffer.set_pixel(
+                            (tile_x*8 + (7-bit_index)) as usize,
+                            (tile_y*8 + pattern_row) as usize,
+                            ((colour[0]*255.0) as u8, (colour[1]*255.0) as u8, (colour[2]*255.0) as u8)
+                        );
+                        low_bits >>= 1;
+                        high_bits >>= 1;
                     }
-                );
+                    pattern_table_address += 1;
+                }
 
                 name_table += 1;
             }
@@ -318,7 +276,7 @@ pub mod tests {
 
     #[test]
     fn reading_status_register_should_reset_vram_high_byte() {
-        let mut ppu = PPU::new(box BasicMemory::new(), box ScreenMock::new());
+        let mut ppu = PPU::new(box BasicMemory::new());
 
         ppu.set_vram(1);
         assert_eq!(false, ppu.vram_high_byte);
@@ -328,7 +286,7 @@ pub mod tests {
 
     #[test]
     fn reading_status_register_should_clear_vblank() {
-        let mut ppu = PPU::new(box BasicMemory::new(), box ScreenMock::new());
+        let mut ppu = PPU::new(box BasicMemory::new());
         ppu.status_register = 0b1100_0000;
 
         assert_eq!(true, ppu.status().is_vblank());
@@ -337,41 +295,42 @@ pub mod tests {
 
     #[test]
     fn should_not_cause_nmi_if_disabled() {
-        let mut ppu = PPU::new(box BasicMemory::new(), box ScreenMock::new());
+        let mut ppu = PPU::new(box BasicMemory::new());
         ppu.set_ppu_ctrl(0x00); //Disable NMI
 
-        assert_eq!(false, ppu.update(29_000));
+        assert_eq!(false, ppu.update(29_000, &mut ScreenMock::new()));
     }
 
     #[test]
     fn test_vblank() {
-        let mut ppu = PPU::new(box BasicMemory::new(), box ScreenMock::new());
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(box BasicMemory::new());
         ppu.set_ppu_ctrl(0x80);
-        assert_eq!(false, ppu.update(45)); //cycle count = 135
-        assert_eq!(true, ppu.update(27_508-45)); //cycle count = 82_524
+        assert_eq!(false, ppu.update(45, screen)); //cycle count = 135
+        assert_eq!(true, ppu.update(27_508-45, screen)); //cycle count = 82_524
 
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(50)); //cycle count = 82 674
+        assert_eq!(false, ppu.update(50, screen)); //cycle count = 82 674
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(2_223));  //cycle count = 89 343
+        assert_eq!(false, ppu.update(2_223, screen));  //cycle count = 89 343
         assert_eq!(false, ppu.status_register.is_vblank());
 
         //89 342 ppu cycles per frame
         //Total cpu cycles 29_781 = 89_343 ppu cycles
-        assert_eq!(false, ppu.update(45)); // cycle count = 136
+        assert_eq!(false, ppu.update(45, screen)); // cycle count = 136
 
-        assert_eq!(true, ppu.update(27_462)); //cycle count = 82 522
+        assert_eq!(true, ppu.update(27_462, screen)); //cycle count = 82 522
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(50)); //cycle count = 82 672
+        assert_eq!(false, ppu.update(50, screen)); //cycle count = 82 672
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(2_223)); //cycle count = 89 341
+        assert_eq!(false, ppu.update(2_223, screen)); //cycle count = 89 341
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(1));
+        assert_eq!(false, ppu.update(1, screen));
         assert_eq!(false, ppu.status_register.is_vblank());
     }
 

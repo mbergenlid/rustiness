@@ -10,16 +10,18 @@ pub mod ines;
 use cpu::CPU;
 use memory::{BasicMemory, CPUMemory, Memory};
 use ppu::PPU;
+use ppu::screen::Screen;
 
 pub struct NES {
     pub cpu: CPU,
     pub cycle_count: u64,
     pub ppu: PPU,
     pub op_codes: opcodes::OpCodes,
+    pub screen: Box<Screen>
 }
 
 impl NES {
-    pub fn new(ppu: PPU, memory: &Memory) -> NES {
+    pub fn new(ppu: PPU, memory: &Memory, screen: Box<Screen>) -> NES {
         let cpu_start = {
             let lsbs: u8 = memory.get(0xFFFC);
             let msbs: u8 = memory.get(0xFFFD);
@@ -30,18 +32,19 @@ impl NES {
             cycle_count: 0,
             ppu: ppu,
             op_codes: opcodes::OpCodes::new(),
+            screen: screen,
         }
     }
 
     pub fn execute(&mut self, memory: &mut BasicMemory) {
         let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut CPUMemory::new(&mut self.ppu, memory));
-        let nmi = self.ppu.update(cycles as u32);
+        let nmi = self.ppu.update(cycles as u32, self.screen.as_mut());
         self.cycle_count += cycles as u64;
 
         if nmi {
             let cycles =
                 instructions::nmi(&mut self.cpu, &mut CPUMemory::new(&mut self.ppu, memory)) as u64;
-            self.ppu.update(cycles as u32);
+            self.ppu.update(cycles as u32, self.screen.as_mut());
             self.cycle_count += cycles;
         }
     }
