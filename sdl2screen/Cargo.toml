@@ -1,0 +1,9 @@
+[package]
+name = "sdl2screen"
+version = "0.1.0"
+authors = ["Marcus Bergenlid <marcus.bergenlid@gmail.com>"]
+
+
+[dependencies]
+sdl2 = "0.28"
+nes = { path = "../nes"}

@@ -51,7 +51,7 @@ impl <'a> PixelBuffer<'a> {
 }
 
 pub trait Screen {
-    fn draw(&mut self, func: &FnOnce(&mut PixelBuffer));
+    fn draw<T>(&mut self, func: T) where Self: Sized, T: FnOnce(&mut PixelBuffer);
 }
 
 pub struct ScreenMock {}
@@ -63,7 +63,7 @@ impl ScreenMock {
 }
 
 impl Screen for ScreenMock {
-    fn draw(&mut self, _: &FnOnce(&mut PixelBuffer)) {
+    fn draw<T>(&mut self, _: T) where T: FnOnce(&mut PixelBuffer) {
     }
 }
 

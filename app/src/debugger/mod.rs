@@ -1,12 +1,12 @@
 extern crate nes;
-extern crate gliumscreen;
+extern crate sdl2screen;
 mod opcodes;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
 use nes::ines::INes;
 use nes::ppu::{PPU, AttributeTable};
-use nes::ppu::screen::{ScreenMock, COLOUR_PALETTE};
-use gliumscreen::GliumScreen;
+use nes::ppu::screen::COLOUR_PALETTE;
+use sdl2screen::SDL2Screen;
 
 use std::fs::File;
 use std::env;
@@ -27,18 +27,8 @@ pub fn start() {
     rom_file.load(memory.as_mut());
     let ppu_memory = rom_file.ppu_memory();
 
-    let ppu = match args.iter().find(|arg| arg.trim() == "-g") {
-        Some(_) => PPU::new(
-            ppu_memory,
-            box (GliumScreen::new(2))
-        ),
-        None => PPU::new(
-            ppu_memory,
-            box ScreenMock::new()
-        )
-    };
-    let mut nes = nes::NES::new(ppu, memory.as_ref());
-
+    let ppu = PPU::new(ppu_memory);
+    let mut nes = nes::NES::new(ppu, memory.as_ref(), box SDL2Screen::new(1));
 
     loop {
         print(&nes);
@@ -183,13 +173,13 @@ impl Command {
     }
 }
 
-fn print(nes: &nes::NES) {
+fn print(nes: &nes::NES<SDL2Screen>) {
     println!("Cycle count: {}", nes.cycle_count);
     print_cpu_and_ppu(nes);
 }
 
 use std::io::{BufReader, BufRead};
-fn print_cpu_and_ppu(nes: &nes::NES) {
+fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen>) {
     let cpu = &nes.cpu;
     let ppu = &nes.ppu;
 
@@ -208,7 +198,7 @@ fn print_cpu_and_ppu(nes: &nes::NES) {
     }
 }
 
-fn print_next_instruction(nes: &nes::NES, memory: &Memory) {
+fn print_next_instruction(nes: &nes::NES<SDL2Screen>, memory: &Memory) {
     let op_code = memory.get(nes.cpu.program_counter());
 
     opcodes::debug_instruction(op_code, &nes.cpu, memory);

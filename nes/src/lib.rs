@@ -12,16 +12,18 @@ use memory::{BasicMemory, CPUMemory, Memory};
 use ppu::PPU;
 use ppu::screen::Screen;
 
-pub struct NES {
+pub struct NES<T>
+    where T: Screen + Sized
+{
     pub cpu: CPU,
     pub cycle_count: u64,
     pub ppu: PPU,
     pub op_codes: opcodes::OpCodes,
-    pub screen: Box<Screen>
+    pub screen: Box<T>
 }
 
-impl NES {
-    pub fn new(ppu: PPU, memory: &Memory, screen: Box<Screen>) -> NES {
+impl <T> NES<T> where T: Screen + Sized {
+    pub fn new(ppu: PPU, memory: &Memory, screen: Box<T>) -> NES<T> {
         let cpu_start = {
             let lsbs: u8 = memory.get(0xFFFC);
             let msbs: u8 = memory.get(0xFFFD);

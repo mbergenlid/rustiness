@@ -203,7 +203,9 @@ impl PPU {
     /**
      * Returns true if a VBLANK should be generated.
      */
-    pub fn update(&mut self, cpu_cycle_count: u32, screen: &mut Screen) -> bool {
+    pub fn update<T>(&mut self, cpu_cycle_count: u32, screen: &mut T) -> bool
+        where T: Screen + Sized
+    {
         self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
         if !self.status_register.is_vblank() && self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME {
             self.status_register = self.status_register | 0x80;
@@ -212,7 +214,7 @@ impl PPU {
             self.status_register = self.status_register & 0x7F;
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
             if self.mask_register.is_drawing_enabled() {
-                screen.draw(&|buffer| self.draw_buffer(buffer));
+                screen.draw(|buffer| self.draw_buffer(buffer));
             }
             return false
         } else {

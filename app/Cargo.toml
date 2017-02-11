@@ -5,4 +5,5 @@ authors = ["Marcus Bergenlid <marcus.bergenlid@ooyala.com>"]
 
 [dependencies]
 nes = { path = "../nes" }
-gliumscreen = { path = "../gliumscreen" }
+#gliumscreen = { path = "../gliumscreen" }
+sdl2screen = { path = "../sdl2screen" }

@@ -1,10 +1,12 @@
 #![feature(box_syntax)]
 #[macro_use]
 extern crate nes;
-extern crate gliumscreen;
+//extern crate gliumscreen;
+extern crate sdl2screen;
 
 mod debugger;
-mod screentest;
+//mod screentest;
+mod sdlscreentest;
 
 use std::env;
 
@@ -16,7 +18,8 @@ fn main() {
 
     match args[1].trim() {
         "debug" => debugger::start(),
-        "screen" => screentest::start(),
+//        "screen" => screentest::start(),
+        "sdl2screen" => sdlscreentest::start(),
         _ => panic!("Unknown command {}", args[1]),
     }
 }
