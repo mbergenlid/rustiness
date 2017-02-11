@@ -87,8 +87,7 @@ pub struct PPU {
     x_scroll: u8,
     y_scroll: u8,
 
-    pattern_tables_changed: bool,
-    name_tables_changed: bool,
+    vram_changed: bool,
 
     cycle_count: u32,
 }
@@ -126,8 +125,7 @@ impl PPU {
             y_scroll: 0,
             vram_high_byte: true, //Big Endian
 
-            pattern_tables_changed: true,
-            name_tables_changed: true,
+            vram_changed: true,
 
             cycle_count: 0,
         }
@@ -178,13 +176,7 @@ impl PPU {
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
-        if self.vram_pointer >= 0x2000 && self.vram_pointer < 0x3000 {
-            self.name_tables_changed = true;
-        } else if self.vram_pointer < 0x200 {
-            self.pattern_tables_changed = true;
-        } else if self.vram_pointer >= 0x3F00 && self.vram_pointer < 0x3F20 {
-            self.pattern_tables_changed = true;
-        }
+        self.vram_changed = true;
         self.memory.set(self.vram_pointer, value);
         self.vram_pointer += self.control_register.vram_pointer_increment();
     }
@@ -213,7 +205,8 @@ impl PPU {
         } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.status_register = self.status_register & 0x7F;
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
-            if self.mask_register.is_drawing_enabled() {
+            if self.mask_register.is_drawing_enabled() && self.vram_changed {
+                self.vram_changed = false;
                 screen.draw(|buffer| self.draw_buffer(buffer));
             }
             return false
