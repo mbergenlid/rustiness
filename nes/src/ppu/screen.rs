@@ -32,21 +32,18 @@ pub struct PixelBuffer<'a> {
 impl <'a> PixelBuffer<'a> {
     pub fn set_pixel(&mut self, x: usize, y: usize, colour: (u8, u8, u8)) {
         let scale = self.scale as usize;
-        let offset = y*self.pitch*scale + x*3*scale;
-        self.buffer[offset + 0] = colour.0;
-        self.buffer[offset + 1] = colour.1;
-        self.buffer[offset + 2] = colour.2;
+        let mut offset = y*self.pitch*scale + x*3*scale;
 
-//        self.buffer[offset + 3] = colour.0;
-//        self.buffer[offset + 4] = colour.1;
-//        self.buffer[offset + 5] = colour.2;
-
-//        self.buffer[offset + self.pitch + 0] = colour.0;
-//        self.buffer[offset + self.pitch + 1] = colour.1;
-//        self.buffer[offset + self.pitch + 2] = colour.2;
-//        self.buffer[offset + self.pitch + 3] = colour.0;
-//        self.buffer[offset + self.pitch + 4] = colour.1;
-//        self.buffer[offset + self.pitch + 5] = colour.2;
+        for _ in 0..scale {
+            let mut i = 0;
+            for _ in 0..scale {
+                self.buffer[offset + i] = colour.0;
+                self.buffer[offset + i+1] = colour.1;
+                self.buffer[offset + i+2] = colour.2;
+                i += 3;
+            }
+            offset += self.pitch;
+        }
     }
 }
 
@@ -63,7 +60,54 @@ impl ScreenMock {
 }
 
 impl Screen for ScreenMock {
-    fn draw<T>(&mut self, _: T) where T: FnOnce(&mut PixelBuffer) {
+    fn draw<T>(&mut self, _: T) where T: FnOnce(&mut PixelBuffer) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PixelBuffer;
+
+    #[test]
+    fn pixel_buffer_with_scale_1() {
+        let mut buffer = [0; 8*8*3];
+        {
+            let mut pixel_buffer = PixelBuffer { buffer: &mut buffer, pitch: 8*3, scale: 1 };
+            for y in 0..8 {
+                for x in 0..8 {
+                    let colour = (x+y*8) as u8;
+                    pixel_buffer.set_pixel(x, y, (colour, colour, colour));
+                }
+            }
+        }
+
+        let expected: Vec<u8> = (0..64).flat_map(|i| vec!(i, i, i)).collect();
+        let actual: Vec<u8> = buffer.iter().map(|&i| i).collect();
+        assert_eq!(
+            expected,
+            actual
+        );
+    }
+
+    #[test]
+    fn pixel_buffer_with_scale_2() {
+        let mut buffer = [0; 16*16*3];
+        {
+            let mut pixel_buffer = PixelBuffer { buffer: &mut buffer, pitch: 16*3, scale: 2 };
+            for y in 0..8 {
+                for x in 0..8 {
+                    let colour = (x+y*8) as u8;
+                    pixel_buffer.set_pixel(x, y, (colour, colour, colour));
+                }
+            }
+        }
+
+        let expected: Vec<u8> = (0..8)
+            .flat_map(|i| vec!(i,i))
+            .flat_map(|i: u8| -> Vec<u8> {
+                (i*8..i*8+8).flat_map(|i| vec!(i, i, i, i, i, i)).collect()
+            }).collect();
+        let actual: Vec<u8> = buffer.iter().map(|&i| i).collect();
+        assert_eq!(expected, actual);
     }
 }
 
