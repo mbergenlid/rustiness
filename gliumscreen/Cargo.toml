@@ -1,8 +1,0 @@
-[package]
-name = "gliumscreen"
-version = "0.1.0"
-authors = ["Marcus Bergenlid <marcus.bergenlid@ooyala.com>"]
-
-[dependencies]
-glium = "*"
-nes = { path = "../nes"}
