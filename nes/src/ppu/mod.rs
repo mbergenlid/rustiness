@@ -1,5 +1,6 @@
 pub mod screen;
 pub mod ppumemory;
+mod vram_registers;
 
 use memory::Memory;
 use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer};
