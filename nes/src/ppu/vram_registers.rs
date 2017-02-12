@@ -1,8 +1,8 @@
 
 pub struct VRAMRegisters {
     temporary: u16,
-    current: u16,
-    fine_x: u8,
+    pub current: u16,
+//    fine_x: u8,
     write_toggle: bool,
 }
 
@@ -11,12 +11,12 @@ impl VRAMRegisters {
         VRAMRegisters {
             temporary: 0,
             current: 0,
-            fine_x: 0,
+//            fine_x: 0,
             write_toggle: false,
         }
     }
 
-    fn write_scroll(&mut self, x: u8) {
+    pub fn write_scroll(&mut self, x: u8) {
         if self.write_toggle {
             let high_bits = (x as u16 & 0xF8) << 2;
             self.temporary = (self.temporary & 0b000_1100_0001_1111) | high_bits;
@@ -28,7 +28,7 @@ impl VRAMRegisters {
         }
     }
 
-    fn horizontal_increment(&mut self) {
+    pub fn horizontal_increment(&mut self) {
         if self.current & 0x1F == 0x1F {
             let name_table = (self.current & 0x04_00) ^ 0x0400;
             self.current = (self.current & 0b111_1011_1110_0000) | name_table;
@@ -37,7 +37,7 @@ impl VRAMRegisters {
         }
     }
 
-    fn vertical_increment(&mut self) {
+    pub fn vertical_increment(&mut self) {
         if self.current & 0x7000 != 0x7000 {
             self.current += 0x1000;
         } else {
@@ -53,18 +53,37 @@ impl VRAMRegisters {
         }
     }
 
-    fn copy_horizontal_bits(&mut self) {
+    pub fn copy_horizontal_bits(&mut self) {
         let horizontal_bits = self.temporary & 0b000_0100_0001_1111;
         self.current = (self.current & 0b111_1011_1110_0000) | horizontal_bits;
     }
 
-    fn write_name_table(&mut self, value: u8) {
+    pub fn write_name_table(&mut self, value: u8) {
         let name_table = (value & 0x03) as u16;
         self.temporary = self.temporary & 0xF3FF | (name_table << 10);
     }
 
-    fn copy_temporary_bits(&mut self) {
+    pub fn set_vram(&mut self, value: u8) {
+        if self.write_toggle {
+            self.temporary = (self.temporary & 0xFF00) | (value as u16);
+            self.current = self.temporary;
+            self.write_toggle = false;
+        } else {
+            self.temporary = (self.temporary & 0x00FF) | (((value as u16) & 0x3F) << 8);
+            self.write_toggle = true;
+        }
+    }
+
+    pub fn reset_write_toggle(&mut self) {
+        self.write_toggle = false;
+    }
+
+    pub fn copy_temporary_bits(&mut self) {
         self.current = self.temporary;
+    }
+
+    pub fn fine_y(&self) -> u8 {
+        (self.current >> 12) as u8
     }
 }
 
@@ -76,7 +95,6 @@ mod tests {
             VRAMRegisters {
                 temporary: 0,
                 current: value,
-                fine_x: 0,
                 write_toggle: false,
             }
         }
@@ -85,7 +103,6 @@ mod tests {
             VRAMRegisters {
                 temporary: value,
                 current: 0,
-                fine_x: 0,
                 write_toggle: false,
             }
         }
@@ -272,5 +289,18 @@ mod tests {
             vram.write_name_table(value | 0x03);
             assert_eq!(0x0C00, vram.temporary);
         }
+    }
+
+    #[test]
+    fn set_vram() {
+        let mut vram = VRAMRegisters::new();
+
+        vram.set_vram(0x05);
+        assert_eq!(0x0500, vram.temporary);
+        assert_eq!(0x0, vram.current);
+
+        vram.set_vram(0x1A);
+        assert_eq!(0x051A, vram.temporary);
+        assert_eq!(0x051A, vram.current);
     }
 }

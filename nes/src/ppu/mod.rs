@@ -1,9 +1,10 @@
 pub mod screen;
 pub mod ppumemory;
-mod vram_registers;
+pub mod vram_registers;
 
 use memory::Memory;
 use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer};
+use ppu::vram_registers::VRAMRegisters;
 
 struct PPUCtrl {
     value: u8,
@@ -82,8 +83,7 @@ pub struct PPU {
     mask_register: PPUMask,
     status_register: u8,
     memory: Box<Memory>,
-    vram_pointer: u16,
-    vram_high_byte: bool,
+    vram_registers: VRAMRegisters,
 
     x_scroll: u8,
     y_scroll: u8,
@@ -121,10 +121,9 @@ impl PPU {
             mask_register: PPUMask { value: 0 },
             status_register: 0,
             memory: memory,
-            vram_pointer: 0,
+            vram_registers: VRAMRegisters::new(),
             x_scroll: 0,
             y_scroll: 0,
-            vram_high_byte: true, //Big Endian
 
             vram_changed: true,
 
@@ -134,6 +133,7 @@ impl PPU {
 
     pub fn set_ppu_ctrl(&mut self, value: u8) {
         self.control_register.value = value;
+        self.vram_registers.write_name_table(value);
     }
 
     pub fn ppu_ctrl(&self) -> u8 {
@@ -147,50 +147,37 @@ impl PPU {
     pub fn status(&mut self) -> u8 {
         let status_register = self.status_register;
         self.status_register &= 0x7F;
-        self.vram_high_byte = true;
+        self.vram_registers.reset_write_toggle();
         return status_register;
     }
 
     pub fn set_vram(&mut self, value: u8) {
-        if self.vram_high_byte {
-            self.vram_pointer = 0;
-            self.vram_pointer = (value as u16) << 8;
-            self.vram_high_byte = false;
-        } else {
-            self.vram_pointer = self.vram_pointer | (value as u16);
-            self.vram_high_byte = true;
-        }
+        self.vram_registers.set_vram(value);
     }
 
     pub fn vram(&self) -> u16 {
-        self.vram_pointer
+        self.vram_registers.current
     }
 
     pub fn set_scroll(&mut self, value: u8) {
-        if self.vram_high_byte {
-            self.x_scroll = value;
-            self.vram_high_byte = false;
-        } else {
-            self.y_scroll = value;
-            self.vram_high_byte = true;
-        }
+        self.vram_registers.write_scroll(value);
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
         self.vram_changed = true;
-        self.memory.set(self.vram_pointer, value);
-        self.vram_pointer += self.control_register.vram_pointer_increment();
+        self.memory.set(self.vram_registers.current, value);
+        self.vram_registers.current += self.control_register.vram_pointer_increment();
     }
 
     pub fn load(&mut self, base_address: u16, rom: &[u8]) {
-        let current_vram = self.vram_pointer;
-        self.vram_pointer = base_address;
+        let current_vram = self.vram_registers.current;
+        self.vram_registers.current = base_address;
 
         for &byte in rom {
             self.write_to_vram(byte);
         }
 
-        self.vram_pointer = current_vram;
+        self.vram_registers.current = current_vram;
     }
 
     /**
@@ -217,43 +204,49 @@ impl PPU {
     }
 
 
-    pub fn draw_buffer(&self, pixel_buffer: &mut PixelBuffer) {
+    pub fn draw_buffer(&mut self, pixel_buffer: &mut PixelBuffer) {
         let pattern_table_base_address = self.control_register.background_pattern_table();
-        let name_table_base = self.control_register.name_table_base();
-        let mut name_table = name_table_base;
-        for tile_y in 0..30 {
-            for tile_x in 0..32 {
-                let pattern_table_address = self.memory.get(name_table) as u16;
-                let colour_palette = {
-                    let attribute_table = AttributeTable {
-                        memory: &(*self.memory),
-                        address: name_table_base + 0x3C0,
+        let mut high_pattern = 0;
+        let mut low_pattern = 0;
+        let mut colour_palette = 0;
+        self.vram_registers.copy_temporary_bits();
+        for y in 0..240 {
+            let v = self.vram_registers.current;
+            let coarse_y = (v >> 5) & 0x1F;
+            let mut fine_x = 0;
+            for x in 0..256 {
+                if fine_x == 0 {
+                    let v = self.vram_registers.current;
+                    let coarse_x = v & 0x1F;
+                    let tile_address = 0x2000 | (self.vram_registers.current & 0x0FFF);
+                    let pattern_table_address =
+                        (pattern_table_base_address | ((self.memory.get(tile_address) as u16) << 4))
+                            + self.vram_registers.fine_y() as u16;
+                    low_pattern = self.memory.get(pattern_table_address);
+                    high_pattern = self.memory.get(pattern_table_address+8);
+
+                    colour_palette = {
+                        let attribute_table = AttributeTable {
+                            memory: &(*self.memory),
+                            address: 0x23C0 | (v & 0x0C00),
+                        };
+                        attribute_table.get_palette_address(coarse_y, coarse_x)
                     };
-                    attribute_table.get_palette_address(tile_y, tile_x)
-                };
-
-                let mut pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
-                for pattern_row in 0..8 {
-                    let mut low_bits = self.memory.get(pattern_table_address);
-                    let mut high_bits = self.memory.get(pattern_table_address+8);
-                    for bit_index in 0..8 {
-                        let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
-                        let colour_address = if pixel == 0 { 0x3F00 } else { colour_palette + pixel as u16 };
-
-                        let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
-                        pixel_buffer.set_pixel(
-                            (tile_x*8 + (7-bit_index)) as usize,
-                            (tile_y*8 + pattern_row) as usize,
-                            colour
-                        );
-                        low_bits >>= 1;
-                        high_bits >>= 1;
-                    }
-                    pattern_table_address += 1;
                 }
 
-                name_table += 1;
+                let pixel = (((high_pattern >> (7-fine_x)) & 0x01) << 1) | (low_pattern >> (7-fine_x)) & 0x01;
+                let colour_address = if pixel == 0 { 0x3F00 } else { colour_palette + pixel as u16 };
+                let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                pixel_buffer.set_pixel(x, y, colour);
+
+                fine_x += 1;
+                if fine_x == 0x08 { //new name table
+                    self.vram_registers.horizontal_increment();
+                    fine_x = 0;
+                }
             }
+            self.vram_registers.vertical_increment();
+            self.vram_registers.copy_horizontal_bits();
         }
     }
 
@@ -266,19 +259,7 @@ impl PPU {
 pub mod tests {
     use memory::{Memory, BasicMemory};
     use super::screen::ScreenMock;
-    use super::{PPU, PPUStatus};
-
-    use super::AttributeTable;
-
-    #[test]
-    fn reading_status_register_should_reset_vram_high_byte() {
-        let mut ppu = PPU::new(box BasicMemory::new());
-
-        ppu.set_vram(1);
-        assert_eq!(false, ppu.vram_high_byte);
-        ppu.status();
-        assert_eq!(true, ppu.vram_high_byte);
-    }
+    use super::{PPU, PPUStatus, AttributeTable};
 
     #[test]
     fn reading_status_register_should_clear_vblank() {

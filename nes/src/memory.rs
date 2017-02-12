@@ -125,12 +125,12 @@ mod test {
 
             memory.set(0x2007, 0xA5); //write 0xA5 to PPU-MEM 0xFF01
         }
-        assert_eq!(0xA5, ppu.memory().get(0xFF01));
+        assert_eq!(0xA5, ppu.memory().get(0x3F01));
 
         {
             let mut memory = super::CPUMemory::new(&mut ppu, &mut basic_memory);
             memory.set(0x2007, 0x3B); //vram pointer should have been increased
         }
-        assert_eq!(0x3B, ppu.memory().get(0xFF02));
+        assert_eq!(0x3B, ppu.memory().get(0x3F02));
     }
 }
