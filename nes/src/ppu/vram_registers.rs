@@ -52,6 +52,20 @@ impl VRAMRegisters {
             }
         }
     }
+
+    fn copy_horizontal_bits(&mut self) {
+        let horizontal_bits = self.temporary & 0b000_0100_0001_1111;
+        self.current = (self.current & 0b111_1011_1110_0000) | horizontal_bits;
+    }
+
+    fn write_name_table(&mut self, value: u8) {
+        let name_table = (value & 0x03) as u16;
+        self.temporary = self.temporary & 0xF3FF | (name_table << 10);
+    }
+
+    fn copy_temporary_bits(&mut self) {
+        self.current = self.temporary;
+    }
 }
 
 #[cfg(test)]
@@ -62,6 +76,15 @@ mod tests {
             VRAMRegisters {
                 temporary: 0,
                 current: value,
+                fine_x: 0,
+                write_toggle: false,
+            }
+        }
+
+        fn with_temp(value: u16) -> VRAMRegisters {
+            VRAMRegisters {
+                temporary: value,
+                current: 0,
                 fine_x: 0,
                 write_toggle: false,
             }
@@ -212,6 +235,42 @@ mod tests {
                 registers.current,
                 "Expected: {:015b}, Was: {:015b}", coarse_y_scroll, registers.current
             );
+        }
+    }
+
+    extern crate rand;
+    #[test]
+    fn copy_horizontal_bits() {
+        for _ in 0..100 {
+            let temp_vram = rand::random::<u16>();
+            let mut vram = VRAMRegisters::with_temp(temp_vram);
+
+            vram.copy_horizontal_bits();
+            assert_eq!(
+                temp_vram & 0b000_0100_0001_1111,
+                vram.current,
+                "Copy temp value: {:04x} -> {:04x}", temp_vram, vram.current
+            )
+        }
+    }
+
+    #[test]
+    fn write_name_table() {
+        for _ in 0..100 {
+            let mut vram = VRAMRegisters::new();
+
+            let value = rand::random::<u8>() & 0xFC;
+            vram.write_name_table(value | 0x00);
+            assert_eq!(0x0000, vram.temporary);
+
+            vram.write_name_table(value | 0x01);
+            assert_eq!(0x0400, vram.temporary);
+
+            vram.write_name_table(value | 0x02);
+            assert_eq!(0x0800, vram.temporary);
+
+            vram.write_name_table(value | 0x03);
+            assert_eq!(0x0C00, vram.temporary);
         }
     }
 }
