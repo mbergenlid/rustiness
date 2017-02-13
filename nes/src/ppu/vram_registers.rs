@@ -1,6 +1,6 @@
 
 pub struct VRAMRegisters {
-    temporary: u16,
+    pub temporary: u16,
     pub current: u16,
 //    fine_x: u8,
     write_toggle: bool,
@@ -19,7 +19,8 @@ impl VRAMRegisters {
     pub fn write_scroll(&mut self, x: u8) {
         if self.write_toggle {
             let high_bits = (x as u16 & 0xF8) << 2;
-            self.temporary = (self.temporary & 0b000_1100_0001_1111) | high_bits;
+            let low_bits = (x as u16 & 0x07) << 12;
+            self.temporary = (self.temporary & 0b000_1100_0001_1111) | high_bits | low_bits;
             self.write_toggle = false;
         } else {
             let high_bits = ((x & 0xF8) >> 3) as u16;
@@ -85,6 +86,14 @@ impl VRAMRegisters {
     pub fn fine_y(&self) -> u8 {
         (self.current >> 12) as u8
     }
+
+    pub fn temporary_x_scroll(&self) -> u8 {
+        (self.temporary & 0x1F) as u8
+    }
+
+    pub fn temporary_y_scroll(&self) -> u8 {
+        ((self.temporary & 0x7000) >> 12) as u8 | ((self.temporary & 0x3E0) >> 2) as u8
+    }
 }
 
 #[cfg(test)]
@@ -123,6 +132,16 @@ mod tests {
 
         registers.write_scroll(16);
         assert_eq!(0b000_0000_0100_0010, registers.temporary);
+    }
+
+    #[test]
+    fn write_fine_y_scroll() {
+        let mut registers = VRAMRegisters::new();
+        registers.write_scroll(0);
+        assert_eq!(0b000_0000_0000_0000, registers.temporary);
+
+        registers.write_scroll(9);
+        assert_eq!(0b001_0000_0010_0000, registers.temporary);
     }
 
     #[test]

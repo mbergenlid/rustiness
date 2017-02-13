@@ -102,9 +102,11 @@ impl Display for PPU {
         formatter.write_fmt(
             format_args!("\tVRAM Pointer:     0x{:08x}\t\n", self.vram())).unwrap();
         formatter.write_fmt(
+            format_args!("\tVRAM Temp Pointer:     0x{:08x}\n", self.vram_registers.temporary)).unwrap();
+        formatter.write_fmt(
             format_args!("\tStatus register:  0b{:08b}\t\n", self.status_register)).unwrap();
         formatter.write_fmt(
-            format_args!("\tscroll (x, y):    ({}, {})\t\n", self.x_scroll, self.y_scroll))
+            format_args!("\tscroll (x, y):    ({}, {})\t\n", self.vram_registers.temporary_x_scroll(), self.vram_registers.temporary_y_scroll()))
     }
 }
 
@@ -161,6 +163,7 @@ impl PPU {
 
     pub fn set_scroll(&mut self, value: u8) {
         self.vram_registers.write_scroll(value);
+        self.vram_changed = true;
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
