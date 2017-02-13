@@ -163,7 +163,7 @@ impl PPU {
 
     pub fn set_scroll(&mut self, value: u8) {
         self.vram_registers.write_scroll(value);
-        self.vram_changed = true;
+//        self.vram_changed = true;
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
