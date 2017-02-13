@@ -28,7 +28,7 @@ pub fn start() {
     let ppu_memory = rom_file.ppu_memory();
 
     let ppu = PPU::new(ppu_memory);
-    let mut nes = nes::NES::new(ppu, memory.as_ref(), box SDL2Screen::new(1));
+    let mut nes = nes::NES::new(ppu, memory.as_ref(), box SDL2Screen::new(2));
 
     loop {
         print(&nes);
@@ -52,6 +52,7 @@ pub fn start() {
                 match cmd.hex_arg(1) {
                     Some(destination_address) => {
                         println!("Continuing to address 0x{:02X}", destination_address);
+                        nes.execute(memory.as_mut());
                         while nes.cpu.program_counter() != destination_address {
                             nes.execute(memory.as_mut());
                         }
@@ -88,7 +89,14 @@ pub fn start() {
                             );
                         }
                     },
-                    None => println!("Not a valid address"),
+                    None => {
+                        for byte in 0x000..0x200 {
+                            for b in 0..0x10 {
+                                print!("0b{:08b},", nes.ppu.memory().get((byte << 1) | b));
+                            }
+                            println!("");
+                        }
+                    }
                 }
             },
             "name-table" => {
@@ -122,6 +130,18 @@ pub fn start() {
                 for i in 0..4 {
                     let palette_value = nes.ppu.memory().get(0x3F00 + 4*palette + i) as usize;
                     println!("Palette value: {:x}: Colour {:?}", palette_value, COLOUR_PALETTE[palette_value]);
+                }
+            },
+            "screenshot" => {
+                use nes::ppu::screen::PixelBuffer;
+                let mut buffer = [0; 256*240*3];
+                nes.ppu.draw_buffer(&mut PixelBuffer { buffer: &mut buffer, pitch: 256*3, scale: 1});
+
+                for y in 0..(240 as usize) {
+                    for x in 0..(256 as usize) {
+                        print!("({},{},{}), ", buffer[y*256*3 + x*3], buffer[y*256*3 + x*3+1], buffer[y*256*3 + x*3+2]);
+                    }
+                    println!("");
                 }
             },
             "mem" => {
