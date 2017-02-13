@@ -47,20 +47,70 @@ impl <'a> PixelBuffer<'a> {
     }
 }
 
-pub trait Screen {
-    fn draw<T>(&mut self, func: T) where Self: Sized, T: FnOnce(&mut PixelBuffer);
+pub struct Rectangle {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
 }
 
-pub struct ScreenMock {}
+pub trait Screen {
+    fn draw<T>(&mut self, func: T) where Self: Sized, T: FnOnce(&mut PixelBuffer);
+
+    fn upload_buffer(&mut self, rect: Option<Rectangle>, buffer: &[u8], pitch: usize);
+    fn update_buffer<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer);
+    fn render(&mut self, src: Rectangle, dst_x: usize, dst_y: usize);
+    fn present(&mut self);
+}
+
+pub struct ScreenMock {
+    pub temp_buffer: Box<[u8; 256*2*240*2*3]>,
+    pub screen_buffer: Box<[u8; 256*240*3]>,
+}
 
 impl ScreenMock {
     pub fn new() -> ScreenMock {
-        ScreenMock {}
+        ScreenMock {
+            temp_buffer: box [0; 256*2*240*2*3],
+            screen_buffer: box [0; 256*240*3],
+        }
     }
 }
 
 impl Screen for ScreenMock {
     fn draw<T>(&mut self, _: T) where T: FnOnce(&mut PixelBuffer) {}
+
+    fn upload_buffer(&mut self, _: Option<Rectangle>, _: &[u8], _: usize) {
+        unimplemented!()
+    }
+
+    fn update_buffer<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer) {
+        func(&mut PixelBuffer { buffer: self.temp_buffer.as_mut(), pitch: 256*2*3, scale: 1 });
+    }
+
+    fn render(&mut self, src: Rectangle, dst_x: usize, dst_y: usize) {
+        let img_pitch = 256*2*3;
+        let screen_pitch = 256*3;
+        let mut y = dst_y;
+        for row in src.y..src.y+(src.height as i32) {
+            let mut x = dst_x;
+            for col in src.x..src.x+(src.width as i32) {
+                let row = row as usize;
+                let col = col as usize;
+                let screen_index = y*screen_pitch + x*3;
+                if screen_index + 3 < self.screen_buffer.len() {
+                    self.screen_buffer[screen_index] = self.temp_buffer[row*img_pitch + col*3];
+                    self.screen_buffer[screen_index + 1] = self.temp_buffer[row*img_pitch + col*3 + 1];
+                    self.screen_buffer[screen_index + 2] = self.temp_buffer[row*img_pitch + col*3 + 2];
+                }
+                x += 1;
+            }
+            y += 1;
+        } 
+    }
+
+    fn present(&mut self) {
+    }
 }
 
 #[cfg(test)]

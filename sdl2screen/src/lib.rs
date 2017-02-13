@@ -5,7 +5,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::render::{Renderer, Texture};
 
-use nes::ppu::screen::{Screen, PixelBuffer};
+use nes::ppu::screen::{Screen, PixelBuffer, Rectangle};
 
 const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;
@@ -32,7 +32,7 @@ impl <'a> SDL2Screen<'a> {
 
         let renderer = window.renderer().build().unwrap();
         let texture = renderer.create_texture_streaming(
-            PixelFormatEnum::RGB24, width, height).unwrap();
+            PixelFormatEnum::RGB24, width*2, height*2).unwrap();
 
         let scale = scale as usize;
 
@@ -62,4 +62,29 @@ impl <'a> Screen for SDL2Screen<'a> {
         self.renderer.present();
     }
 
+    fn upload_buffer(&mut self, rect: Option<Rectangle>, buffer: &[u8], pitch: usize) {
+        self.texture.update(rect.map(|r| Rect::new(r.x, r.y, r.width, r.height)), buffer, pitch);
+    }
+
+    fn update_buffer<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer) {
+        let scale = self.scale as u8;
+        self.texture.with_lock(
+            None,
+            |buf, pitch| func(&mut PixelBuffer { buffer: buf, pitch: pitch, scale: scale})
+        ).unwrap();
+    }
+
+    fn render(&mut self, src: Rectangle, dst_x: usize, dst_y: usize) {
+        let scale_u32 = self.scale as u32;
+        let scale_i32 = self.scale as i32;
+        self.renderer.copy(
+            &self.texture,
+            Some(Rect::new(src.x*scale_i32, src.y*scale_i32, src.width*scale_u32, src.height*scale_u32)),
+            Some(Rect::new((dst_x*self.scale) as i32, (dst_y*self.scale) as i32, src.width*scale_u32, src.height*scale_u32)),
+        ).unwrap();
+    }
+
+    fn present(&mut self) {
+        self.renderer.present();
+    }
 }

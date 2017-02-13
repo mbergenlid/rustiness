@@ -2,7 +2,7 @@
 #[macro_use]
 extern crate nes;
 
-use nes::ppu::screen::PixelBuffer;
+use nes::ppu::screen::ScreenMock;
 use nes::ppu::PPU;
 
 #[test]
@@ -25,11 +25,9 @@ fn draw_buffer_from_name_table_1() {
 
     load_ppu_patterns(&mut ppu);
 
-    let mut pixel_buffer = [0; 256*240*3];
-    {
-        let mut buf = PixelBuffer{ buffer: &mut pixel_buffer, pitch: 256*3, scale: 1 };
-        ppu.draw_buffer(&mut buf);
-    }
+    let mut screen = ScreenMock::new();
+    ppu.update_screen(&mut screen);
+    let pixel_buffer = &screen.screen_buffer;
 
     assert_pixels(
         &[
@@ -85,11 +83,9 @@ fn draw_buffer_from_name_table_2() {
 
     ppu.set_ppu_ctrl(0x01);
 
-    let mut pixel_buffer = [0; 256*240*3];
-    {
-        let mut buf = PixelBuffer{ buffer: &mut pixel_buffer, pitch: 256*3, scale: 1 };
-        ppu.draw_buffer(&mut buf);
-    }
+    let mut screen = ScreenMock::new();
+    ppu.update_screen(&mut screen);
+    let pixel_buffer = screen.screen_buffer.as_ref();
 
     assert_pixels(
         &[
@@ -147,44 +143,46 @@ fn draw_buffer_from_name_table_1_with_scrolling_y() {
     load_ppu_patterns(&mut ppu);
     ppu.set_scroll(0); //x scroll
     ppu.set_scroll(8); //y scroll
-    let mut pixel_buffer = [0; 256*240*3];
+
+    let mut screen = ScreenMock::new();
+    ppu.update_screen(&mut screen);
     {
-        let mut buf = PixelBuffer{ buffer: &mut pixel_buffer, pitch: 256*3, scale: 1 };
-        ppu.draw_buffer(&mut buf);
+        let pixel_buffer = screen.screen_buffer.as_ref();
+
+        assert_pixels(
+            &[
+    /* tile 1 */ 0,0,0, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0,
+    /* tile 2 */ 0,0,0, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0,0,0, 0,0,0,
+    /* tile 3 */ 0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0, 0,0,0,
+            ],
+            &pixel_buffer[0..(16*3+24)]
+        );
+        assert_pixels(
+            &[
+                0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0,0,0
+            ],
+            &pixel_buffer[768..(768+24)] //line 2
+        );
     }
-    assert_pixels(
-        &[
-/* tile 1 */ 0,0,0, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0,
-/* tile 2 */ 0,0,0, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0,0,0, 0,0,0,
-/* tile 3 */ 0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0, 0,0,0,
-        ],
-        &pixel_buffer[0..(16*3+24)]
-    );
-    assert_pixels(
-        &[
-            0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0,0,0
-        ],
-        &pixel_buffer[768..(768+24)] //line 2
-    );
     ppu.set_scroll(0);
     ppu.set_scroll(9);
+    ppu.update_screen(&mut screen);
     {
-        let mut buf = PixelBuffer{ buffer: &mut pixel_buffer, pitch: 256*3, scale: 1 };
-        ppu.draw_buffer(&mut buf);
-    }
-    assert_pixels(
-        &[
-/* tile 1 */ 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0,0,0,
-/* tile 2 */ 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0,0,0,
-/* tile 3 */ 0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 0,0,0,
-        ],
-        &pixel_buffer[0..(16*3+24)]
-    );
+        let pixel_buffer = screen.screen_buffer.as_ref();
 
+        assert_pixels(
+            &[
+    /* tile 1 */ 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0,0,0,
+    /* tile 2 */ 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0,0,0,
+    /* tile 3 */ 0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 0,0,0,
+            ],
+            &pixel_buffer[0..(16*3+24)]
+        );
+    }
 }
 
 
-//#[test]
+#[test]
 fn draw_buffer_from_name_table_1_with_scrolling_x() {
     let memory = external_memory!(
             0x3F00 => 0x1F, //Black
@@ -203,59 +201,23 @@ fn draw_buffer_from_name_table_1_with_scrolling_x() {
             0x2400 => 0x00 //pattern 0 (palette 0)
         );
     let mut ppu = PPU::new(box memory);
-
-    ppu.load(
-        0x0000,
-        &[
-            //Pattern table 0
-            //Layer 1
-            0b00011100, 0b00110010, 0b00111000, 0b00011100, 0b00001110, 0b00100110, 0b00011100, 0b00000000,
-            //Layer 2
-            0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000,
-
-            //Pattern table 1
-            //Layer 1
-            0b00011100, 0b00110010, 0b00111000, 0b00011100, 0b00001110, 0b00100110, 0b00011100, 0b00000000,
-            //Layer 2
-            0b00011100, 0b00110010, 0b00111000, 0b00011100, 0b00001110, 0b00100110, 0b00011100, 0b00000000,
-        ]
-    );
-
+    load_ppu_patterns(&mut ppu);
     ppu.set_scroll(8); //x scroll
     ppu.set_scroll(0); //y scroll
-    let mut pixel_buffer = [0; 256*240*3];
+
+    let mut screen = ScreenMock::new();
+    ppu.update_screen(&mut screen);
     {
-        let mut buf = PixelBuffer{ buffer: &mut pixel_buffer, pitch: 256*3, scale: 1 };
-        ppu.draw_buffer(&mut buf);
+        let pixel_buffer = screen.screen_buffer.as_ref();
+
+        assert_pixels(
+            &[
+                0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0,
+                0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0,
+            ],
+            &pixel_buffer[0..8*3*2]
+        );
     }
-
-    assert_pixels(
-        &[
-            0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0, 0,0,0, 0,0,0,
-        ],
-        &pixel_buffer[0..24]
-    );
-
-//    assert_pixels(
-//        &[
-//            0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 0,0,0
-//        ],
-//        &pixel_buffer[768..(768+24)]
-//    );
-//
-//    assert_pixels(
-//        &[
-//            0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0
-//        ],
-//        &pixel_buffer[8*3..(8*3+24)]
-//    );
-//
-//    assert_pixels(
-//        &[
-//            0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0
-//        ],
-//        &pixel_buffer[16*3..(16*3+24)]
-//    );
 }
 
 //mod donkey_kong_title_screen;

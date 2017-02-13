@@ -94,6 +94,18 @@ impl VRAMRegisters {
     pub fn temporary_y_scroll(&self) -> u8 {
         ((self.temporary & 0x7000) >> 12) as u8 | ((self.temporary & 0x3E0) >> 2) as u8
     }
+
+    pub fn current_x_scroll(&self) -> u8 {
+        ((self.current & 0x1F) as u8) << 3
+    }
+
+    pub fn current_y_scroll(&self) -> u8 {
+        ((self.current & 0x7000) >> 12) as u8 | ((self.current & 0x3E0) >> 2) as u8
+    }
+
+    pub fn current_absolute_x_scroll(&self) -> u16 {
+        ((self.current & 0x400) >> 2) + self.current_x_scroll() as u16
+    }
 }
 
 #[cfg(test)]

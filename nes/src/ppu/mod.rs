@@ -3,7 +3,7 @@ pub mod ppumemory;
 pub mod vram_registers;
 
 use memory::Memory;
-use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer};
+use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer, Rectangle};
 use ppu::vram_registers::VRAMRegisters;
 
 struct PPUCtrl {
@@ -12,10 +12,6 @@ struct PPUCtrl {
 
 impl PPUCtrl {
     fn new() -> PPUCtrl { PPUCtrl {value: 0} }
-
-    fn name_table_base(&self) -> u16 {
-        0x2000 + 0x400*((self.value & 0x03) as u16)
-    }
 
     fn background_pattern_table(&self) -> u16 {
         ((self.value & 0x10) as u16) << 8
@@ -85,9 +81,6 @@ pub struct PPU {
     memory: Box<Memory>,
     vram_registers: VRAMRegisters,
 
-    x_scroll: u8,
-    y_scroll: u8,
-
     vram_changed: bool,
 
     cycle_count: u32,
@@ -124,8 +117,6 @@ impl PPU {
             status_register: 0,
             memory: memory,
             vram_registers: VRAMRegisters::new(),
-            x_scroll: 0,
-            y_scroll: 0,
 
             vram_changed: true,
 
@@ -163,7 +154,6 @@ impl PPU {
 
     pub fn set_scroll(&mut self, value: u8) {
         self.vram_registers.write_scroll(value);
-//        self.vram_changed = true;
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
@@ -196,9 +186,8 @@ impl PPU {
         } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.status_register = self.status_register & 0x7F;
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
-            if self.mask_register.is_drawing_enabled() && self.vram_changed {
-                self.vram_changed = false;
-                screen.draw(|buffer| self.draw_buffer(buffer));
+            if self.mask_register.is_drawing_enabled() {
+                self.update_screen(screen);
             }
             return false
         } else {
@@ -206,50 +195,66 @@ impl PPU {
         }
     }
 
+    pub fn update_screen<T>(&mut self, screen: &mut T) where T: Screen + Sized {
+        if self.vram_changed {
+            self.vram_changed = false;
+            screen.update_buffer(|buffer| self.draw_buffer(buffer));
+        }
+        self.vram_registers.copy_temporary_bits();
+        let left = self.vram_registers.current_absolute_x_scroll();
+        let top = self.vram_registers.current_y_scroll();
+        screen.render(
+            Rectangle { x: left as i32, y: top as i32, width: 256, height: 240 },
+            0, 0
+        );
+        screen.present();
+    }
 
     pub fn draw_buffer(&mut self, pixel_buffer: &mut PixelBuffer) {
+        self.update_tile_for_nametable(pixel_buffer, 0);
+        self.update_tile_for_nametable(pixel_buffer, 1);
+        self.update_tile_for_nametable(pixel_buffer, 2);
+        self.update_tile_for_nametable(pixel_buffer, 3);
+    }
+
+    fn update_tile_for_nametable(&mut self, pixel_buffer: &mut PixelBuffer, name_table_index: u16) {
         let pattern_table_base_address = self.control_register.background_pattern_table();
-        let mut high_pattern = 0;
-        let mut low_pattern = 0;
-        let mut colour_palette = 0;
-        self.vram_registers.copy_temporary_bits();
-        for y in 0..240 {
-            let v = self.vram_registers.current;
-            let coarse_y = (v >> 5) & 0x1F;
-            let mut fine_x = 0;
-            for x in 0..256 {
-                if fine_x == 0 {
-                    let v = self.vram_registers.current;
-                    let coarse_x = v & 0x1F;
-                    let tile_address = 0x2000 | (self.vram_registers.current & 0x0FFF);
-                    let pattern_table_address =
-                        (pattern_table_base_address | ((self.memory.get(tile_address) as u16) << 4))
-                            + self.vram_registers.fine_y() as u16;
-                    low_pattern = self.memory.get(pattern_table_address);
-                    high_pattern = self.memory.get(pattern_table_address+8);
-
-                    colour_palette = {
-                        let attribute_table = AttributeTable {
-                            memory: &(*self.memory),
-                            address: 0x23C0 | (v & 0x0C00),
-                        };
-                        attribute_table.get_palette_address(coarse_y, coarse_x)
+        let name_table_base = 0x2000 + name_table_index*0x400;
+        let mut name_table = name_table_base;
+        let x_offset: usize = ((name_table_index & 0x1)*256) as usize;
+        let y_offset: usize = (((name_table_index & 0x2) >> 1)*240) as usize;
+        for row in 0..30 {
+            for col in 0..32 {
+                let pattern_table_address = self.memory.get(name_table) as u16;
+                let colour_palette = {
+                    let attribute_table = AttributeTable {
+                        memory: &(*self.memory),
+                        address: name_table_base + 0x3C0,
                     };
+                    attribute_table.get_palette_address(row, col)
+                };
+                let mut pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
+                for pattern_row in 0..8 {
+                    let mut low_bits = self.memory.get(pattern_table_address);
+                    let mut high_bits = self.memory.get(pattern_table_address+8);
+                    for bit_index in 0..8 {
+                        let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                        let colour_address: u16 = if pixel == 0 { 0x3F00 } else { colour_palette + pixel as u16 };
+
+                        let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                        pixel_buffer.set_pixel(
+                            x_offset + (col*8 + (7-bit_index)) as usize,
+                            y_offset + (row*8 + pattern_row) as usize,
+                            colour
+                        );
+                        low_bits >>= 1;
+                        high_bits >>= 1;
+                    }
+                    pattern_table_address += 1;
                 }
 
-                let pixel = (((high_pattern >> (7-fine_x)) & 0x01) << 1) | (low_pattern >> (7-fine_x)) & 0x01;
-                let colour_address = if pixel == 0 { 0x3F00 } else { colour_palette + pixel as u16 };
-                let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
-                pixel_buffer.set_pixel(x, y, colour);
-
-                fine_x += 1;
-                if fine_x == 0x08 { //new name table
-                    self.vram_registers.horizontal_increment();
-                    fine_x = 0;
-                }
+                name_table += 1;
             }
-            self.vram_registers.vertical_increment();
-            self.vram_registers.copy_horizontal_bits();
         }
     }
 
