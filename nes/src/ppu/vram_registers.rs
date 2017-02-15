@@ -2,7 +2,7 @@
 pub struct VRAMRegisters {
     pub temporary: u16,
     pub current: u16,
-//    fine_x: u8,
+    fine_x: u8,
     write_toggle: bool,
 }
 
@@ -11,7 +11,7 @@ impl VRAMRegisters {
         VRAMRegisters {
             temporary: 0,
             current: 0,
-//            fine_x: 0,
+            fine_x: 0,
             write_toggle: false,
         }
     }
@@ -24,6 +24,7 @@ impl VRAMRegisters {
             self.write_toggle = false;
         } else {
             let high_bits = ((x & 0xF8) >> 3) as u16;
+            self.fine_x = x & 0x7;
             self.temporary = (self.temporary & 0b111_1111_1110_0000) | high_bits;
             self.write_toggle = true;
         }
@@ -96,7 +97,7 @@ impl VRAMRegisters {
     }
 
     pub fn current_x_scroll(&self) -> u8 {
-        ((self.current & 0x1F) as u8) << 3
+        (((self.current & 0x1F) as u8) << 3) | self.fine_x
     }
 
     pub fn current_y_scroll(&self) -> u8 {
@@ -116,6 +117,7 @@ mod tests {
             VRAMRegisters {
                 temporary: 0,
                 current: value,
+                fine_x: 0,
                 write_toggle: false,
             }
         }
@@ -124,6 +126,7 @@ mod tests {
             VRAMRegisters {
                 temporary: value,
                 current: 0,
+                fine_x: 0,
                 write_toggle: false,
             }
         }
