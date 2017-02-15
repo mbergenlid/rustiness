@@ -4,6 +4,7 @@ use memory::{Memory, BasicMemory, Address};
 pub enum Mirroring {
     Horizontal,
     Vertical,
+    NoMirroring,
 }
 
 pub struct PPUMemory {
@@ -18,6 +19,7 @@ impl PPUMemory {
             name_table_mirror_mask: match mirroring {
                 Mirroring::Horizontal => 0xFBFF,
                 Mirroring::Vertical => !0x0800,
+                Mirroring::NoMirroring => 0xFFFF,
             }
 
         }
@@ -58,6 +60,19 @@ pub mod tests {
     extern crate rand;
     use memory::Memory;
     use super::{PPUMemory, Mirroring};
+
+    #[test]
+    fn test_no_mirroring() {
+        let mut ppu_mem = PPUMemory::new(Mirroring::NoMirroring);
+        for address in 0x2000..0x2400 {
+            let value = rand::random::<u8>() & (!0x80);
+            ppu_mem.set(address, value);
+            assert_eq!(value, ppu_mem.get(address), "Original address is not written properly");
+            assert_eq!(0, ppu_mem.get(address + 0x400), "Address {} changed unexpectedly", address + 0x400);
+            assert_eq!(0, ppu_mem.get(address + 0x800), "Address {} changed unexpectedly", address + 0x800);
+            assert_eq!(0, ppu_mem.get(address + 0xC00), "Address {} changed unexpectedly", address + 0xC00);
+        }
+    }
 
     #[test]
     fn test_horizontal_read_mirroring() {
