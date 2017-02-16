@@ -84,6 +84,7 @@ pub struct PPU {
     vram_changed: bool,
 
     cycle_count: u32,
+    mirroring: ppumemory::Mirroring
 }
 
 use std::fmt::{Formatter, Error, Display};
@@ -121,6 +122,22 @@ impl PPU {
             vram_changed: true,
 
             cycle_count: 0,
+            mirroring: ppumemory::Mirroring::NoMirroring,
+        }
+    }
+
+    pub fn with_mirroring(memory: Box<Memory>, mirroring: ppumemory::Mirroring) -> PPU {
+        PPU {
+            control_register: PPUCtrl::new(),
+            mask_register: PPUMask { value: 0 },
+            status_register: 0,
+            memory: memory,
+            vram_registers: VRAMRegisters::new(),
+
+            vram_changed: true,
+
+            cycle_count: 0,
+            mirroring: mirroring,
         }
     }
 
@@ -201,20 +218,61 @@ impl PPU {
             screen.update_buffer(|buffer| self.draw_buffer(buffer));
         }
         self.vram_registers.copy_temporary_bits();
-        let left = self.vram_registers.current_absolute_x_scroll();
-        let top = self.vram_registers.current_y_scroll();
+        let screen_width: usize = 256;
+        let screen_height: usize = 240;
+        let left: usize = self.vram_registers.current_absolute_x_scroll() as usize;
+        let top: usize = self.vram_registers.current_absolute_y_scroll() as usize;
+        let (area_width, area_height): (usize, usize) = match self.mirroring {
+            ppumemory::Mirroring::Horizontal => (256, 480),
+            ppumemory::Mirroring::Vertical => (512, 240),
+            ppumemory::Mirroring::NoMirroring => (512, 480),
+        };
+        use std::cmp::min;
         screen.render(
-            Rectangle { x: left as i32, y: top as i32, width: 256, height: 240 },
+            Rectangle { x: left as i32, y: top as i32, width: min(screen_width, area_width-left) as u32, height: min(screen_height, area_height-top) as u32 },
             0, 0
         );
+        //Do we need to patch to the right?
+        if area_width-left < screen_width {
+            screen.render(
+                Rectangle { x: 0, y: top as i32, width: (screen_width-(area_width-left)) as u32, height: min(screen_height, area_height-top) as u32 },
+                area_width-left, 0
+            );
+        }
+        //Do we need to patch at the bottom?
+        if area_height-top < screen_height {
+            screen.render(
+                Rectangle { x: left as i32, y: 0, width: min(screen_width, area_width-left) as u32, height: (screen_height-(area_height-top)) as u32 },
+                0, area_height-top as usize
+            );
+        }
+        //Do we need to patch at the bottom right?
+        if area_width-left < screen_width && area_height-top < screen_height {
+            screen.render(
+                Rectangle { x: 0, y: 0, width: (screen_width-(area_width-left)) as u32, height: (screen_height-(area_height-top)) as u32 },
+                area_width-left as usize, area_height-top as usize
+            );
+        }
         screen.present();
     }
 
     pub fn draw_buffer(&mut self, pixel_buffer: &mut PixelBuffer) {
-        self.update_tile_for_nametable(pixel_buffer, 0);
-        self.update_tile_for_nametable(pixel_buffer, 1);
-        self.update_tile_for_nametable(pixel_buffer, 2);
-        self.update_tile_for_nametable(pixel_buffer, 3);
+        match self.mirroring {
+            ppumemory::Mirroring::Horizontal => {
+                self.update_tile_for_nametable(pixel_buffer, 0);
+                self.update_tile_for_nametable(pixel_buffer, 2);
+            },
+            ppumemory::Mirroring::Vertical => {
+                self.update_tile_for_nametable(pixel_buffer, 0);
+                self.update_tile_for_nametable(pixel_buffer, 1);
+            },
+            ppumemory::Mirroring::NoMirroring => {
+                self.update_tile_for_nametable(pixel_buffer, 0);
+                self.update_tile_for_nametable(pixel_buffer, 1);
+                self.update_tile_for_nametable(pixel_buffer, 2);
+                self.update_tile_for_nametable(pixel_buffer, 3);
+            },
+        };
     }
 
     fn update_tile_for_nametable(&mut self, pixel_buffer: &mut PixelBuffer, name_table_index: u16) {

@@ -1,6 +1,7 @@
 
 use memory::{Memory, BasicMemory, Address};
 
+#[derive(Copy, Clone)]
 pub enum Mirroring {
     Horizontal,
     Vertical,

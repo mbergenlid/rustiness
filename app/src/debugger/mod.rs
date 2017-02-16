@@ -27,7 +27,7 @@ pub fn start() {
     rom_file.load(memory.as_mut());
     let ppu_memory = rom_file.ppu_memory();
 
-    let ppu = PPU::new(ppu_memory);
+    let ppu = PPU::with_mirroring(ppu_memory, rom_file.mirroring);
     let mut nes = nes::NES::new(ppu, memory.as_ref(), box SDL2Screen::new(2));
 
     loop {

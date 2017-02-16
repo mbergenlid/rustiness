@@ -98,11 +98,9 @@ impl Screen for ScreenMock {
                 let row = row as usize;
                 let col = col as usize;
                 let screen_index = y*screen_pitch + x*3;
-                if screen_index + 3 < self.screen_buffer.len() {
-                    self.screen_buffer[screen_index] = self.temp_buffer[row*img_pitch + col*3];
-                    self.screen_buffer[screen_index + 1] = self.temp_buffer[row*img_pitch + col*3 + 1];
-                    self.screen_buffer[screen_index + 2] = self.temp_buffer[row*img_pitch + col*3 + 2];
-                }
+                self.screen_buffer[screen_index] = self.temp_buffer[row*img_pitch + col*3];
+                self.screen_buffer[screen_index + 1] = self.temp_buffer[row*img_pitch + col*3 + 1];
+                self.screen_buffer[screen_index + 2] = self.temp_buffer[row*img_pitch + col*3 + 2];
                 x += 1;
             }
             y += 1;

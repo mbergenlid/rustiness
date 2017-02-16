@@ -107,6 +107,10 @@ impl VRAMRegisters {
     pub fn current_absolute_x_scroll(&self) -> u16 {
         ((self.current & 0x400) >> 2) + self.current_x_scroll() as u16
     }
+
+    pub fn current_absolute_y_scroll(&self) -> u16 {
+        ((self.current & 0x800) >> 11)*240 + self.current_y_scroll() as u16
+    }
 }
 
 #[cfg(test)]

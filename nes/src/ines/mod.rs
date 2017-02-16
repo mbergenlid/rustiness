@@ -10,6 +10,7 @@ pub struct INes {
     buffer: Vec<u8>,
     pub num_prg_roms: u8,
     pub num_chr_roms: u8,
+    pub mirroring: Mirroring,
 }
 
 impl <'a> INes  {
@@ -18,10 +19,12 @@ impl <'a> INes  {
         file.read_to_end(&mut buffer).unwrap();
         let num_prg_roms = buffer[4];
         let num_chr_roms = buffer[5];
+        let mirroring = if buffer[6] & 0x01 == 0 { Mirroring::Horizontal } else { Mirroring::Vertical };
         INes {
             buffer: buffer,
             num_prg_roms: num_prg_roms,
             num_chr_roms: num_chr_roms,
+            mirroring: mirroring,
         }
     }
 
@@ -42,8 +45,7 @@ impl <'a> INes  {
     }
 
     pub fn ppu_memory(&self) -> Box<PPUMemory> {
-        let mirroring = if self.buffer[6] & 0x01 == 0 { Mirroring::Horizontal } else { Mirroring::Vertical };
-        let mut ppu_mem = box PPUMemory::new(mirroring);
+        let mut ppu_mem = box PPUMemory::new(self.mirroring);
         ppu_mem.set_slice(0x0000, self.chr_rom(0));
         return ppu_mem;
     }
