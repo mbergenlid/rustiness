@@ -18,9 +18,6 @@ fn create_ppu() -> PPU {
     let mut ppu = PPU::new(box memory);
     ppu.set_ppu_ctrl(0x08);
 
-    let mut sprites = [0; 64*4];
-    sprites[0..4].copy_from_slice(&[0x00, 0x01, 0x00, 0x00]);
-    ppu.load_sprites(&sprites);
 
     ppu.load(
         0x1010,
@@ -45,17 +42,56 @@ fn create_ppu() -> PPU {
 #[test]
 fn test_basic_sprite_rendering() {
     let mut ppu = create_ppu();
-
+    let mut sprites = [0; 64*4];
+    sprites[0..4].copy_from_slice(&[0x00, 0x01, 0x00, 0x00]);
     let mut screen = ScreenMock::new();
-    ppu.update_screen(&mut screen);
-    let pixel_buffer = screen.screen_buffer.as_ref();
 
-    assert_pixels(
-        &[
-/* tile 1 */ 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255,
-        ],
-        &pixel_buffer[0..8*3]
-    );
+    ppu.load_sprites(&sprites);
+    ppu.update_screen(&mut screen);
+    {
+        let pixel_buffer = screen.screen_buffer.as_ref();
+
+        assert_pixels(
+            &[
+    /* tile 1 */ 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255,
+            ],
+            &pixel_buffer[0..8*3]
+        );
+    }
+
+    sprites[0] = 0;
+    sprites[3] = 8;
+    ppu.load_sprites(&sprites);
+    ppu.update_screen(&mut screen);
+    {
+        let pixel_buffer = screen.screen_buffer.as_ref();
+
+        assert_pixels(
+            &[
+    /* tile 1 */ 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75,
+    /* tile 2 */ 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255,
+            ],
+            &pixel_buffer[0..16*3]
+        );
+    }
+
+    sprites[0] = 3;
+    sprites[3] = 10;
+    ppu.load_sprites(&sprites);
+    ppu.update_screen(&mut screen);
+    {
+        let pixel_buffer = screen.screen_buffer.as_ref();
+
+        assert_pixels(
+            &[
+                255,255,255, 255,255,255, 117,117,117, 117,117,117, 117,117,117, 117,117,117, 255,255,255, 255,255,255,
+            ],
+            {
+                let start = 3*256*2*3 + 10*3;
+                &pixel_buffer[start..(start+8*3)]
+            }
+        );
+    }
 }
 
 use std::fmt::format;
