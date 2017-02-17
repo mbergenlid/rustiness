@@ -36,7 +36,7 @@ impl <'a> SDL2Screen<'a> {
             PixelFormatEnum::RGB24, width*2, height*2+16*(scale as u32)).unwrap();
 
         let mut sprite_texture = renderer.create_texture_streaming(
-            PixelFormatEnum::ARGB8888, 8*(scale as u32), 8*(scale as u32)
+            PixelFormatEnum::ARGB8888, 64*8*(scale as u32), 8*(scale as u32)
         ).unwrap();
 
         sprite_texture.set_blend_mode(BlendMode::Blend);

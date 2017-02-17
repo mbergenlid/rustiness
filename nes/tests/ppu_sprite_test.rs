@@ -50,7 +50,7 @@ fn test_basic_sprite_rendering() {
         0x0200 => 0x00,
         0x0201 => 0x01,
         0x0202 => 0x00,
-        0x0204 => 0x00
+        0x0203 => 0x00
     );
 
     {
@@ -91,7 +91,7 @@ fn test_basic_sprite_rendering() {
 
     {
         let mut cpu_memory = CPUMemory::new(&mut ppu, &mut basic_memory);
-        cpu_memory.set(0x0200, 3);
+        cpu_memory.set(0x0200, 5);
         cpu_memory.set(0x0203, 10);
         cpu_memory.set(0x4014, 0x02);
     }
@@ -104,13 +104,59 @@ fn test_basic_sprite_rendering() {
                 255,255,255, 255,255,255, 117,117,117, 117,117,117, 117,117,117, 117,117,117, 255,255,255, 255,255,255,
             ],
             {
-                let start = 3*256*2*3 + 10*3;
+                let start = 7*256*3 + 10*3;
                 &pixel_buffer[start..(start+8*3)]
             }
         );
     }
 }
 
+#[test]
+fn test_multiple_sprite_rendering() {
+    let mut ppu = create_ppu();
+    let mut sprites = [0; 64*4];
+    sprites[0..4].copy_from_slice(&[0x00, 0x01, 0x00, 0x00]);
+    let mut screen = ScreenMock::new();
+    let mut basic_memory = external_memory!(
+        0x0200 => 0x00,
+        0x0201 => 0x01,
+        0x0202 => 0x00,
+        0x0203 => 0x00,
+
+        0x0210 => 0x08,
+        0x0211 => 0x01,
+        0x0212 => 0x01,
+        0x0213 => 0x08
+
+    );
+
+    {
+        let mut cpu_memory = CPUMemory::new(&mut ppu, &mut basic_memory);
+        cpu_memory.set(0x4014, 0x02);
+    };
+
+    ppu.update_screen(&mut screen);
+    {
+        let pixel_buffer = screen.screen_buffer.as_ref();
+
+        assert_pixels(
+            &[
+    /* tile 1 */ 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255,
+            ],
+            &pixel_buffer[0..8*3]
+        );
+        assert_pixels(
+            &[
+    /* tile 1 */ 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F,
+            ],
+            {
+                let start = 8*256*3 + 8*3;
+                &pixel_buffer[start..(start + 8*3)]
+            }
+        );
+    }
+
+}
 use std::fmt::format;
 trait PixelDebug {
     fn debug(&self) -> String;

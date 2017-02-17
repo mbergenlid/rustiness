@@ -94,7 +94,7 @@ pub trait Screen {
 
 pub struct ScreenMock {
     pub temp_buffer: Box<[u8; 256*2*240*2*3]>,
-    pub temp_sprite_buffer: Box<[u8; 64*8*4]>,
+    pub temp_sprite_buffer: Box<[u8; 64*8*4*8]>,
     pub screen_buffer: Box<[u8; 256*240*3]>,
 }
 
@@ -102,7 +102,7 @@ impl ScreenMock {
     pub fn new() -> ScreenMock {
         ScreenMock {
             temp_buffer: box [0; 256*2*240*2*3],
-            temp_sprite_buffer: box [0; 64*8*4],
+            temp_sprite_buffer: box [0; 64*8*4*8],
             screen_buffer: box [0; 256*240*3],
         }
     }
@@ -140,7 +140,7 @@ impl Screen for ScreenMock {
     }
 
     fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize) {
-        let img_pitch = 64*4;
+        let img_pitch = 64*8*4;
         let screen_pitch = 256*3;
         let mut y = dst_y;
         for row in src.y..src.y+(src.height as i32) {
@@ -161,7 +161,7 @@ impl Screen for ScreenMock {
     }
 
     fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut SpriteBuffer) {
-        func(&mut SpriteBuffer { buffer: self.temp_sprite_buffer.as_mut(), pitch: 64*4, scale: 1 });
+        func(&mut SpriteBuffer { buffer: self.temp_sprite_buffer.as_mut(), pitch: 64*8*4, scale: 1 });
     }
 
     fn present(&mut self) {

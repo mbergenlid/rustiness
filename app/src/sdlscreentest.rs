@@ -180,7 +180,7 @@ pub fn start() {
                 if colour == 0 {
                     buffer.set_pixel(x, y, (0, 0, 0, 0));
                 } else {
-                    buffer.set_pixel(x, y, (255, colour, colour, colour));
+                    buffer.set_pixel(x, y, (255, 0, colour, 0));
                 }
             }
         }

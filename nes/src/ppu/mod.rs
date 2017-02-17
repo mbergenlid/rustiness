@@ -248,40 +248,45 @@ impl PPU {
     }
 
     pub fn draw_sprite<T>(&mut self, screen: &mut T) where T: Screen + Sized {
-        let sprite = &self.sprites[0..4];
         screen.update_sprites(|buffer| {
-            let pattern_table_base_address = 0x1000;
-            let colour_palette = sprite.colour_palette();
-            let mut pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
-            for pattern_row in 0..8 {
-                let mut low_bits = self.memory.get(pattern_table_address);
-                let mut high_bits = self.memory.get(pattern_table_address+8);
-                for bit_index in 0..8 {
-                    let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
-                    let colour = 
-                        if pixel == 0 { (0,0,0,0) } 
-                        else { 
-                            let colour_address = colour_palette + pixel as u16;
-                            let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
-                            (255, colour.2, colour.1, colour.0)
-                        };
+            for sprite_index in 0..64 {
+                let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
+                let pattern_table_base_address = 0x1000;
+                let colour_palette = sprite.colour_palette();
+                let mut pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
+                for pattern_row in 0..8 {
+                    let mut low_bits = self.memory.get(pattern_table_address);
+                    let mut high_bits = self.memory.get(pattern_table_address+8);
+                    for bit_index in 0..8 {
+                        let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                        let colour =
+                            if pixel == 0 { (0,0,0,0) }
+                            else {
+                                let colour_address = colour_palette + pixel as u16;
+                                let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                                (255, colour.0, colour.1, colour.2)
+                            };
 
-                    buffer.set_pixel(
-                        (7-bit_index) as usize,
-                        pattern_row as usize,
-                        colour
-                    );
-                    low_bits >>= 1;
-                    high_bits >>= 1;
+                        buffer.set_pixel(
+                            sprite_index*8 + (7-bit_index) as usize,
+                            pattern_row as usize,
+                            colour
+                        );
+                        low_bits >>= 1;
+                        high_bits >>= 1;
+                    }
+                    pattern_table_address += 1;
                 }
-                pattern_table_address += 1;
             }
         });
-        screen.render_sprite(
-            Rectangle { x: 0, y: 0, width: 8, height: 8 },
-            sprite.position_x() as usize,
-            sprite.position_y() as usize,
-        );
+        for sprite_index in 0..64 {
+            let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
+            screen.render_sprite(
+                Rectangle { x: (sprite_index*8) as i32, y: 0, width: 8, height: 8 },
+                sprite.position_x() as usize,
+                sprite.position_y() as usize,
+            );
+        }
     }
 
     pub fn draw_buffer(&mut self, pixel_buffer: &mut PixelBuffer) {
