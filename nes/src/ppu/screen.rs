@@ -94,6 +94,7 @@ pub trait Screen {
 
 pub struct ScreenMock {
     pub temp_buffer: Box<[u8; 256*2*240*2*3]>,
+    pub temp_sprite_buffer: Box<[u8; 64*8*4]>,
     pub screen_buffer: Box<[u8; 256*240*3]>,
 }
 
@@ -101,6 +102,7 @@ impl ScreenMock {
     pub fn new() -> ScreenMock {
         ScreenMock {
             temp_buffer: box [0; 256*2*240*2*3],
+            temp_sprite_buffer: box [0; 64*8*4],
             screen_buffer: box [0; 256*240*3],
         }
     }
@@ -134,15 +136,32 @@ impl Screen for ScreenMock {
                 x += 1;
             }
             y += 1;
-        } 
+        }
     }
 
-    fn render_sprite(&mut self, _: Rectangle, _: usize, _: usize) {
-        unimplemented!();
+    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize) {
+        let img_pitch = 64*4;
+        let screen_pitch = 256*3;
+        let mut y = dst_y;
+        for row in src.y..src.y+(src.height as i32) {
+            let mut x = dst_x;
+            for col in src.x..src.x+(src.width as i32) {
+                let row = row as usize;
+                let col = col as usize;
+                let screen_index = y*screen_pitch + x*3;
+                if self.temp_sprite_buffer[row*img_pitch + col*4 + 3] == 255 { //Only add the pixel if alpha is 255.
+                    self.screen_buffer[screen_index + 0] = self.temp_sprite_buffer[row*img_pitch + col*4 + 2];
+                    self.screen_buffer[screen_index + 1] = self.temp_sprite_buffer[row*img_pitch + col*4 + 1];
+                    self.screen_buffer[screen_index + 2] = self.temp_sprite_buffer[row*img_pitch + col*4 + 0];
+                }
+                x += 1;
+            }
+            y += 1;
+        }
     }
 
-    fn update_sprites<T>(&mut self, _: T) where T: FnOnce(&mut SpriteBuffer) {
-        unimplemented!();
+    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut SpriteBuffer) {
+        func(&mut SpriteBuffer { buffer: self.temp_sprite_buffer.as_mut(), pitch: 64*4, scale: 1 });
     }
 
     fn present(&mut self) {

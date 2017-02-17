@@ -49,6 +49,20 @@ impl PPUStatus for u8 {
     }
 }
 
+trait Sprite {
+    fn position_y(&self) -> u8;
+    fn position_x(&self) -> u8;
+    fn pattern_index(&self) -> u8;
+    fn colour_palette(&self) -> u16;
+}
+
+impl <'a> Sprite for &'a [u8] {
+    fn position_y(&self) -> u8 { return self[0]; }
+    fn position_x(&self) -> u8 { return self[3]; }
+    fn pattern_index(&self) -> u8 { return self[1]; }
+    fn colour_palette(&self) -> u16 { return (self[2] as u16 & 0x3)*4 + 0x3F10; }
+}
+
 pub struct PPU {
     control_register: PPUCtrl,
     mask_register: PPUMask,
@@ -59,7 +73,9 @@ pub struct PPU {
     vram_changed: bool,
 
     cycle_count: u32,
-    mirroring: ppumemory::Mirroring
+    mirroring: ppumemory::Mirroring,
+
+    sprites: [u8; 64*4],
 }
 
 use std::fmt::{Formatter, Error, Display};
@@ -87,18 +103,7 @@ const PPU_CYCLES_PER_VISIBLE_FRAME: u32 = (SCANLINES_PER_FRAME-SCANLINES_PER_VBL
 
 impl PPU {
     pub fn new(memory: Box<Memory>) -> PPU {
-        PPU {
-            control_register: PPUCtrl::new(),
-            mask_register: PPUMask { value: 0 },
-            status_register: 0,
-            memory: memory,
-            vram_registers: VRAMRegisters::new(),
-
-            vram_changed: true,
-
-            cycle_count: 0,
-            mirroring: ppumemory::Mirroring::NoMirroring,
-        }
+        PPU::with_mirroring(memory, ppumemory::Mirroring::NoMirroring)
     }
 
     pub fn with_mirroring(memory: Box<Memory>, mirroring: ppumemory::Mirroring) -> PPU {
@@ -113,6 +118,8 @@ impl PPU {
 
             cycle_count: 0,
             mirroring: mirroring,
+
+            sprites: [0; 64*4],
         }
     }
 
@@ -163,6 +170,10 @@ impl PPU {
         }
 
         self.vram_registers.current = current_vram;
+    }
+
+    pub fn load_sprites(&mut self, oam_data: &[u8]) {
+        self.sprites.copy_from_slice(oam_data);
     }
 
     /**
@@ -228,7 +239,49 @@ impl PPU {
                 area_width-left as usize, area_height-top as usize
             );
         }
+
+        //Update sprites
+        self.draw_sprite(screen);
+
+        
         screen.present();
+    }
+
+    pub fn draw_sprite<T>(&mut self, screen: &mut T) where T: Screen + Sized {
+        let sprite = &self.sprites[0..4];
+        screen.update_sprites(|buffer| {
+            let pattern_table_base_address = 0x1000;
+            let colour_palette = sprite.colour_palette();
+            let mut pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
+            for pattern_row in 0..8 {
+                let mut low_bits = self.memory.get(pattern_table_address);
+                let mut high_bits = self.memory.get(pattern_table_address+8);
+                for bit_index in 0..8 {
+                    let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                    let colour = 
+                        if pixel == 0 { (0,0,0,0) } 
+                        else { 
+                            let colour_address = colour_palette + pixel as u16;
+                            let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                            (255, colour.2, colour.1, colour.0)
+                        };
+
+                    buffer.set_pixel(
+                        (7-bit_index) as usize,
+                        pattern_row as usize,
+                        colour
+                    );
+                    low_bits >>= 1;
+                    high_bits >>= 1;
+                }
+                pattern_table_address += 1;
+            }
+        });
+        screen.render_sprite(
+            Rectangle { x: 0, y: 0, width: 8, height: 8 },
+            sprite.position_x() as usize,
+            sprite.position_y() as usize,
+        );
     }
 
     pub fn draw_buffer(&mut self, pixel_buffer: &mut PixelBuffer) {
@@ -298,9 +351,9 @@ impl PPU {
 
 #[cfg(test)]
 pub mod tests {
-    use memory::{Memory, BasicMemory};
+    use memory::BasicMemory;
     use super::screen::ScreenMock;
-    use super::{PPU, PPUStatus, AttributeTable};
+    use super::{PPU, PPUStatus};
 
     #[test]
     fn reading_status_register_should_clear_vblank() {
