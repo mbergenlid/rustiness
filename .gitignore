@@ -1,6 +1,8 @@
 target
 .idea
 *.iml
+*.swp
+*.swo
 
 nes/Cargo.lock
 gliumscreen/Cargo.lock
