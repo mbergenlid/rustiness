@@ -50,6 +50,14 @@ impl <'a> CPUMemory<'a> {
     }
 }
 
+use std::ops::{Range, Index};
+impl Index<Range<usize>> for BasicMemory {
+    type Output = [u8];
+    fn index(&self, index: Range<usize>) -> &[u8] {
+        &self.data[index]
+    }
+}
+
 impl <'a> Memory for CPUMemory<'a> {
     fn get(&self, address: Address) -> u8 {
         if address == 0x2000 {
@@ -72,6 +80,9 @@ impl <'a> Memory for CPUMemory<'a> {
             self.ppu.borrow_mut().set_vram(value);
         } else if address == 0x2007 {
             self.ppu.borrow_mut().write_to_vram(value);
+        } else if address == 0x4014 {
+            let dma_address: usize = (value as usize) << 8;
+            self.ppu.borrow_mut().load_sprites(&self.data[dma_address..(dma_address+256)]);
         } else {
             self.data.set(address, value);
         }

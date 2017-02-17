@@ -4,7 +4,7 @@ mod opcodes;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
 use nes::ines::INes;
-use nes::ppu::{PPU, AttributeTable};
+use nes::ppu::{PPU, attributetable};
 use nes::ppu::screen::COLOUR_PALETTE;
 use sdl2screen::SDL2Screen;
 
@@ -114,7 +114,7 @@ pub fn start() {
                 for row in 0..15 {
                     for col in 0..16 {
                         let colour_palette_index = {
-                            let attribute_table = AttributeTable {
+                            let attribute_table = attributetable::AttributeTable {
                                 memory: nes.ppu.memory(),
                                 address: base_address + 0x3C0,
                             };
