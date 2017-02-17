@@ -3,9 +3,9 @@ extern crate nes;
 
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
-use sdl2::render::{Renderer, Texture};
+use sdl2::render::{Renderer, Texture, BlendMode};
 
-use nes::ppu::screen::{Screen, PixelBuffer, Rectangle};
+use nes::ppu::screen::{Screen, PixelBuffer, SpriteBuffer, Rectangle};
 
 const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;
@@ -15,6 +15,7 @@ pub struct SDL2Screen<'a> {
 
     renderer: Renderer<'a>,
     texture: Texture,
+    sprite_texture: Texture,
 }
 
 impl <'a> SDL2Screen<'a> {
@@ -32,7 +33,13 @@ impl <'a> SDL2Screen<'a> {
 
         let renderer = window.renderer().build().unwrap();
         let texture = renderer.create_texture_streaming(
-            PixelFormatEnum::RGB24, width*2, height*2).unwrap();
+            PixelFormatEnum::RGB24, width*2, height*2+16*(scale as u32)).unwrap();
+
+        let mut sprite_texture = renderer.create_texture_streaming(
+            PixelFormatEnum::ARGB8888, 8*(scale as u32), 8*(scale as u32)
+        ).unwrap();
+
+        sprite_texture.set_blend_mode(BlendMode::Blend);
 
         let scale = scale as usize;
 
@@ -40,6 +47,7 @@ impl <'a> SDL2Screen<'a> {
             scale: scale,
             renderer: renderer,
             texture: texture,
+            sprite_texture: sprite_texture,
         }
     }
 }
@@ -63,7 +71,7 @@ impl <'a> Screen for SDL2Screen<'a> {
     }
 
     fn upload_buffer(&mut self, rect: Option<Rectangle>, buffer: &[u8], pitch: usize) {
-        self.texture.update(rect.map(|r| Rect::new(r.x, r.y, r.width, r.height)), buffer, pitch);
+        self.texture.update(rect.map(|r| Rect::new(r.x, r.y, r.width, r.height)), buffer, pitch).unwrap();
     }
 
     fn update_buffer<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer) {
@@ -79,6 +87,24 @@ impl <'a> Screen for SDL2Screen<'a> {
         let scale_i32 = self.scale as i32;
         self.renderer.copy(
             &self.texture,
+            Some(Rect::new(src.x*scale_i32, src.y*scale_i32, src.width*scale_u32, src.height*scale_u32)),
+            Some(Rect::new((dst_x*self.scale) as i32, (dst_y*self.scale) as i32, src.width*scale_u32, src.height*scale_u32)),
+        ).unwrap();
+    }
+
+    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut SpriteBuffer) {
+        let scale = self.scale as u8;
+        self.sprite_texture.with_lock(
+            None,
+            |buf, pitch| func(&mut SpriteBuffer { buffer: buf, pitch: pitch, scale: scale})
+        ).unwrap();
+    }
+
+    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize) {
+        let scale_u32 = self.scale as u32;
+        let scale_i32 = self.scale as i32;
+        self.renderer.copy(
+            &self.sprite_texture,
             Some(Rect::new(src.x*scale_i32, src.y*scale_i32, src.width*scale_u32, src.height*scale_u32)),
             Some(Rect::new((dst_x*self.scale) as i32, (dst_y*self.scale) as i32, src.width*scale_u32, src.height*scale_u32)),
         ).unwrap();

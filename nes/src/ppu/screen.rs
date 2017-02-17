@@ -47,6 +47,31 @@ impl <'a> PixelBuffer<'a> {
     }
 }
 
+pub struct SpriteBuffer<'a> {
+    pub buffer: &'a mut [u8],
+    pub pitch: usize,
+    pub scale: u8,
+}
+
+impl <'a> SpriteBuffer<'a> {
+    pub fn set_pixel(&mut self, x: usize, y: usize, colour: (u8, u8, u8, u8)) {
+        let scale = self.scale as usize;
+        let mut offset = y*self.pitch*scale + x*4*scale;
+
+        for _ in 0..scale {
+            let mut i = 0;
+            for _ in 0..scale {
+                self.buffer[offset + i] = colour.3;
+                self.buffer[offset + i+1] = colour.2;
+                self.buffer[offset + i+2] = colour.1;
+                self.buffer[offset + i+3] = colour.0;
+                i += 4;
+            }
+            offset += self.pitch;
+        }
+    }
+}
+
 pub struct Rectangle {
     pub x: i32,
     pub y: i32,
@@ -60,6 +85,10 @@ pub trait Screen {
     fn upload_buffer(&mut self, rect: Option<Rectangle>, buffer: &[u8], pitch: usize);
     fn update_buffer<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer);
     fn render(&mut self, src: Rectangle, dst_x: usize, dst_y: usize);
+
+    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize);
+    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut SpriteBuffer);
+
     fn present(&mut self);
 }
 
@@ -79,6 +108,7 @@ impl ScreenMock {
 
 impl Screen for ScreenMock {
     fn draw<T>(&mut self, _: T) where T: FnOnce(&mut PixelBuffer) {}
+
 
     fn upload_buffer(&mut self, _: Option<Rectangle>, _: &[u8], _: usize) {
         unimplemented!()
@@ -105,6 +135,14 @@ impl Screen for ScreenMock {
             }
             y += 1;
         } 
+    }
+
+    fn render_sprite(&mut self, _: Rectangle, _: usize, _: usize) {
+        unimplemented!();
+    }
+
+    fn update_sprites<T>(&mut self, _: T) where T: FnOnce(&mut SpriteBuffer) {
+        unimplemented!();
     }
 
     fn present(&mut self) {
