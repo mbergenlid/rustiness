@@ -19,6 +19,10 @@ impl PPUCtrl {
         ((self.value & 0x10) as u16) << 8
     }
 
+    fn sprite_pattern_table(&self) -> u16 {
+        ((self.value & 0x08) as u16) << 9
+    }
+
     fn nmi_enabled(&self) -> bool {
         (self.value & 0x80) != 0
     }
@@ -251,7 +255,7 @@ impl PPU {
         screen.update_sprites(|buffer| {
             for sprite_index in 0..64 {
                 let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
-                let pattern_table_base_address = 0x1000;
+                let pattern_table_base_address = self.control_register.sprite_pattern_table();
                 let colour_palette = sprite.colour_palette();
                 let mut pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
                 for pattern_row in 0..8 {

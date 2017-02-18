@@ -27,6 +27,7 @@ fn create_ppu(mirroring: Mirroring) -> PPU {
             0x2FC0 => 0b00_00_00_01
         );
     let mut ppu = PPU::with_mirroring(box memory, mirroring);
+    ppu.set_ppu_ctrl(0x08);
     ppu.load(
         0x0010,
         &[

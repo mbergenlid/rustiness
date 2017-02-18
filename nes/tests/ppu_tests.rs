@@ -22,6 +22,7 @@ fn draw_buffer_from_name_table_1() {
             0x23C0 => 0b00_00_01_00
         );
     let mut ppu = PPU::new(box memory);
+    ppu.set_ppu_ctrl(0x08);
 
     load_ppu_patterns(&mut ppu);
 
@@ -81,7 +82,7 @@ fn draw_buffer_from_name_table_2() {
     let mut ppu = PPU::new(box memory);
     load_ppu_patterns(&mut ppu);
 
-    ppu.set_ppu_ctrl(0x01);
+    ppu.set_ppu_ctrl(0x08 | 0x01);
 
     let mut screen = ScreenMock::new();
     ppu.update_screen(&mut screen);
@@ -140,6 +141,7 @@ fn draw_buffer_from_name_table_1_with_scrolling_y() {
             0x2400 => 0x00 //pattern 0 (palette 0)
         );
     let mut ppu = PPU::new(box memory);
+    ppu.set_ppu_ctrl(0x08);
     load_ppu_patterns(&mut ppu);
     ppu.set_scroll(0); //x scroll
     ppu.set_scroll(8); //y scroll
@@ -201,6 +203,7 @@ fn draw_buffer_from_name_table_1_with_scrolling_x() {
             0x2400 => 0x00 //pattern 0 (palette 0)
         );
     let mut ppu = PPU::new(box memory);
+    ppu.set_ppu_ctrl(0x08);
     load_ppu_patterns(&mut ppu);
     ppu.set_scroll(8); //x scroll
     ppu.set_scroll(0); //y scroll
