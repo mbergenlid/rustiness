@@ -86,7 +86,7 @@ pub trait Screen {
     fn update_buffer<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer);
     fn render(&mut self, src: Rectangle, dst_x: usize, dst_y: usize);
 
-    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize);
+    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize, flip_horizontal: bool, flip_vertical: bool);
     fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut SpriteBuffer);
 
     fn present(&mut self);
@@ -139,7 +139,7 @@ impl Screen for ScreenMock {
         }
     }
 
-    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize) {
+    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize, _: bool, _: bool) {
         let img_pitch = 64*8*4;
         let screen_pitch = 256*3;
         let mut y = dst_y;

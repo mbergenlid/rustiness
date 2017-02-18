@@ -223,7 +223,8 @@ pub fn start() {
 
         screen.render_sprite(
             Rectangle { x: 0, y: 0, width: 8, height: 8 },
-            sprite_x, 8
+            sprite_x, 8,
+            false, false
         );
         sprite_x += 1;
         screen.present();

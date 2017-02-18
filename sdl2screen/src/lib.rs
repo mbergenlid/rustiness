@@ -100,13 +100,17 @@ impl <'a> Screen for SDL2Screen<'a> {
         ).unwrap();
     }
 
-    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize) {
+    fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize, flip_horizontal: bool, flip_vertical: bool) {
         let scale_u32 = self.scale as u32;
         let scale_i32 = self.scale as i32;
-        self.renderer.copy(
+        self.renderer.copy_ex(
             &self.sprite_texture,
             Some(Rect::new(src.x*scale_i32, src.y*scale_i32, src.width*scale_u32, src.height*scale_u32)),
             Some(Rect::new((dst_x*self.scale) as i32, (dst_y*self.scale) as i32, src.width*scale_u32, src.height*scale_u32)),
+            0.0, /* angle */
+            None, /* center */
+            flip_horizontal,
+            flip_vertical,
         ).unwrap();
     }
 
