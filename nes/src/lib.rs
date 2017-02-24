@@ -120,6 +120,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn clock_should_handle_large_tick() {
         let start = Instant::now();
         let mut clock = Clock::start();
