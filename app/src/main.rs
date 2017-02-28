@@ -1,7 +1,7 @@
 #![feature(box_syntax)]
 #[macro_use]
 extern crate nes;
-extern crate sdl2screen;
+extern crate sdl2;
 
 mod debugger;
 mod sdlscreentest;

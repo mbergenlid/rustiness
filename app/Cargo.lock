@@ -3,7 +3,7 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "nes 0.1.0",
- "sdl2screen 0.1.0",
+ "sdl2 0.1.0",
 ]
 
 [[package]]
@@ -70,6 +70,14 @@ dependencies = [
 
 [[package]]
 name = "sdl2"
+version = "0.1.0"
+dependencies = [
+ "nes 0.1.0",
+ "sdl2 0.28.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "sdl2"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
@@ -87,14 +95,6 @@ version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "sdl2screen"
-version = "0.1.0"
-dependencies = [
- "nes 0.1.0",
- "sdl2 0.28.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [metadata]

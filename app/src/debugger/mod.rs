@@ -1,12 +1,12 @@
 extern crate nes;
-extern crate sdl2screen;
+extern crate sdl2;
 mod opcodes;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
 use nes::ines::INes;
 use nes::ppu::{PPU, attributetable};
 use nes::ppu::screen::COLOUR_PALETTE;
-use sdl2screen::SDL2Screen;
+use sdl2::SDL2Screen;
 
 use std::fs::File;
 use std::env;
@@ -198,6 +198,14 @@ fn print(nes: &nes::NES<SDL2Screen>) {
     println!("Cycle count: {}", nes.cycle_count);
     print_cpu_and_ppu(nes);
 }
+
+//use std::cell::RefCell;
+//use std::fmt::{Formatter, Error, Display};
+//impl Display for RefCell<PPU> {
+//    fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
+//        self.borrow().fmt(formatter)
+//    }
+//}
 
 use std::ops::Deref;
 use std::io::{BufReader, BufRead};
