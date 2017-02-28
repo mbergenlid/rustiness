@@ -28,11 +28,11 @@ pub fn start() {
     let ppu_memory = rom_file.ppu_memory();
 
     let ppu = PPU::with_mirroring(ppu_memory, rom_file.mirroring);
-    let mut nes = nes::NES::new(ppu, memory.as_ref(), box SDL2Screen::new(2));
+    let mut nes = nes::NES::new(ppu, memory, box SDL2Screen::new(2));
 
     loop {
         print(&nes);
-        print_next_instruction(&nes, memory.as_mut());
+        print_next_instruction(&nes);
         print!(">");
         io::stdout().flush().unwrap();
         let cmd = read_input();
@@ -41,20 +41,20 @@ pub fn start() {
                 let arg: u32 = cmd.arg(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
                 if arg > 1 {
                     for _ in 0..(arg) {
-                        nes.execute(memory.as_mut());
+                        nes.execute();
                         println!("Cycle count: {}", nes.cycle_count);
                     }
                 } else {
-                    nes.execute(memory.as_mut());
+                    nes.execute();
                 }
             },
             "goto" => {
                 match cmd.hex_arg(1) {
                     Some(destination_address) => {
                         println!("Continuing to address 0x{:02X}", destination_address);
-                        nes.execute(memory.as_mut());
+                        nes.execute();
                         while nes.cpu.program_counter() != destination_address {
-                            nes.execute(memory.as_mut());
+                            nes.execute();
                         }
                     },
                     None => println!("Please specify address"),
@@ -67,7 +67,7 @@ pub fn start() {
                 use std::time::Instant;
                 let start = Instant::now();
                 while nes.cycle_count < end_cycle {
-                    nes.execute(memory.as_mut());
+                    nes.execute();
                 }
                 println!(
                     "Took {}.{} seconds",
@@ -80,8 +80,8 @@ pub fn start() {
                     Some(pattern) => {
                         println!("Layer1:\t\tLayer2:\t\tResult:");
                         for address in pattern..(pattern+8) {
-                            let layer1 = nes.ppu.memory().get(address);
-                            let layer2 = nes.ppu.memory().get(address+8);
+                            let layer1 = nes.ppu.borrow().memory().get(address);
+                            let layer2 = nes.ppu.borrow().memory().get(address+8);
                             println!(
                                 "{:08b}\t{:08b}\tNOT IMPLEMENTED",
                                 layer1,
@@ -92,7 +92,7 @@ pub fn start() {
                     None => {
                         for byte in 0x000..0x200 {
                             for b in 0..0x10 {
-                                print!("0b{:08b},", nes.ppu.memory().get((byte << 1) | b));
+                                print!("0b{:08b},", nes.ppu.borrow().memory().get((byte << 1) | b));
                             }
                             println!("");
                         }
@@ -105,7 +105,7 @@ pub fn start() {
                 println!("Name Table:");
                 for row in 0..30 {
                     for col in 0..32 {
-                        let tile = nes.ppu.memory().get(base_address + row*32 + col);
+                        let tile = nes.ppu.borrow().memory().get(base_address + row*32 + col);
                         print!("{:02x} ", tile);
                     }
                     println!("");
@@ -114,8 +114,9 @@ pub fn start() {
                 for row in 0..15 {
                     for col in 0..16 {
                         let colour_palette_index = {
+                            let borrowed_ppu = nes.ppu.borrow();
                             let attribute_table = attributetable::AttributeTable {
-                                memory: nes.ppu.memory(),
+                                memory: borrowed_ppu.memory(),
                                 address: base_address + 0x3C0,
                             };
                             attribute_table.get_palette_index(row*2, col*2)
@@ -128,14 +129,14 @@ pub fn start() {
             "palette" => {
                 let palette: u16 = cmd.arg(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
                 for i in 0..4 {
-                    let palette_value = nes.ppu.memory().get(0x3F00 + 4*palette + i) as usize;
+                    let palette_value = nes.ppu.borrow().memory().get(0x3F00 + 4*palette + i) as usize;
                     println!("Palette value: {:x}: Colour {:?}", palette_value, COLOUR_PALETTE[palette_value]);
                 }
             },
             "screenshot" => {
                 use nes::ppu::screen::PixelBuffer;
                 let mut buffer = [0; 256*240*3];
-                nes.ppu.draw_buffer(&mut PixelBuffer { buffer: &mut buffer, pitch: 256*3, scale: 1});
+                nes.ppu.borrow_mut().draw_buffer(&mut PixelBuffer { buffer: &mut buffer, pitch: 256*3, scale: 1});
 
                 for y in 0..(240 as usize) {
                     for x in 0..(256 as usize) {
@@ -146,7 +147,7 @@ pub fn start() {
             },
             "mem" => {
                 let address = cmd.hex_arg(1).unwrap_or(0);
-                println!("Memory 0x{:04x} -> 0x{:02x}", address, memory.get(address));
+                println!("Memory 0x{:04x} -> 0x{:02x}", address, nes.memory.get(address));
             }
             "exit" => break,
             _ => println!("Unknown cmd '{}'", cmd.name()),
@@ -198,6 +199,7 @@ fn print(nes: &nes::NES<SDL2Screen>) {
     print_cpu_and_ppu(nes);
 }
 
+use std::ops::Deref;
 use std::io::{BufReader, BufRead};
 fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen>) {
     let cpu = &nes.cpu;
@@ -206,7 +208,7 @@ fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen>) {
     let mut cpu_buffer = Vec::new();
     cpu_buffer.write_fmt(format_args!("{}", cpu)).unwrap();
     let mut ppu_buffer = Vec::new();
-    ppu_buffer.write_fmt(format_args!("{}", ppu)).unwrap();
+    ppu_buffer.write_fmt(format_args!("{}", ppu.borrow().deref())).unwrap();
 
     let cpu_buf_reader = BufReader::new(cpu_buffer.as_slice());
     let ppu_buf_reader = BufReader::new(ppu_buffer.as_slice());
@@ -218,10 +220,10 @@ fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen>) {
     }
 }
 
-fn print_next_instruction(nes: &nes::NES<SDL2Screen>, memory: &Memory) {
-    let op_code = memory.get(nes.cpu.program_counter());
+fn print_next_instruction(nes: &nes::NES<SDL2Screen>) {
+    let op_code = nes.memory.get(nes.cpu.program_counter());
 
-    opcodes::debug_instruction(op_code, &nes.cpu, memory);
+    opcodes::debug_instruction(op_code, &nes.cpu, &nes.memory);
 }
 
 fn read_input() -> Command {

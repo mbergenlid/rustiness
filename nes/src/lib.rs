@@ -13,6 +13,9 @@ use memory::{BasicMemory, CPUMemory, Memory};
 use ppu::PPU;
 use ppu::screen::Screen;
 
+use std::rc::Rc;
+use std::cell::RefCell;
+
 
 const NANOS_PER_CLOCK_CYCLE: u32 = 559;
 
@@ -21,44 +24,65 @@ pub struct NES<T>
 {
     pub cpu: CPU,
     pub cycle_count: u64,
-    pub ppu: PPU,
+    pub ppu: Rc<RefCell<PPU>>,
     pub op_codes: opcodes::OpCodes,
     pub screen: Box<T>,
+    pub memory: CPUMemory,
 
     clock: Clock,
 }
 
 impl <T> NES<T> where T: Screen + Sized {
-    pub fn new(ppu: PPU, memory: &Memory, screen: Box<T>) -> NES<T> {
+    pub fn new(ppu: PPU, memory: Box<BasicMemory>, screen: Box<T>) -> NES<T> {
         let cpu_start = {
             let lsbs: u8 = memory.get(0xFFFC);
             let msbs: u8 = memory.get(0xFFFD);
             (msbs as u16) << 8 | lsbs as u16
         };
+        let ppu = Rc::new(RefCell::new(ppu));
         NES {
             cpu: CPU::new(cpu_start),
             cycle_count: 0,
-            ppu: ppu,
+            ppu: ppu.clone(),
             op_codes: opcodes::OpCodes::new(),
             screen: screen,
+            memory: CPUMemory::default(memory, ppu),
             clock: Clock::start(),
+            
         }
     }
 
-    pub fn execute(&mut self, memory: &mut BasicMemory) {
-        let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut CPUMemory::new(&mut self.ppu, memory));
-        let nmi = self.ppu.update(cycles as u32, self.screen.as_mut());
+    pub fn execute(&mut self) {
+        let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut self.memory);
+        let nmi = self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
         self.cycle_count += cycles as u64;
         self.clock.tick(cycles as u32);
 
         if nmi {
             let cycles =
-                instructions::nmi(&mut self.cpu, &mut CPUMemory::new(&mut self.ppu, memory)) as u64;
-            self.ppu.update(cycles as u32, self.screen.as_mut());
+                instructions::nmi(&mut self.cpu, &mut self.memory) as u64;
+            self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
             self.cycle_count += cycles;
         }
     }
 
+}
+
+use ppu::ppuregisters::*;
+
+impl CPUMemory {    
+    pub fn default(memory: Box<BasicMemory>, ppu: Rc<RefCell<PPU>>) -> CPUMemory {
+        cpu_memory!(
+            memory,
+            0x2000 => box PPUCtrl(ppu.clone()),
+            0x2001 => box PPUMask(ppu.clone()),
+            0x2002 => box PPUStatus(ppu.clone()),
+            0x2005 => box PPUScroll(ppu.clone()),
+            0x2006 => box PPUAddress(ppu.clone()),
+            0x2007 => box PPUData(ppu.clone()),
+            0x4014 => box OAMAddress(ppu.clone())
+        )
+    }
 }
 
 use std::thread::sleep;

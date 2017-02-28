@@ -1,5 +1,4 @@
 
-use ppu::PPU;
 pub type Address = u16;
 
 pub trait Memory {
@@ -35,20 +34,9 @@ impl Memory for BasicMemory {
     }
 }
 
-use std::cell::RefCell;
-pub struct CPUMemory<'a> {
-    data: &'a mut BasicMemory,
-    ppu: RefCell<&'a mut PPU>,
-}
 
-impl <'a> CPUMemory<'a> {
-    pub fn new(ppu: &'a mut PPU, memory: &'a mut BasicMemory) -> CPUMemory<'a> {
-        CPUMemory {
-            data: memory,
-            ppu: RefCell::new(ppu),
-        }
-    }
-}
+use std::collections::HashMap;
+
 
 use std::ops::{Range, Index};
 impl Index<Range<usize>> for BasicMemory {
@@ -58,35 +46,59 @@ impl Index<Range<usize>> for BasicMemory {
     }
 }
 
-impl <'a> Memory for CPUMemory<'a> {
-    fn get(&self, address: Address) -> u8 {
-        if address == 0x2000 {
-            self.ppu.borrow().ppu_ctrl()
-        } else if address == 0x2002 {
-            self.ppu.borrow_mut().status()
-        } else {
-            self.data.get(address)
+pub trait MemoryMappedIO {
+    fn read(&self, &BasicMemory) -> u8;
+    fn write(&mut self, &mut BasicMemory, value: u8);
+}
+
+pub struct CPUMemory {
+    memory: Box<BasicMemory>,
+    io_registers: HashMap<u16, Box<MemoryMappedIO>>,
+}
+
+impl CPUMemory {
+    pub fn new(memory: Box<BasicMemory>, io_registers: HashMap<u16, Box<MemoryMappedIO>>) -> CPUMemory {
+        CPUMemory {
+            memory: memory,
+            io_registers: io_registers,
         }
     }
 
+}
+
+use std::borrow::BorrowMut;
+impl Memory for CPUMemory {
+    fn get(&self, address: Address) -> u8 {
+        self.io_registers.get(&address)
+            .map(|io| io.read(self.memory.as_ref()))
+            .unwrap_or_else(|| self.memory.get(address))
+    }
+
     fn set(&mut self, address: Address, value: u8) {
-        if address == 0x2000 {
-            self.ppu.borrow_mut().set_ppu_ctrl(value);
-        } else if address == 0x2001 {
-            self.ppu.borrow_mut().set_ppu_mask(value);
-        } else if address == 0x2005 {
-            self.ppu.borrow_mut().set_scroll(value);
-        } else if address == 0x2006 {
-            self.ppu.borrow_mut().set_vram(value);
-        } else if address == 0x2007 {
-            self.ppu.borrow_mut().write_to_vram(value);
-        } else if address == 0x4014 {
-            let dma_address: usize = (value as usize) << 8;
-            self.ppu.borrow_mut().load_sprites(&self.data[dma_address..(dma_address+256)]);
+        if let Some(io) = self.io_registers.get_mut(&address) {
+            io.write(self.memory.borrow_mut(), value);
         } else {
-            self.data.set(address, value);
+            self.memory.set(address, value);
         }
     }
+}
+
+macro_rules! cpu_memory {
+    ( $memory:expr, $( $x:expr => $y:expr ),* ) => {
+        {
+            use std::collections::HashMap;
+            use $crate::memory::MemoryMappedIO;
+            let mut map: HashMap<u16, Box<MemoryMappedIO>> = HashMap::new();
+
+            $(
+                map.insert($x, $y);
+            )*
+            let cpu_memory = $crate::memory::CPUMemory::new(
+                $memory, map
+            );
+            cpu_memory
+        }
+    };
 }
 
 macro_rules! memory {
@@ -118,30 +130,55 @@ macro_rules! external_memory {
 
 #[cfg(test)]
 mod test {
-    use super::BasicMemory;
-    use super::Memory;
-    use ppu::PPU;
+    use super::{Memory, BasicMemory};
+    use std::cell::{RefCell,Cell};
+    use std::rc::Rc;
 
+    struct TestRegister {
+        reads: Cell<u32>,
+        writes: Vec<u8>,
+    }
+
+    use super::MemoryMappedIO;
+    impl MemoryMappedIO for Rc<RefCell<TestRegister>> {
+        fn read(&self, _: &BasicMemory) -> u8 {
+            let prev_value = self.borrow().reads.get();
+            self.borrow().reads.set(prev_value + 1);
+            return 0;
+        }
+
+        fn write(&mut self, _: &mut BasicMemory, value: u8) {
+            self.borrow_mut().writes.push(value);
+        }
+    }
 
     #[test]
-    fn test_write_to_vram() {
-        let mut ppu = PPU::new(box BasicMemory::new());
-
-        let mut basic_memory = BasicMemory::new();
+    fn test_io_registers() {
+        let register1  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register2  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
         {
-            let mut memory = super::CPUMemory::new(&mut ppu, &mut basic_memory);
+            let mut io_registers = cpu_memory!(
+                box BasicMemory::new(),
+                0x2000 => Box::new(register1.clone()),
+                0x4016 => Box::new(register2.clone())
+            );
 
-            memory.set(0x2006, 0xFF); //High byte of vram pointer
-            memory.set(0x2006, 0x01); //Low byte of vram pointer
+            io_registers.get(0x2000);
+            io_registers.get(0x4016);
+            io_registers.get(0x4016);
 
-            memory.set(0x2007, 0xA5); //write 0xA5 to PPU-MEM 0xFF01
+            io_registers.set(0x2000, 4);
+            io_registers.set(0x2000, 5);
+            io_registers.set(0x4016, 6);
+
+            io_registers.set(0x2001, 17);
+            assert_eq!(17, io_registers.get(0x2001));
         }
-        assert_eq!(0xA5, ppu.memory().get(0x3F01));
 
-        {
-            let mut memory = super::CPUMemory::new(&mut ppu, &mut basic_memory);
-            memory.set(0x2007, 0x3B); //vram pointer should have been increased
-        }
-        assert_eq!(0x3B, ppu.memory().get(0x3F02));
+        assert_eq!(1, register1.borrow().reads.get());
+        assert_eq!(2, register2.borrow().reads.get());
+        assert_eq!(vec!(4,5), register1.borrow().writes);
+        assert_eq!(vec!(6), register2.borrow().writes);
+
     }
 }

@@ -4,8 +4,10 @@ extern crate nes;
 
 use nes::ppu::screen::ScreenMock;
 use nes::ppu::PPU;
+use std::rc::Rc;
+use std::cell::RefCell;
 
-fn create_ppu() -> PPU {
+fn create_ppu() -> Rc<RefCell<PPU>> {
     let memory = external_memory!(
             0x3F10 => 0x1F, //Black
             0x3F11 => 0x20, //White
@@ -35,30 +37,30 @@ fn create_ppu() -> PPU {
         ]
     );
 
-    return ppu;
+    return Rc::new(RefCell::new(ppu));
 }
 
 use nes::memory::{CPUMemory, Memory};
 
 #[test]
 fn test_basic_sprite_rendering() {
-    let mut ppu = create_ppu();
+    let ppu = create_ppu();
     let mut sprites = [0; 64*4];
     sprites[0..4].copy_from_slice(&[0x00, 0x01, 0x00, 0x00]);
     let mut screen = ScreenMock::new();
-    let mut basic_memory = external_memory!(
+    let basic_memory = external_memory!(
         0x0200 => 0x00,
         0x0201 => 0x01,
         0x0202 => 0x00,
         0x0203 => 0x00
     );
 
+    let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone());
     {
-        let mut cpu_memory = CPUMemory::new(&mut ppu, &mut basic_memory);
         cpu_memory.set(0x4014, 0x02);
     };
 
-    ppu.update_screen(&mut screen);
+    ppu.borrow_mut().update_screen(&mut screen);
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
@@ -71,12 +73,11 @@ fn test_basic_sprite_rendering() {
     }
 
     {
-        let mut cpu_memory = CPUMemory::new(&mut ppu, &mut basic_memory);
         cpu_memory.set(0x0200, 0);
         cpu_memory.set(0x0203, 8);
         cpu_memory.set(0x4014, 0x02);
     }
-    ppu.update_screen(&mut screen);
+    ppu.borrow_mut().update_screen(&mut screen);
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
@@ -90,12 +91,11 @@ fn test_basic_sprite_rendering() {
     }
 
     {
-        let mut cpu_memory = CPUMemory::new(&mut ppu, &mut basic_memory);
         cpu_memory.set(0x0200, 5);
         cpu_memory.set(0x0203, 10);
         cpu_memory.set(0x4014, 0x02);
     }
-    ppu.update_screen(&mut screen);
+    ppu.borrow_mut().update_screen(&mut screen);
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
@@ -113,11 +113,11 @@ fn test_basic_sprite_rendering() {
 
 #[test]
 fn test_multiple_sprite_rendering() {
-    let mut ppu = create_ppu();
+    let ppu = create_ppu();
     let mut sprites = [0; 64*4];
     sprites[0..4].copy_from_slice(&[0x00, 0x01, 0x00, 0x00]);
     let mut screen = ScreenMock::new();
-    let mut basic_memory = external_memory!(
+    let basic_memory = external_memory!(
         0x0200 => 0x00,
         0x0201 => 0x01,
         0x0202 => 0x00,
@@ -131,11 +131,11 @@ fn test_multiple_sprite_rendering() {
     );
 
     {
-        let mut cpu_memory = CPUMemory::new(&mut ppu, &mut basic_memory);
+        let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone());
         cpu_memory.set(0x4014, 0x02);
     };
 
-    ppu.update_screen(&mut screen);
+    ppu.borrow_mut().update_screen(&mut screen);
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
