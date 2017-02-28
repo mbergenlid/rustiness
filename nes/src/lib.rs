@@ -48,7 +48,6 @@ impl <T> NES<T> where T: Screen + Sized {
             screen: screen,
             memory: CPUMemory::default(memory, ppu),
             clock: Clock::start(),
-            
         }
     }
 
@@ -70,7 +69,7 @@ impl <T> NES<T> where T: Screen + Sized {
 
 use ppu::ppuregisters::*;
 
-impl CPUMemory {    
+impl CPUMemory {
     pub fn default(memory: Box<BasicMemory>, ppu: Rc<RefCell<PPU>>) -> CPUMemory {
         cpu_memory!(
             memory,

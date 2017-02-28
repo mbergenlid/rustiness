@@ -1,11 +1,7 @@
 pub mod standard_controller;
+use memory::MemoryMappedIO;
 
-trait Input {
-    fn read(&self) -> u8;
-    fn write(&mut self, u8);
-}
-
-trait Source<T: Input> {
+trait Source<T: MemoryMappedIO> {
     fn load(&self) -> T;
 }
 
