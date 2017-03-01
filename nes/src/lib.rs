@@ -7,6 +7,7 @@ pub mod addressing;
 pub mod ppu;
 pub mod ines;
 pub mod input;
+pub mod borrow;
 
 use cpu::CPU;
 use memory::{BasicMemory, CPUMemory, Memory};
