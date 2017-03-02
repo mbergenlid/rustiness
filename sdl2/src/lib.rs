@@ -1,11 +1,17 @@
 extern crate sdl2;
 extern crate nes;
 
+pub mod standard_controller;
+
+use sdl2::Sdl;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::render::{Renderer, Texture, BlendMode};
 
 use nes::ppu::screen::{Screen, PixelBuffer, SpriteBuffer, Rectangle};
+use standard_controller::SdlEvents;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;
@@ -16,6 +22,8 @@ pub struct SDL2Screen<'a> {
     renderer: Renderer<'a>,
     texture: Texture,
     sprite_texture: Texture,
+
+    sdl_context: Sdl,
 }
 
 impl <'a> SDL2Screen<'a> {
@@ -48,8 +56,15 @@ impl <'a> SDL2Screen<'a> {
             renderer: renderer,
             texture: texture,
             sprite_texture: sprite_texture,
+
+            sdl_context: sdl_context,
         }
     }
+
+    pub fn event_pump(&self) -> SdlEvents {
+       SdlEvents(Rc::new(RefCell::new(self.sdl_context.event_pump().unwrap())))
+    }
+
 }
 
 

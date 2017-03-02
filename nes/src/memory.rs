@@ -51,13 +51,14 @@ pub trait MemoryMappedIO {
     fn write(&mut self, &mut BasicMemory, value: u8);
 }
 
-pub struct CPUMemory {
+use borrow::MutableRef;
+pub struct CPUMemory<'a> {
     memory: Box<BasicMemory>,
-    io_registers: HashMap<u16, Box<MemoryMappedIO>>,
+    io_registers: HashMap<u16, MutableRef<'a, MemoryMappedIO>>,
 }
 
-impl CPUMemory {
-    pub fn new(memory: Box<BasicMemory>, io_registers: HashMap<u16, Box<MemoryMappedIO>>) -> CPUMemory {
+impl <'a> CPUMemory<'a> {
+    pub fn new(memory: Box<BasicMemory>, io_registers: HashMap<u16, MutableRef<'a, MemoryMappedIO>>) -> CPUMemory<'a> {
         CPUMemory {
             memory: memory,
             io_registers: io_registers,
@@ -67,7 +68,7 @@ impl CPUMemory {
 }
 
 use std::borrow::BorrowMut;
-impl Memory for CPUMemory {
+impl <'a> Memory for CPUMemory<'a> {
     fn get(&self, address: Address) -> u8 {
         self.io_registers.get(&address)
             .map(|io| io.read(self.memory.as_ref()))
@@ -88,7 +89,8 @@ macro_rules! cpu_memory {
         {
             use std::collections::HashMap;
             use $crate::memory::MemoryMappedIO;
-            let mut map: HashMap<u16, Box<MemoryMappedIO>> = HashMap::new();
+            use $crate::borrow::MutableRef;
+            let mut map: HashMap<u16, MutableRef<MemoryMappedIO>> = HashMap::new();
 
             $(
                 map.insert($x, $y);
@@ -159,8 +161,8 @@ mod test {
         {
             let mut io_registers = cpu_memory!(
                 box BasicMemory::new(),
-                0x2000 => Box::new(register1.clone()),
-                0x4016 => Box::new(register2.clone())
+                0x2000 => MutableRef::Box(Box::new(register1.clone())),
+                0x4016 => MutableRef::Box(Box::new(register2.clone()))
             );
 
             io_registers.get(0x2000);

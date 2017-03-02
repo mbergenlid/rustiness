@@ -89,8 +89,8 @@ mod test {
             let basic_memory = BasicMemory::new();
             let mut memory = cpu_memory!(
                 box basic_memory,
-                0x2006 => box PPUAddress(ppu.clone()),
-                0x2007 => box PPUData(ppu.clone())
+                0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
+                0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
             );
 
             memory.set(0x2006, 0xFF); //High byte of vram pointer
@@ -104,8 +104,8 @@ mod test {
             let basic_memory = BasicMemory::new();
             let mut memory = cpu_memory!(
                 box basic_memory,
-                0x2006 => box PPUAddress(ppu.clone()),
-                0x2007 => box PPUData(ppu.clone())
+                0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
+                0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
             );
             memory.set(0x2007, 0x3B); //vram pointer should have been increased
         }

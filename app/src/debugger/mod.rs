@@ -6,6 +6,7 @@ use nes::memory::Memory;
 use nes::ines::INes;
 use nes::ppu::{PPU, attributetable};
 use nes::ppu::screen::COLOUR_PALETTE;
+use nes::input::standard_controller::StandardController;
 use sdl2::SDL2Screen;
 
 use std::fs::File;
@@ -28,7 +29,10 @@ pub fn start() {
     let ppu_memory = rom_file.ppu_memory();
 
     let ppu = PPU::with_mirroring(ppu_memory, rom_file.mirroring);
-    let mut nes = nes::NES::new(ppu, memory, box SDL2Screen::new(2));
+    let screen = box SDL2Screen::new(2);
+    let source = screen.event_pump();
+    let mut standard_controller = StandardController::new(&source);
+    let mut nes = nes::NES::new(ppu, memory, screen, &mut standard_controller);
 
     loop {
         print(&nes);

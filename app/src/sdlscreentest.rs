@@ -3,6 +3,7 @@ use sdl2::SDL2Screen;
 
 use std;
 use std::time::Duration;
+use nes::input::standard_controller::Source;
 
 
 pub fn start() {
@@ -192,7 +193,7 @@ pub fn start() {
     );
     screen.present();
 
-    
+    let sdl_events = screen.event_pump();
     let start = Instant::now();
     let mut sprite_x = 0;
     for i in 0..200 {
@@ -229,6 +230,10 @@ pub fn start() {
         sprite_x += 1;
         screen.present();
         std::thread::sleep(Duration::from_millis(50));
+
+        if sdl_events.load().a_button {
+            println!("Yaay");
+        }
     }
 
     let elapsed = start.elapsed();

@@ -20,7 +20,7 @@ use std::cell::RefCell;
 
 const NANOS_PER_CLOCK_CYCLE: u32 = 559;
 
-pub struct NES<T>
+pub struct NES<'a, T>
     where T: Screen + Sized
 {
     pub cpu: CPU,
@@ -28,13 +28,13 @@ pub struct NES<T>
     pub ppu: Rc<RefCell<PPU>>,
     pub op_codes: opcodes::OpCodes,
     pub screen: Box<T>,
-    pub memory: CPUMemory,
+    pub memory: CPUMemory<'a>,
 
     clock: Clock,
 }
 
-impl <T> NES<T> where T: Screen + Sized {
-    pub fn new(ppu: PPU, memory: Box<BasicMemory>, screen: Box<T>) -> NES<T> {
+impl <'a, T> NES<'a, T> where T: Screen + Sized {
+    pub fn new(ppu: PPU, memory: Box<BasicMemory>, screen: Box<T>, controller: &'a mut MemoryMappedIO) -> NES<T> {
         let cpu_start = {
             let lsbs: u8 = memory.get(0xFFFC);
             let msbs: u8 = memory.get(0xFFFD);
@@ -47,7 +47,7 @@ impl <T> NES<T> where T: Screen + Sized {
             ppu: ppu.clone(),
             op_codes: opcodes::OpCodes::new(),
             screen: screen,
-            memory: CPUMemory::default(memory, ppu),
+            memory: CPUMemory::default(memory, ppu, Some(controller)),
             clock: Clock::start(),
         }
     }
@@ -70,20 +70,28 @@ impl <T> NES<T> where T: Screen + Sized {
 
 use ppu::ppuregisters::*;
 
-impl CPUMemory {
-    pub fn default(memory: Box<BasicMemory>, ppu: Rc<RefCell<PPU>>) -> CPUMemory {
+use memory::MemoryMappedIO;
+impl <'a> CPUMemory<'a> {
+    pub fn default(memory: Box<BasicMemory>, ppu: Rc<RefCell<PPU>>, controller: Option<&'a mut MemoryMappedIO>) -> CPUMemory {
         cpu_memory!(
             memory,
-            0x2000 => box PPUCtrl(ppu.clone()),
-            0x2001 => box PPUMask(ppu.clone()),
-            0x2002 => box PPUStatus(ppu.clone()),
-            0x2005 => box PPUScroll(ppu.clone()),
-            0x2006 => box PPUAddress(ppu.clone()),
-            0x2007 => box PPUData(ppu.clone()),
-            0x4014 => box OAMAddress(ppu.clone())
+            0x2000 => MutableRef::Box(box PPUCtrl(ppu.clone())),
+            0x2001 => MutableRef::Box(box PPUMask(ppu.clone())),
+            0x2002 => MutableRef::Box(box PPUStatus(ppu.clone())),
+            0x2005 => MutableRef::Box(box PPUScroll(ppu.clone())),
+            0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
+            0x2007 => MutableRef::Box(box PPUData(ppu.clone())),
+            0x4014 => MutableRef::Box(box OAMAddress(ppu.clone())),
+            0x4016 => controller.map(|c| MutableRef::Borrowed(c)).unwrap_or_else(|| MutableRef::Box(box ()))
         )
     }
 }
+
+impl MemoryMappedIO for () {
+    fn read(&self, _: &BasicMemory) -> u8 { 0 }
+    fn write(&mut self, _: &mut BasicMemory, _: u8) { }
+}
+
 
 use std::thread::sleep;
 use std::time::{Instant, Duration};
