@@ -1,12 +1,12 @@
 use std::string::String;
 use nes::cpu::CPU;
-use nes::memory::Memory;
+use nes::memory::{Memory, CPUMemory, CPUMemoryReference};
 use nes::addressing::AddressingMode;
 use nes;
 
-struct OpCodeDebug(u8, &'static str, &'static Fn(&mut CPU, &Memory) -> String);
+struct OpCodeDebug(u8, &'static str, &'static Fn(&mut CPU, &CPUMemory) -> String);
 
-pub fn debug_instruction(op_code: u8, cpu: &CPU, memory: &Memory) {
+pub fn debug_instruction(op_code: u8, cpu: &CPU, memory: &CPUMemory) {
     let mut cloned_cpu = cpu.clone();
     cloned_cpu.get_and_increment_pc();
     match OP_CODES.iter().find(|opd| opd.0 == op_code) {
@@ -15,11 +15,11 @@ pub fn debug_instruction(op_code: u8, cpu: &CPU, memory: &Memory) {
     }
 }
 
-fn debug_immediate(addressing_mode: AddressingMode, memory: &Memory) -> String {
-    return format!("address 0x{:x} = 0x{:x}", addressing_mode.operand_address, memory.get(addressing_mode.operand_address));
+fn debug_immediate(addressing_mode: AddressingMode, memory: &CPUMemory) -> String {
+    return format!("address {:?}", CPUMemoryReference(addressing_mode.operand_address, memory));
 }
 
-fn debug_indirect_y(cpu: &CPU, memory: &Memory) -> String {
+fn debug_indirect_y(cpu: &CPU, memory: &CPUMemory) -> String {
     let base_address = memory.get(cpu.program_counter()) as u16;
     let lsb: u16 = memory.get(base_address) as u16;
     let msb: u16 = memory.get(base_address+1) as u16;
@@ -28,9 +28,8 @@ fn debug_indirect_y(cpu: &CPU, memory: &Memory) -> String {
     let operand_address = (indexed_address + cpu.register_y() as u32) as u16;
 
     return format!(
-        "address 0x{:04x} -> 0x{:x} (Base: 0x{:02x} -> {:02x},{:02x} ({:04x}))",
-        operand_address,
-        memory.get(operand_address),
+        "address {:?} (Base: 0x{:02x} -> {:02x},{:02x} ({:04x}))",
+        CPUMemoryReference(operand_address, memory),
         base_address,
         lsb,
         msb,

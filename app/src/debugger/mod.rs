@@ -1,6 +1,7 @@
 extern crate nes;
 extern crate sdl2;
 mod opcodes;
+mod fakecontroller;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
 use nes::ines::INes;
@@ -8,6 +9,7 @@ use nes::ppu::{PPU, attributetable};
 use nes::ppu::screen::COLOUR_PALETTE;
 use nes::input::standard_controller::StandardController;
 use sdl2::SDL2Screen;
+use self::fakecontroller::FakeController;
 
 use std::fs::File;
 use std::env;
@@ -30,9 +32,20 @@ pub fn start() {
 
     let ppu = PPU::with_mirroring(ppu_memory, rom_file.mirroring);
     let screen = box SDL2Screen::new(2);
+
+    let fake_controller: Option<FakeController> =
+        args.iter().find(|&a| a == "-c")
+            .map(|_| FakeController::new());
+
     let source = screen.event_pump();
-    let mut standard_controller = StandardController::new(&source);
+    let mut standard_controller =
+        fake_controller.as_ref()
+            .map(|c| StandardController::new(c))
+            .unwrap_or_else(|| {
+                StandardController::new(&source)
+            });
     let mut nes = nes::NES::new(ppu, memory, screen, &mut standard_controller);
+
 
     loop {
         print(&nes);
@@ -152,6 +165,18 @@ pub fn start() {
             "mem" => {
                 let address = cmd.hex_arg(1).unwrap_or(0);
                 println!("Memory 0x{:04x} -> 0x{:02x}", address, nes.memory.get(address));
+            }
+            "press" => {
+                match fake_controller {
+                    Some(ref ctrl) => ctrl.press(cmd.arg(1).map(|s| s.trim()).unwrap_or("")),
+                    None => println!("Unable to fake button press since you're not using a fake controller, try run with '-c' flag")
+                }
+            },
+            "release" => {
+                match fake_controller {
+                    Some(ref ctrl) => ctrl.release(cmd.arg(1).map(|s| s.trim()).unwrap_or("")),
+                    None => println!("Unable to fake button press since you're not using a fake controller, try run with '-c' flag")
+                }
             }
             "exit" => break,
             _ => println!("Unknown cmd '{}'", cmd.name()),

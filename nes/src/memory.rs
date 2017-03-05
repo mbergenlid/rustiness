@@ -65,6 +65,17 @@ impl <'a> CPUMemory<'a> {
         }
     }
 
+
+}
+use std::fmt::{Error, Debug, Formatter};
+pub struct CPUMemoryReference<'a, 'b>(pub u16, pub &'a CPUMemory<'b>) where 'b: 'a;
+
+impl<'a, 'b> Debug for CPUMemoryReference<'a, 'b> {
+    fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
+        formatter.write_fmt(
+            format_args!("0x{:04x} -> 0x{:x}", self.0, self.1.memory.get(self.0))
+        )
+    }
 }
 
 use std::borrow::BorrowMut;
