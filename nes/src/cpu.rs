@@ -234,7 +234,7 @@ impl CPU {
             self.clear_flags(ZERO_FLAG);
         }
 
-        self.processor_status = (mask & 0xD0) | (self.processor_status & 0xBF);
+        self.processor_status = (mask & 0xC0) | (self.processor_status & 0x3F);
     }
 
     pub fn cmp_accumulator(&mut self, value: u8) {
@@ -971,14 +971,50 @@ mod test {
         cpu.bit_test(0x01);
         assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
 
-        //TODO: test N and V flags.
         cpu.bit_test(0x40);
         assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
         assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
 
         cpu.bit_test(0x80);
         assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
         assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
         assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+    }
+
+    #[test]
+    fn bit_test_should_clear_negative_flag() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x80)
+            .flags(super::NEGATIVE_FLAG)
+            .build();
+
+       cpu.bit_test(0x00);
+       assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+    }
+
+    extern crate rand;
+    #[test]
+    fn bit_test_should_only_affect_N_V_C_flags() {
+        let non_affected_flags =
+            super::BREAK_FLAG | super::DECIMAL_FLAG |
+            super::INTERRUPT_DISABLE_FLAG | super::CARRY_FLAG;
+        for _ in 0..100 {
+            let accumulator = rand::random::<u8>();
+            let flags = rand::random::<u8>();
+            let mut cpu = super::CpuBuilder::new()
+                .accumulator(accumulator)
+                .flags(flags)
+                .build();
+
+           let test_mask = rand::random::<u8>();
+           cpu.bit_test(test_mask);
+           assert_eq!(
+            cpu.processor_status & non_affected_flags,
+            flags & non_affected_flags,
+            "\nFlags: 0b{:08b}\nAccumulator: 0b{:08b}\nMask: 0b{:08b}\nStatus: 0b{:08b}",
+            flags, accumulator, test_mask, cpu.processor_status
+          );
+        }
     }
 }
