@@ -83,8 +83,12 @@ pub fn start() {
                 println!("Running to cycle {}", end_cycle);
                 use std::time::Instant;
                 let start = Instant::now();
-                while nes.cycle_count < end_cycle {
+                let mut should_exit = false;
+                while (cycles == 0 || nes.cycle_count < end_cycle) && !should_exit {
                     nes.execute();
+                    if nes.cycle_count % 0x100_000 == 0 {
+                        should_exit = source.should_exit();
+                    }
                 }
                 println!(
                     "Took {}.{} seconds",

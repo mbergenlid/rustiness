@@ -6,6 +6,19 @@ use std::rc::Rc;
 
 pub struct SdlEvents(pub Rc<RefCell<EventPump>>);
 
+impl SdlEvents {
+    pub fn should_exit(&self) -> bool {
+        for event in self.0.borrow_mut().poll_iter() {
+            use sdl2::event::Event;
+            match event {
+                Event::Quit {..} => return true,
+                _ => ()
+            }
+        }
+        return false;
+    }
+}
+
 impl Source for SdlEvents {
     fn load(&self) -> StandardControllerState {
         self.0.borrow_mut().pump_events();
