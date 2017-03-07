@@ -8,7 +8,7 @@ use nes::ines::INes;
 use nes::ppu::{PPU, attributetable};
 use nes::ppu::screen::COLOUR_PALETTE;
 use nes::input::standard_controller::StandardController;
-use sdl2::SDL2Screen;
+use sdl2::{SDL2, SDL2Screen};
 use self::fakecontroller::FakeController;
 
 use std::fs::File;
@@ -31,13 +31,14 @@ pub fn start() {
     let ppu_memory = rom_file.ppu_memory();
 
     let ppu = PPU::with_mirroring(ppu_memory, rom_file.mirroring);
-    let screen = box SDL2Screen::new(2);
+    let sdl = SDL2::new();
+    let screen = box sdl.screen(2);
 
     let fake_controller: Option<FakeController> =
         args.iter().find(|&a| a == "-c")
             .map(|_| FakeController::new());
 
-    let source = screen.event_pump();
+    let source = sdl.event_pump();
     let mut standard_controller =
         fake_controller.as_ref()
             .map(|c| StandardController::new(c))

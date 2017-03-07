@@ -1,5 +1,5 @@
 use nes::ppu::screen::{Pattern, Screen};
-use sdl2::SDL2Screen;
+use sdl2::SDL2;
 
 use std;
 use std::time::Duration;
@@ -7,7 +7,8 @@ use nes::input::standard_controller::Source;
 
 
 pub fn start() {
-    let mut screen = SDL2Screen::new(2);
+    let sdl = SDL2::new();
+    let mut screen = sdl.screen(2);
 
     let patterns = vec!(
         Pattern {
@@ -193,7 +194,7 @@ pub fn start() {
     );
     screen.present();
 
-    let sdl_events = screen.event_pump();
+    let sdl_events = sdl.event_pump();
     let start = Instant::now();
     let mut sprite_x = 0;
     for i in 0..200 {

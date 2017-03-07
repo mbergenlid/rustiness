@@ -1,5 +1,5 @@
 [root]
-name = "sdl2screen"
+name = "sdl2"
 version = "0.1.0"
 dependencies = [
  "nes 0.1.0",
