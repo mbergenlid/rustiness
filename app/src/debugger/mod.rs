@@ -85,10 +85,13 @@ pub fn start() {
                 use std::time::Instant;
                 let start = Instant::now();
                 let mut should_exit = false;
+                let mut counter = 0;
                 while (cycles == 0 || nes.cycle_count < end_cycle) && !should_exit {
                     nes.execute();
-                    if nes.cycle_count % 0x100_000 == 0 {
+                    counter += 1;
+                    if counter > 0x100_000 {
                         should_exit = source.should_exit();
+                        counter = 0;
                     }
                 }
                 println!(
