@@ -5,7 +5,9 @@ pub mod standard_controller;
 
 pub use self::screen::SDL2Screen;
 pub mod screen;
+pub mod audio;
 
+use audio::SDLAudioDevice;
 use sdl2::Sdl;
 
 use standard_controller::SdlEvents;
@@ -28,4 +30,7 @@ impl SDL2 {
         SDL2Screen::new(&self.0, scale)
     }
 
+    pub fn audio(&self) -> SDLAudioDevice {
+        audio::new_audio_device(&self.0)
+    }
 }

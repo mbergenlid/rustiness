@@ -5,6 +5,7 @@ extern crate sdl2;
 
 mod debugger;
 mod sdlscreentest;
+mod soundtest;
 
 use std::env;
 
@@ -17,6 +18,7 @@ fn main() {
     match args[1].trim() {
         "debug" => debugger::start(),
         "sdl2screen" => sdlscreentest::start(),
+        "sound" => soundtest::start(),
         _ => panic!("Unknown command {}", args[1]),
     }
 }

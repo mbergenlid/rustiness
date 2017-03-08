@@ -8,6 +8,7 @@ pub mod ppu;
 pub mod ines;
 pub mod input;
 pub mod borrow;
+pub mod sound;
 
 use cpu::CPU;
 use memory::{BasicMemory, CPUMemory, Memory};
