@@ -82,8 +82,7 @@ pub fn start() {
                 let cycles: u64 = cmd.arg(1).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
                 let end_cycle = nes.cycle_count + cycles;
                 println!("Running to cycle {}", end_cycle);
-                use std::time::Instant;
-                let start = Instant::now();
+                nes.resume();
                 let mut should_exit = false;
                 let mut counter = 0;
                 while (cycles == 0 || nes.cycle_count < end_cycle) && !should_exit {
@@ -94,11 +93,7 @@ pub fn start() {
                         counter = 0;
                     }
                 }
-                println!(
-                    "Took {}.{} seconds",
-                    start.elapsed().as_secs(),
-                    start.elapsed().subsec_nanos()
-                );
+                println!("Clock {}", nes.clock);
             },
             "pattern" => {
                 match cmd.hex_arg(1) {

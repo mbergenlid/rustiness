@@ -30,7 +30,7 @@ pub struct NES<'a, T>
     pub screen: Box<T>,
     pub memory: CPUMemory<'a>,
 
-    clock: Clock,
+    pub clock: Clock,
 }
 
 impl <'a, T> NES<'a, T> where T: Screen + Sized {
@@ -66,6 +66,10 @@ impl <'a, T> NES<'a, T> where T: Screen + Sized {
         }
     }
 
+    #[inline]
+    pub fn resume(&mut self) {
+        self.clock = Clock::start();
+    }
 }
 
 use ppu::ppuregisters::*;
@@ -96,9 +100,10 @@ impl MemoryMappedIO for () {
 use std::thread::sleep;
 use std::time::{Instant, Duration};
 
-struct Clock {
+pub struct Clock {
     start: Instant,
     should_have_elapsed: Duration,
+    total_sleep_time: Duration
 }
 
 impl Clock {
@@ -106,6 +111,7 @@ impl Clock {
         Clock {
             start: Instant::now(),
             should_have_elapsed: Duration::new(0,0),
+            total_sleep_time: Duration::new(0,0)
         }
     }
 
@@ -113,11 +119,30 @@ impl Clock {
         self.should_have_elapsed = self.should_have_elapsed + Duration::new(0, cycles*NANOS_PER_CLOCK_CYCLE);
         let elapsed = self.start.elapsed();
         if self.should_have_elapsed > elapsed {
-            sleep(self.should_have_elapsed - elapsed);
+            let sleep_time = self.should_have_elapsed - elapsed;
+            sleep(sleep_time);
+            self.total_sleep_time += sleep_time;
         }
     }
-
 }
+
+use std::fmt::{Display, Formatter, Error};
+impl Display for Clock {
+    fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
+        let total_time = self.start.elapsed();
+        let sleep_percent =
+            ((self.total_sleep_time.as_secs()*1000000000 + self.total_sleep_time.subsec_nanos() as u64) as f64) /
+                ((total_time.as_secs()*1000000000 + total_time.subsec_nanos() as u64) as f64);
+        formatter.write_fmt(
+            format_args!(
+                "Total time: {}.{:09}s, Idle time: {}.{:09}s, sleep {}%",
+                total_time.as_secs(), total_time.subsec_nanos(),
+                self.total_sleep_time.as_secs(), self.total_sleep_time.subsec_nanos(),
+                sleep_percent*100f64
+                ))
+    }
+}
+
 
 #[cfg(test)]
 mod test {
