@@ -995,6 +995,7 @@ mod test {
 
     extern crate rand;
     #[test]
+    #[warn(non_snake_case)]
     fn bit_test_should_only_affect_N_V_C_flags() {
         let non_affected_flags =
             super::BREAK_FLAG | super::DECIMAL_FLAG |

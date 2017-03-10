@@ -35,9 +35,6 @@ impl Memory for BasicMemory {
 }
 
 
-use std::collections::HashMap;
-
-
 use std::ops::{Range, Index};
 impl Index<Range<usize>> for BasicMemory {
     type Output = [u8];
@@ -54,11 +51,11 @@ pub trait MemoryMappedIO {
 use borrow::MutableRef;
 pub struct CPUMemory<'a> {
     memory: Box<BasicMemory>,
-    io_registers: HashMap<u16, MutableRef<'a, MemoryMappedIO>>,
+    io_registers: Vec<(u16, MutableRef<'a, MemoryMappedIO>)>,
 }
 
 impl <'a> CPUMemory<'a> {
-    pub fn new(memory: Box<BasicMemory>, io_registers: HashMap<u16, MutableRef<'a, MemoryMappedIO>>) -> CPUMemory<'a> {
+    pub fn new(memory: Box<BasicMemory>, io_registers: Vec<(u16, MutableRef<'a, MemoryMappedIO>)>) -> CPUMemory<'a> {
         CPUMemory {
             memory: memory,
             io_registers: io_registers,
@@ -81,14 +78,15 @@ impl<'a, 'b> Debug for CPUMemoryReference<'a, 'b> {
 use std::borrow::BorrowMut;
 impl <'a> Memory for CPUMemory<'a> {
     fn get(&self, address: Address) -> u8 {
-        self.io_registers.get(&address)
-            .map(|io| io.read(self.memory.as_ref()))
+        self.io_registers.iter()
+            .find(|e| e.0 == address)
+            .map(|e| e.1.read(self.memory.as_ref()))
             .unwrap_or_else(|| self.memory.get(address))
     }
 
     fn set(&mut self, address: Address, value: u8) {
-        if let Some(io) = self.io_registers.get_mut(&address) {
-            io.write(self.memory.borrow_mut(), value);
+        if let Some(mut entry) = self.io_registers.iter_mut().find(|e| e.0 == address) {
+            entry.1.write(self.memory.borrow_mut(), value);
         } else {
             self.memory.set(address, value);
         }
@@ -98,16 +96,9 @@ impl <'a> Memory for CPUMemory<'a> {
 macro_rules! cpu_memory {
     ( $memory:expr, $( $x:expr => $y:expr ),* ) => {
         {
-            use std::collections::HashMap;
-            use $crate::memory::MemoryMappedIO;
             use $crate::borrow::MutableRef;
-            let mut map: HashMap<u16, MutableRef<MemoryMappedIO>> = HashMap::new();
-
-            $(
-                map.insert($x, $y);
-            )*
             let cpu_memory = $crate::memory::CPUMemory::new(
-                $memory, map
+                $memory, vec![ $(($x, $y), )* ]
             );
             cpu_memory
         }
