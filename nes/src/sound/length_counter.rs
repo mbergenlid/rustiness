@@ -41,20 +41,29 @@ impl LengthCounter {
 #[cfg(test)]
 mod test {
     use super::LengthCounter;
+    use sound::counter::ClockTester;
 
     #[test]
     fn count_down_every_14913_clock_cycles() {
-        let mut length_counter = LengthCounter::new(10);
-        let mut cpu_clock = 0;
+        let length_counter = LengthCounter::new(10);
         assert_eq!(length_counter.value(), 60);
+        let mut clock = ClockTester::new(length_counter, super::APU_CYCLES_CLOCK_RATE);
+        let mut value = 60;
         for _ in 0..60 {
-            count_down_1_step(&mut cpu_clock, &mut length_counter);
+            clock.count_down(
+                |counter, tick| counter.clock(tick),
+                |counter, cycles| assert_eq!(counter.value(), value, "Failed on clock {}", cycles),
+                |counter, _| assert_eq!(counter.value(), value-1),
+            );
+            value -= 1;
         }
-        assert_eq!(length_counter.value(), 0);
 
-        for _ in 0..super::APU_CYCLES_CLOCK_RATE {
-            length_counter.clock(1);
-            assert_eq!(length_counter.value(), 0);
+        for _ in 0..10 {
+            clock.count_down(
+                |counter, tick| counter.clock(tick),
+                |counter, cycles| assert_eq!(counter.value(), 0, "Failed on clock {}", cycles),
+                |counter, _| assert_eq!(counter.value(), 0),
+            );
         }
     }
 
@@ -66,22 +75,6 @@ mod test {
         for _ in 0..(super::APU_CYCLES_CLOCK_RATE*2) {
             length_counter.clock(1);
             assert_eq!(length_counter.value(), 60);
-        }
-    }
-
-    extern crate rand;
-    fn count_down_1_step(cpu_clock: &mut u64, length_counter: &mut LengthCounter) {
-        let value = length_counter.value();
-        let clocks_required = *cpu_clock + (super::APU_CYCLES_CLOCK_RATE as u64 - (*cpu_clock % super::APU_CYCLES_CLOCK_RATE as u64));
-        while *cpu_clock < clocks_required {
-            let tick = rand::random::<u8>();
-            length_counter.clock(tick);
-            *cpu_clock += tick as u64;
-            if *cpu_clock >= clocks_required {
-                assert_eq!(length_counter.value(), value-1);
-            } else {
-                assert_eq!(length_counter.value(), value, "Failed on clock {}", *cpu_clock);
-            }
         }
     }
 }
