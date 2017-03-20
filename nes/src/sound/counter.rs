@@ -15,7 +15,7 @@ impl<T> ClockTester<T> {
         }
     }
 
-    pub fn count_down<CFn, F1, F2>(&mut self, mut clock_fn: CFn, step: F1, finished: F2)
+    pub fn count_down<CFn, F1, F2>(&mut self, mut clock_fn: CFn, step: &F1, finished: &F2)
             where CFn : FnMut(&mut T, u8), F1 : Fn(&T, u64), F2 : Fn(&T, u64)
     {
         let period = self.period;

@@ -52,8 +52,8 @@ mod test {
         for _ in 0..60 {
             clock.count_down(
                 |counter, tick| counter.clock(tick),
-                |counter, cycles| assert_eq!(counter.value(), value, "Failed on clock {}", cycles),
-                |counter, _| assert_eq!(counter.value(), value-1),
+                &|counter, cycles| assert_eq!(counter.value(), value, "Failed on clock {}", cycles),
+                &|counter, _| assert_eq!(counter.value(), value-1),
             );
             value -= 1;
         }
@@ -61,8 +61,8 @@ mod test {
         for _ in 0..10 {
             clock.count_down(
                 |counter, tick| counter.clock(tick),
-                |counter, cycles| assert_eq!(counter.value(), 0, "Failed on clock {}", cycles),
-                |counter, _| assert_eq!(counter.value(), 0),
+                &|counter, cycles| assert_eq!(counter.value(), 0, "Failed on clock {}", cycles),
+                &|counter, _| assert_eq!(counter.value(), 0),
             );
         }
     }

@@ -1,4 +1,7 @@
 use super::sound::Pulse;
+use sound::length_counter::LengthCounter;
+use sound::envelope::Envelope;
+
 pub struct SquarePulse {
     pulse: Vec<i16>
 }
@@ -9,97 +12,170 @@ impl Pulse for SquarePulse {
     }
 }
 
+struct CircularBuffer {
+    buffer: [i16; 8],
+    index: usize,
+}
+
+impl CircularBuffer {
+    fn next(&mut self) {
+        self.index += 1;
+        if self.index >= 8 {
+            self.index = 0;
+        }
+    }
+
+    fn get(&self) -> i16 {
+        self.buffer[self.index]
+    }
+}
+
 pub struct PulseGenerator {
-    volume_scale: i16
+    volume_scale: i16,
+    envelope: Envelope,
+    timer_set: u32,
+    timer: u32,
+    sequencer: CircularBuffer,
+    length: LengthCounter,
 }
 
 impl PulseGenerator {
     pub fn new(volume_scale: i16) -> PulseGenerator {
-        PulseGenerator { volume_scale: volume_scale }
+        PulseGenerator {
+            volume_scale: volume_scale,
+            envelope: Envelope::constant(0),
+            timer_set: 0,
+            timer: 0,
+            length: LengthCounter::new(0),
+
+            sequencer: CircularBuffer {
+                buffer: [0,1,1,1,1,0,0,0],
+                index: 0,
+            },
+        }
     }
 
-    pub fn constant_volume(&self, volume: i16, wave_length: u16, length: u8) -> SquarePulse {
-        let period = (((wave_length as u32 + 1)*768) / 1790) / 2;
-        let sample_count = 48000*(length as u32/60);
-        let mut result = Vec::new();
-
-        for x in 0..sample_count {
-            result.push(
-                if (x / period) % 2 == 0 {
-                    volume*self.volume_scale
-                }
-                else {
-                    0
-                }
-            );
-        }
-        SquarePulse { pulse: result }
+    pub fn volume(&mut self, volume: u8) {
+        self.envelope = Envelope::constant(volume);
     }
 
-    pub fn decaying(&self, rate: u16, wave_length: u16, length: u8) -> SquarePulse {
-        let period = (((wave_length as u32 + 1)*768) / 1790) / 2;
-        let sample_count = 48000*(length as u32/60);
-        let mut result = Vec::new();
-        let mut volume = 16i16;
-        let tone_period = 48000 / (240/(rate as u32 + 1)); //decay
+    pub fn decaying_volume(&mut self, volume: u8) {
+        self.envelope = Envelope::decaying(volume);
+    }
 
-        for x in 0..sample_count {
-            if x % tone_period == 0 && volume > 0 {
-                volume -= 1;
-            }
-            result.push(
-                if (x / period) % 2 == 0 {
-                    volume*self.volume_scale
-                }
-                else {
-                    0
-                }
-            );
+    pub fn timer(&mut self, timer: u32) {
+        let adjusted_timer = timer*2;
+        self.timer_set = adjusted_timer;
+        self.timer = 0;
+    }
+
+    pub fn length(&mut self, length: u8) {
+        self.length = LengthCounter::new(length);
+    }
+
+    pub fn update(&mut self, cpu_cycles: u8) {
+        self.timer += cpu_cycles as u32;
+        self.length.clock(cpu_cycles);
+        self.envelope.clock(cpu_cycles);
+        if self.timer >= self.timer_set {
+            self.timer -= self.timer_set;
+            self.sequencer.next();
         }
-        SquarePulse { pulse: result }
+    }
+
+    pub fn pulse_value(&self) -> i16 {
+        if self.length.value() > 0 {
+            self.sequencer.get() * self.envelope.value() as i16
+        } else {
+            0
+        }
     }
 }
+
 
 
 #[cfg(test)]
 mod test {
     use super::PulseGenerator;
+    const APU_CYCLES_CLOCK_RATE: u64 = 149113;
+    use sound::counter::ClockTester;
 
     #[test]
     fn simple_constant_square_wave() {
-        let generator: PulseGenerator = PulseGenerator::new(1);
-        let pulse = generator.constant_volume(10, 0x1AA, 0x7F);
-        let mut expected_wave = Vec::new(); //gen_wave(Duration::from_millis(1), 262);
-        push_all(&mut expected_wave, &[10; 91]);
-        push_all(&mut expected_wave, &[0; 91]);
-        push_all(&mut expected_wave, &[10; 91]);
-        assert_eq!(pulse.pulse[0..91*3], expected_wave[0..91*3]);
+        let mut generator: PulseGenerator = PulseGenerator::new(1);
+        generator.volume(10);
+        generator.timer(0x1AA);
+        generator.length(09);
 
-        assert_eq!(pulse.pulse.len(), 48000*(127/60));
+        assert_eq!(generator.pulse_value(), 0);
+        let mut clock = ClockTester::new(generator, 426*2);
+        {
+            clock.count_down(
+                |gen, tick| gen.update(tick),
+                &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
+                &|gen, _| assert_eq!(gen.pulse_value(), 10),
+            );
+        }
+
+        for _ in 0..176 {
+            execute_one_cycle(
+                &mut clock,
+                &|gen, cycles| assert_eq!(gen.pulse_value(), if cycles >= 149113*8 { 0 } else { 10 }, "After {} cycles", cycles)
+            );
+        }
     }
 
     #[test]
     fn simple_decaying_square_wave() {
-        let generator: PulseGenerator = PulseGenerator::new(1);
-        let pulse = generator.decaying(4, 0x1AA, 0x7F);
-        let mut expected_wave = Vec::new(); //gen_wave(Duration::from_millis(1), 262);
-        push_all(&mut expected_wave, &[15; 91]);
-        push_all(&mut expected_wave, &[0; 91]);
-        push_all(&mut expected_wave, &[15; 91]);
-        assert_eq!(pulse.pulse[0..91*3], expected_wave[0..91*3]);
-
-        let mut decaying_wave = Vec::new();
-        push_all(&mut decaying_wave, &[15; 1000-910]);
-        push_all(&mut decaying_wave, &[14; 91-(1000-910)]);
-        assert_eq!(pulse.pulse[910..910+91], decaying_wave[0..91]);
-
-        assert_eq!(pulse.pulse.len(), 48000*(127/60));
+        let mut generator = PulseGenerator::new(1);
+        generator.decaying_volume(4);
+        generator.timer(0x1AA);
+        generator.length(01);
+        let decaying_period = 149113*5;
+        let mut clock = ClockTester::new(generator, 426*2);
+        {
+            clock.count_down(
+                |gen, tick| gen.update(tick),
+                &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
+                &|gen, cycles| assert_eq!(gen.pulse_value(), 15 - (cycles/decaying_period) as i16),
+            );
+        }
+        for _ in 0..1500 {
+            execute_one_cycle(
+                &mut clock,
+                &|gen, cycles| assert_eq!(gen.pulse_value(), 15 - (cycles/decaying_period) as i16, "After {} cycles", cycles)
+            );
+        }
     }
 
-
-    fn push_all(vec: &mut Vec<i16>, slice: &[i16]) {
-        for &d in slice.iter() {
-            vec.push(d);
+    fn execute_one_cycle<F>(clock: &mut ClockTester<PulseGenerator>, assert_value_high: &F) where F: Fn(&PulseGenerator, u64) {
+        {
+            for _ in 0..3 {
+                clock.count_down(
+                    |gen, tick| gen.update(tick),
+                    assert_value_high,
+                    assert_value_high,
+                );
+            }
+            clock.count_down(
+                |gen, tick| gen.update(tick),
+                assert_value_high,
+                &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
+            );
+        }
+        {
+            for _ in 0..3 {
+                clock.count_down(
+                    |gen, tick| gen.update(tick),
+                    &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
+                    &|gen, _| assert_eq!(gen.pulse_value(), 0),
+                );
+            }
+            clock.count_down(
+                |gen, tick| gen.update(tick),
+                &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
+                assert_value_high
+            );
         }
     }
 }
