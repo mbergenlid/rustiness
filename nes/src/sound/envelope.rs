@@ -86,7 +86,7 @@ mod test {
         let envelope = Envelope::constant(10);
         assert_eq!(envelope.value(), 10);
         let mut clock = ClockTester::new(envelope, (10+1)*super::APU_CYCLES_CLOCK_RATE);
-        for i in 0..15 {
+        for _ in 0..15 {
             clock.count_down(
                 |counter, tick| counter.clock(tick),
                 &|counter, cycles| assert_eq!(counter.value(), 10, "Failed on clock {}", cycles),

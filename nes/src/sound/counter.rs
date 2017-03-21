@@ -21,7 +21,7 @@ impl<T> ClockTester<T> {
         let period = self.period;
         let clocks_required = self.cycles + (period as u64 - (self.cycles % period as u64));
         while self.cycles < clocks_required {
-            let tick = rand::random::<u8>();
+            let tick = rand::random::<u8>() % 10;
             clock_fn(&mut self.clocked_object, tick);
             self.cycles += tick as u64;
             if self.cycles>= clocks_required {

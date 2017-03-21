@@ -1,16 +1,5 @@
-use super::sound::Pulse;
 use sound::length_counter::LengthCounter;
 use sound::envelope::Envelope;
-
-pub struct SquarePulse {
-    pulse: Vec<i16>
-}
-
-impl Pulse for SquarePulse {
-    fn get(&self) -> &[i16] {
-        &self.pulse
-    }
-}
 
 struct CircularBuffer {
     buffer: [i16; 8],
@@ -63,10 +52,19 @@ impl PulseGenerator {
         self.envelope = Envelope::decaying(volume);
     }
 
-    pub fn timer(&mut self, timer: u32) {
-        let adjusted_timer = timer*2;
-        self.timer_set = adjusted_timer;
+    pub fn timer_low(&mut self, timer_low: u8) {
+        self.timer_set = (self.timer_set & 0xFF_FF_FE_00) | ((timer_low as u32) << 1);
         self.timer = 0;
+    }
+
+    pub fn timer_high(&mut self, timer_high: u8) {
+        self.timer_set = (self.timer_set & 0xFF_FF_F1_FF) | ((timer_high as u32) << 9);
+        self.timer = 0;
+    }
+
+    pub fn timer(&mut self, timer: u32) {
+        self.timer_low(timer as u8);
+        self.timer_high((timer >> 8) as u8);
     }
 
     pub fn length(&mut self, length: u8) {
@@ -85,97 +83,10 @@ impl PulseGenerator {
 
     pub fn pulse_value(&self) -> i16 {
         if self.length.value() > 0 {
-            self.sequencer.get() * self.envelope.value() as i16
+            self.volume_scale * self.sequencer.get() * self.envelope.value() as i16
         } else {
             0
         }
     }
 }
 
-
-
-#[cfg(test)]
-mod test {
-    use super::PulseGenerator;
-    const APU_CYCLES_CLOCK_RATE: u64 = 149113;
-    use sound::counter::ClockTester;
-
-    #[test]
-    fn simple_constant_square_wave() {
-        let mut generator: PulseGenerator = PulseGenerator::new(1);
-        generator.volume(10);
-        generator.timer(0x1AA);
-        generator.length(09);
-
-        assert_eq!(generator.pulse_value(), 0);
-        let mut clock = ClockTester::new(generator, 426*2);
-        {
-            clock.count_down(
-                |gen, tick| gen.update(tick),
-                &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
-                &|gen, _| assert_eq!(gen.pulse_value(), 10),
-            );
-        }
-
-        for _ in 0..176 {
-            execute_one_cycle(
-                &mut clock,
-                &|gen, cycles| assert_eq!(gen.pulse_value(), if cycles >= 149113*8 { 0 } else { 10 }, "After {} cycles", cycles)
-            );
-        }
-    }
-
-    #[test]
-    fn simple_decaying_square_wave() {
-        let mut generator = PulseGenerator::new(1);
-        generator.decaying_volume(4);
-        generator.timer(0x1AA);
-        generator.length(01);
-        let decaying_period = 149113*5;
-        let mut clock = ClockTester::new(generator, 426*2);
-        {
-            clock.count_down(
-                |gen, tick| gen.update(tick),
-                &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
-                &|gen, cycles| assert_eq!(gen.pulse_value(), 15 - (cycles/decaying_period) as i16),
-            );
-        }
-        for _ in 0..1500 {
-            execute_one_cycle(
-                &mut clock,
-                &|gen, cycles| assert_eq!(gen.pulse_value(), 15 - (cycles/decaying_period) as i16, "After {} cycles", cycles)
-            );
-        }
-    }
-
-    fn execute_one_cycle<F>(clock: &mut ClockTester<PulseGenerator>, assert_value_high: &F) where F: Fn(&PulseGenerator, u64) {
-        {
-            for _ in 0..3 {
-                clock.count_down(
-                    |gen, tick| gen.update(tick),
-                    assert_value_high,
-                    assert_value_high,
-                );
-            }
-            clock.count_down(
-                |gen, tick| gen.update(tick),
-                assert_value_high,
-                &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
-            );
-        }
-        {
-            for _ in 0..3 {
-                clock.count_down(
-                    |gen, tick| gen.update(tick),
-                    &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
-                    &|gen, _| assert_eq!(gen.pulse_value(), 0),
-                );
-            }
-            clock.count_down(
-                |gen, tick| gen.update(tick),
-                &|gen, cycles| assert_eq!(gen.pulse_value(), 0, "After {} cycles", cycles),
-                assert_value_high
-            );
-        }
-    }
-}

@@ -78,6 +78,7 @@ use ppu::ppuregisters::*;
 use memory::MemoryMappedIO;
 impl <'a> CPUMemory<'a> {
     pub fn default(memory: Box<BasicMemory>, ppu: Rc<RefCell<PPU>>, controller: Option<&'a mut MemoryMappedIO>) -> CPUMemory {
+        //apu: &mut APU
         cpu_memory!(
             memory,
             0x2000 => MutableRef::Box(box PPUCtrl(ppu.clone())),
