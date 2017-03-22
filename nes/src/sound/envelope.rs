@@ -1,5 +1,5 @@
 
-const APU_CYCLES_CLOCK_RATE: u32 = 149113;
+const APU_CYCLES_CLOCK_RATE: u32 = 14913;
 
 pub struct Envelope {
     divider: u8,

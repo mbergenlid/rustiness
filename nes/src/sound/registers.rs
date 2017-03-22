@@ -72,7 +72,7 @@ mod test {
         for _ in 0..176 {
             execute_one_cycle(
                 &mut clock,
-                &|gen, cycles| assert_eq!(gen.pulse_value(), if cycles >= 149113*8 { 0 } else { 10 }, "After {} cycles", cycles)
+                &|gen, cycles| assert_eq!(gen.pulse_value(), if cycles >= 14913*8 { 0 } else { 10 }, "After {} cycles", cycles)
             );
         }
     }
@@ -84,7 +84,7 @@ mod test {
         cpu_memory.set(0x4000, 4);
         cpu_memory.set(0x4002, 0xAA);
         cpu_memory.set(0x4003, 0b0000_1001);
-        let decaying_period = 149113*5;
+        let decaying_period = 14913*5;
         let mut clock = ClockTester::new(generator, 426*2);
         {
             clock.count_down(
@@ -93,10 +93,11 @@ mod test {
                 &|gen, cycles| assert_eq!(gen.borrow().pulse_value(), 15 - (cycles/decaying_period) as i16),
             );
         }
+        use std::cmp;
         for _ in 0..1500 {
             execute_one_cycle(
                 &mut clock,
-                &|gen, cycles| assert_eq!(gen.pulse_value(), 15 - (cycles/decaying_period) as i16, "After {} cycles", cycles)
+                &|gen, cycles| assert_eq!(gen.pulse_value(), cmp::max(0, 15 - (cycles/decaying_period) as i16), "After {} cycles", cycles)
             );
         }
     }

@@ -3,7 +3,7 @@ pub struct LengthCounter {
     cpu_cycles: u32,
     halted: bool
 }
-const APU_CYCLES_CLOCK_RATE: u32 = 149113;
+const APU_CYCLES_CLOCK_RATE: u32 = 14913;
 
 const LENGTH_TABLE: [u8; 32] = [
     10, 254, 20, 2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
