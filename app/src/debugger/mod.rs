@@ -8,7 +8,9 @@ use nes::ines::INes;
 use nes::ppu::{PPU, attributetable};
 use nes::ppu::screen::COLOUR_PALETTE;
 use nes::input::standard_controller::StandardController;
-use sdl2::{SDL2, SDL2Screen};
+use sdl2::{SDL2, SDL2Screen, SDLAudioDevice};
+use nes::sound::AudioDevice;
+use nes::sound::APU;
 use self::fakecontroller::FakeController;
 
 use std::fs::File;
@@ -45,8 +47,8 @@ pub fn start() {
             .unwrap_or_else(|| {
                 StandardController::new(&source)
             });
-    let mut nes = nes::NES::new(ppu, memory, screen, &mut standard_controller);
-
+    let apu = APU::new(sdl.audio(), 500);
+    let mut nes: nes::NES<SDL2Screen, SDLAudioDevice> = nes::NES::new(ppu, apu, memory, screen, &mut standard_controller);
 
     loop {
         print(&nes);
@@ -226,7 +228,7 @@ impl Command {
     }
 }
 
-fn print(nes: &nes::NES<SDL2Screen>) {
+fn print(nes: &nes::NES<SDL2Screen, SDLAudioDevice>) {
     println!("Cycle count: {}", nes.cycle_count);
     print_cpu_and_ppu(nes);
 }
@@ -241,7 +243,7 @@ fn print(nes: &nes::NES<SDL2Screen>) {
 
 use std::ops::Deref;
 use std::io::{BufReader, BufRead};
-fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen>) {
+fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen, SDLAudioDevice>) {
     let cpu = &nes.cpu;
     let ppu = &nes.ppu;
 
@@ -260,7 +262,7 @@ fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen>) {
     }
 }
 
-fn print_next_instruction(nes: &nes::NES<SDL2Screen>) {
+fn print_next_instruction(nes: &nes::NES<SDL2Screen, SDLAudioDevice>) {
     let op_code = nes.memory.get(nes.cpu.program_counter());
 
     opcodes::debug_instruction(op_code, &nes.cpu, &nes.memory);

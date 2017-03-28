@@ -1,4 +1,6 @@
 use sound::square;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub trait AudioDevice {
     fn play(&self, &[i16]);
@@ -6,27 +8,41 @@ pub trait AudioDevice {
 
 pub struct APU<T: AudioDevice> {
     audio_device: T,
-    square1: square::PulseGenerator,
+    volume_scale: i16,
+    square1: Rc<RefCell<square::PulseGenerator>>,
+    square2: Rc<RefCell<square::PulseGenerator>>,
     cpu_cycles: u32
 }
 
 impl<T: AudioDevice> APU<T> {
-    pub fn new(audio_device: T) -> APU<T> {
+    pub fn new(audio_device: T, volume_scale: i16) -> APU<T> {
         APU {
             audio_device: audio_device,
-            square1: square::PulseGenerator::new(1),
+            volume_scale: volume_scale,
+            square1: Rc::new(RefCell::new(square::PulseGenerator::new())),
+            square2: Rc::new(RefCell::new(square::PulseGenerator::new())),
             cpu_cycles: 0,
         }
+    }
+
+    pub fn square1(&self) -> Rc<RefCell<square::PulseGenerator>> {
+        self.square1.clone()
+    }
+    pub fn square2(&self) -> Rc<RefCell<square::PulseGenerator>> {
+        self.square2.clone()
     }
 }
 
 impl<T: AudioDevice> APU<T> {
     pub fn update(&mut self, cpu_cycles: u8) {
-        self.square1.update(cpu_cycles);
+        self.square1.borrow_mut().update(cpu_cycles);
+        self.square2.borrow_mut().update(cpu_cycles);
         self.cpu_cycles += cpu_cycles as u32;
         if self.cpu_cycles >= 37 {
             self.cpu_cycles -= 37;
-            self.audio_device.play(&[self.square1.pulse_value()]);
+            self.audio_device.play(
+                &[(self.square1.borrow().pulse_value()+ self.square2.borrow().pulse_value())*self.volume_scale]
+            );
         }
     }
 }

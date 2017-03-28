@@ -78,21 +78,30 @@ impl<'a, 'b> Debug for CPUMemoryReference<'a, 'b> {
 use std::borrow::BorrowMut;
 impl <'a> Memory for CPUMemory<'a> {
     fn get(&self, address: Address) -> u8 {
-        self.io_registers.iter()
-            .find(|e| e.0 == address)
-            .map(|e| e.1.read(self.memory.as_ref()))
-            .unwrap_or_else(|| self.memory.get(address))
+        if address < 0x2000 {
+            self.memory.get(address)
+        } else {
+            self.io_registers.iter()
+                .find(|e| e.0 == address)
+                .map(|e| e.1.read(self.memory.as_ref()))
+                .unwrap_or_else(|| self.memory.get(address))
+        }
     }
 
     fn set(&mut self, address: Address, value: u8) {
-        if let Some(mut entry) = self.io_registers.iter_mut().find(|e| e.0 == address) {
-            entry.1.write(self.memory.borrow_mut(), value);
-        } else {
+        if address < 0x2000 {
             self.memory.set(address, value);
+        } else {
+            if let Some(mut entry) = self.io_registers.iter_mut().find(|e| e.0 == address) {
+                entry.1.write(self.memory.borrow_mut(), value);
+            } else {
+                self.memory.set(address, value);
+            }
         }
     }
 }
 
+#[macro_export]
 macro_rules! cpu_memory {
     ( $memory:expr, $( $x:expr => $y:expr ),* ) => {
         {

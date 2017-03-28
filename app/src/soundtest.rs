@@ -1,45 +1,33 @@
-use sdl2::audio::SDLAudioDevice;
 use sdl2::SDL2;
 
-use std::thread::sleep;
-use std::time::Duration;
 
-fn gen_wave(duration: Duration, frequency: u32) -> Vec<i16> {
-    // Generate a square wave
-    let volume_scale = 500;
-    let mut tone_volume = 15i16;
-    let period = 48000 / (frequency as u64 * 2);  // (samples / sec) / (x / sec) => samples / x
-    let sample_count = 48 * (duration.as_secs()*1000 + (duration.subsec_nanos()/1000_000) as u64);
-    let mut result = Vec::new();
-    let tone_period = 48000 / 48; //decay
-
-    for x in 0..sample_count {
-        if x % tone_period == 0 && tone_volume > 0 {
-            tone_volume -= 1;
-        }
-        result.push(
-            if (x / period) % 2 == 0 {
-                tone_volume*volume_scale
-            }
-            else {
-                0
-            }
-        );
-    }
-    result
-}
-
-use nes::sound::{AudioDevice, PulseGenerator};
+use nes::sound::APU;
+use nes::Clock;
+use nes::sound::registers::*;
+use nes::memory::{BasicMemory, Memory};
 
 pub fn start() {
     let sdl = SDL2::new();
     let audio = sdl.audio();
-    let generator = PulseGenerator::new(500);
+    let mut apu = APU::new(audio, 100);
+    let square1 = apu.square1();
+    let mut cpu_memory = cpu_memory!(
+        box BasicMemory::new(),
+        0x4000 => MutableRef::Box(box Register1(square1.clone())),
+        0x4002 => MutableRef::Box(box Register3(square1.clone())),
+        0x4003 => MutableRef::Box(box Register4(square1.clone()))
+    );
 
-    for _ in 0..10 {
-        audio.play(&generator.decaying(4, 0x1AA, 0x7E));
-        sleep(Duration::from_millis(500));
-        audio.play(&generator.decaying(4, 0x06A, 0x7E));
-        sleep(Duration::from_millis(500));
+    {
+        cpu_memory.set(0x4000, 0x84);
+        cpu_memory.set(0x4002, 0xAA);
+        cpu_memory.set(0x4003, 0b0000_1001);
+    }
+
+    let mut clock = Clock::start();
+
+    for _ in 1..1000000 {
+        apu.update(2);
+        clock.tick(2);
     }
 }

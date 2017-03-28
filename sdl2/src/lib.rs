@@ -4,10 +4,10 @@ extern crate nes;
 pub mod standard_controller;
 
 pub use self::screen::SDL2Screen;
+pub use self::audio::SDLAudioDevice;
 pub mod screen;
 pub mod audio;
 
-use audio::SDLAudioDevice;
 use sdl2::Sdl;
 
 use standard_controller::SdlEvents;

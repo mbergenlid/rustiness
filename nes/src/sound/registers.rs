@@ -3,9 +3,9 @@ use super::square::PulseGenerator;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-pub struct Register1(Rc<RefCell<PulseGenerator>>);
-pub struct Register3(Rc<RefCell<PulseGenerator>>);
-pub struct Register4(Rc<RefCell<PulseGenerator>>);
+pub struct Register1(pub Rc<RefCell<PulseGenerator>>);
+pub struct Register3(pub Rc<RefCell<PulseGenerator>>);
+pub struct Register4(pub Rc<RefCell<PulseGenerator>>);
 
 
 impl MemoryMappedIO for Register1 {
@@ -53,7 +53,7 @@ mod test {
 
     #[test]
     fn simple_constant_square_wave() {
-        let generator = Rc::new(RefCell::new(PulseGenerator::new(1)));
+        let generator = Rc::new(RefCell::new(PulseGenerator::new()));
         let mut cpu_memory = cpu_memory(generator.clone());
         cpu_memory.set(0x4000, 0x1A);
         cpu_memory.set(0x4002, 0xAA);
@@ -79,7 +79,7 @@ mod test {
 
     #[test]
     fn simple_decaying_square_wave() {
-        let generator = Rc::new(RefCell::new(PulseGenerator::new(1)));
+        let generator = Rc::new(RefCell::new(PulseGenerator::new()));
         let mut cpu_memory = cpu_memory(generator.clone());
         cpu_memory.set(0x4000, 4);
         cpu_memory.set(0x4002, 0xAA);

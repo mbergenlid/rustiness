@@ -20,7 +20,6 @@ impl CircularBuffer {
 }
 
 pub struct PulseGenerator {
-    volume_scale: i16,
     envelope: Envelope,
     timer_set: u32,
     timer: u32,
@@ -29,9 +28,8 @@ pub struct PulseGenerator {
 }
 
 impl PulseGenerator {
-    pub fn new(volume_scale: i16) -> PulseGenerator {
+    pub fn new() -> PulseGenerator {
         PulseGenerator {
-            volume_scale: volume_scale,
             envelope: Envelope::constant(0),
             timer_set: 0,
             timer: 0,
@@ -83,7 +81,7 @@ impl PulseGenerator {
 
     pub fn pulse_value(&self) -> i16 {
         if self.length.value() > 0 {
-            self.volume_scale * self.sequencer.get() * self.envelope.value() as i16
+            self.sequencer.get() * self.envelope.value() as i16
         } else {
             0
         }

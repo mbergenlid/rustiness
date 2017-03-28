@@ -18,15 +18,20 @@ use ppu::screen::Screen;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use sound::registers::{Register1, Register3, Register4};
+use sound::AudioDevice;
+use sound::APU;
+
 
 const NANOS_PER_CLOCK_CYCLE: u32 = 559;
 
-pub struct NES<'a, T>
-    where T: Screen + Sized
+pub struct NES<'a, T, A>
+    where T: Screen + Sized, A: AudioDevice + Sized
 {
     pub cpu: CPU,
     pub cycle_count: u64,
     pub ppu: Rc<RefCell<PPU>>,
+    pub apu: APU<A>,
     pub op_codes: opcodes::OpCodes,
     pub screen: Box<T>,
     pub memory: CPUMemory<'a>,
@@ -34,27 +39,30 @@ pub struct NES<'a, T>
     pub clock: Clock,
 }
 
-impl <'a, T> NES<'a, T> where T: Screen + Sized {
-    pub fn new(ppu: PPU, memory: Box<BasicMemory>, screen: Box<T>, controller: &'a mut MemoryMappedIO) -> NES<T> {
+impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
+    pub fn new(ppu: PPU, apu: APU<A>, memory: Box<BasicMemory>, screen: Box<T>, controller: &'a mut MemoryMappedIO) -> NES<T, A> {
         let cpu_start = {
             let lsbs: u8 = memory.get(0xFFFC);
             let msbs: u8 = memory.get(0xFFFD);
             (msbs as u16) << 8 | lsbs as u16
         };
         let ppu = Rc::new(RefCell::new(ppu));
+        let cpu_memory = CPUMemory::default(memory, ppu.clone(), &apu, Some(controller));
         NES {
             cpu: CPU::new(cpu_start),
             cycle_count: 0,
             ppu: ppu.clone(),
+            apu: apu,
             op_codes: opcodes::OpCodes::new(),
             screen: screen,
-            memory: CPUMemory::default(memory, ppu, Some(controller)),
+            memory: cpu_memory,
             clock: Clock::start(),
         }
     }
 
     pub fn execute(&mut self) {
         let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut self.memory);
+        self.apu.update(cycles);
         let nmi = self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
         self.cycle_count += cycles as u64;
         self.clock.tick(cycles as u32);
@@ -76,8 +84,13 @@ impl <'a, T> NES<'a, T> where T: Screen + Sized {
 use ppu::ppuregisters::*;
 
 use memory::MemoryMappedIO;
-impl <'a> CPUMemory<'a> {
-    pub fn default(memory: Box<BasicMemory>, ppu: Rc<RefCell<PPU>>, controller: Option<&'a mut MemoryMappedIO>) -> CPUMemory {
+impl <'a> CPUMemory<'a>  {
+    pub fn default<A>(
+        memory: Box<BasicMemory>,
+        ppu: Rc<RefCell<PPU>>,
+        apu: &APU<A>,
+        controller: Option<&'a mut MemoryMappedIO>
+    ) -> CPUMemory<'a> where A: AudioDevice + Sized {
         //apu: &mut APU
         cpu_memory!(
             memory,
@@ -87,6 +100,14 @@ impl <'a> CPUMemory<'a> {
             0x2005 => MutableRef::Box(box PPUScroll(ppu.clone())),
             0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
             0x2007 => MutableRef::Box(box PPUData(ppu.clone())),
+
+            0x4000 => MutableRef::Box(box Register1(apu.square1())),
+            0x4002 => MutableRef::Box(box Register3(apu.square1())),
+            0x4003 => MutableRef::Box(box Register4(apu.square1())),
+            0x4004 => MutableRef::Box(box Register1(apu.square2())),
+            0x4006 => MutableRef::Box(box Register3(apu.square2())),
+            0x4007 => MutableRef::Box(box Register4(apu.square2())),
+
             0x4014 => MutableRef::Box(box OAMAddress(ppu.clone())),
             0x4016 => controller.map(|c| MutableRef::Borrowed(c)).unwrap_or_else(|| MutableRef::Box(box ()))
         )
@@ -109,7 +130,7 @@ pub struct Clock {
 }
 
 impl Clock {
-    fn start() -> Clock {
+    pub fn start() -> Clock {
         Clock {
             start: Instant::now(),
             should_have_elapsed: Duration::new(0,0),
@@ -117,7 +138,7 @@ impl Clock {
         }
     }
 
-    fn tick(&mut self, cycles: u32) {
+    pub fn tick(&mut self, cycles: u32) {
         self.should_have_elapsed = self.should_have_elapsed + Duration::new(0, cycles*NANOS_PER_CLOCK_CYCLE);
         let elapsed = self.start.elapsed();
         if self.should_have_elapsed > elapsed {
