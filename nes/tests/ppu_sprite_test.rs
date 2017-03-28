@@ -41,6 +41,7 @@ fn create_ppu() -> Rc<RefCell<PPU>> {
 }
 
 use nes::memory::{CPUMemory, Memory};
+use nes::sound::APU;
 
 #[test]
 fn test_basic_sprite_rendering() {
@@ -55,7 +56,7 @@ fn test_basic_sprite_rendering() {
         0x0203 => 0x00
     );
 
-    let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), None);
+    let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), &APU::new(Rc::new(RefCell::new(Vec::new())), 1), None);
     {
         cpu_memory.set(0x4014, 0x02);
     };
@@ -131,7 +132,7 @@ fn test_multiple_sprite_rendering() {
     );
 
     {
-        let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), None);
+        let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), &APU::new(Rc::new(RefCell::new(Vec::new())), 1), None);
         cpu_memory.set(0x4014, 0x02);
     };
 

@@ -47,6 +47,14 @@ impl<T: AudioDevice> APU<T> {
     }
 }
 
+impl AudioDevice for Rc<RefCell<Vec<i16>>> {
+    fn play(&self, pulse: &[i16]) {
+        for &d in pulse.iter() {
+            self.borrow_mut().push(d);
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use sound::counter::ClockTester;
@@ -58,7 +66,7 @@ mod test {
     #[test]
     fn should_update_audio_device_at_correct_sample_rate() {
         let audio_device = Rc::new(RefCell::new(Vec::new()));
-        let apu = APU::new(audio_device.clone());
+        let apu = APU::new(audio_device.clone(), 1);
 
         let mut clock = ClockTester::new(apu, FOUR_PULSE_SAMPLES_IN_CPU_CYCLES);
         clock.count_down(
@@ -68,11 +76,6 @@ mod test {
         );
     }
 
-    impl AudioDevice for Rc<RefCell<Vec<i16>>> {
-        fn play(&self, pulse: &[i16]) {
-            push_all(self.borrow_mut().as_mut(), pulse);
-        }
-    }
 
     fn push_all(vec: &mut Vec<i16>, slice: &[i16]) {
         for &d in slice.iter() {
