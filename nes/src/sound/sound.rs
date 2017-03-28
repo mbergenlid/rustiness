@@ -60,7 +60,7 @@ mod test {
     use sound::counter::ClockTester;
     use std::rc::Rc;
     use std::cell::RefCell;
-    use super::{AudioDevice, APU};
+    use super::APU;
     const FOUR_PULSE_SAMPLES_IN_CPU_CYCLES: u32 = 149;
 
     #[test]
@@ -74,12 +74,5 @@ mod test {
             &|_, _| (),
             &|_, _| assert_eq!(audio_device.borrow().len(), 4)
         );
-    }
-
-
-    fn push_all(vec: &mut Vec<i16>, slice: &[i16]) {
-        for &d in slice.iter() {
-            vec.push(d);
-        }
     }
 }
