@@ -167,6 +167,12 @@ impl PPU {
         self.vram_registers.current += self.control_register.vram_pointer_increment();
     }
 
+    pub fn read_from_vram(&mut self) -> u8 {
+        let value = self.memory.get(self.vram_registers.current);
+        self.vram_registers.current += self.control_register.vram_pointer_increment();
+        return value;
+    }
+
     pub fn load(&mut self, base_address: u16, rom: &[u8]) {
         let current_vram = self.vram_registers.current;
         self.vram_registers.current = base_address;

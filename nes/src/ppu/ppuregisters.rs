@@ -47,7 +47,7 @@ impl MemoryMappedIO for PPUScroll {
 }
 impl MemoryMappedIO for PPUAddress {
     fn read(&self, _: &BasicMemory) -> u8 {
-        0
+        unimplemented!();
     }
     fn write(&mut self, _: &mut BasicMemory, value: u8) {
         self.0.borrow_mut().set_vram(value);
@@ -56,8 +56,9 @@ impl MemoryMappedIO for PPUAddress {
 
 impl MemoryMappedIO for PPUData {
     fn read(&self, _: &BasicMemory) -> u8 {
-        unimplemented!();
+        self.0.borrow_mut().read_from_vram()
     }
+
     fn write(&mut self, _: &mut BasicMemory, value: u8) {
         self.0.borrow_mut().write_to_vram(value);
     }
@@ -97,6 +98,10 @@ mod test {
             memory.set(0x2006, 0x01); //Low byte of vram pointer
 
             memory.set(0x2007, 0xA5); //write 0xA5 to PPU-MEM 0xFF01
+
+            memory.set(0x2006, 0xFF); //High byte of vram pointer
+            memory.set(0x2006, 0x01); //Low byte of vram pointer
+            assert_eq!(0xA5, memory.get(0x2007));
         }
         assert_eq!(0xA5, ppu.borrow().memory().get(0x3F01));
 
@@ -111,4 +116,5 @@ mod test {
         }
         assert_eq!(0x3B, ppu.borrow().memory().get(0x3F02));
     }
+
 }
