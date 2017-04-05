@@ -16,7 +16,8 @@ fn create_ppu(mirroring: Mirroring) -> PPU {
             0x3F05 => 0x17, //(0xCB,0x4F,0x0F)
             0x3F07 => 0x3B, //(0xB3,0xFF,0xCF)
 
-            0x2000 => 0x01, //pattern 1 (palette 0) 
+            0x2000 => 0x01, //pattern 1 (palette 0)
+            0x23A0 => 0x01, //pattern 1 (palette 0)
 
             0x2400 => 0x02, //pattern 2 (palette 0)
 
@@ -33,7 +34,7 @@ fn create_ppu(mirroring: Mirroring) -> PPU {
         &[
             //Pattern table 0
             //Layer 1
-            0b00011100, 0b00110010, 0b00111000, 0b00011100, 0b00001110, 0b00100110, 0b00011100, 0b00000000,
+            0b00011100, 0b00110010, 0b00111000, 0b00011100, 0b00001110, 0b00100110, 0b00011100, 0b00000001,
             //Layer 2
             0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000,
 
@@ -46,6 +47,33 @@ fn create_ppu(mirroring: Mirroring) -> PPU {
     );
 
     return ppu;
+}
+
+#[test]
+fn no_mirroring_no_scroll() {
+    let mut ppu = create_ppu(Mirroring::NoMirroring);
+    ppu.set_scroll(0); //x scroll
+    ppu.set_scroll(0); //y scroll
+
+    let mut screen = ScreenMock::new();
+    ppu.update_screen(&mut screen);
+    {
+        let pixel_buffer = screen.screen_buffer.as_ref();
+
+        assert_pixels(
+            &[
+    /* tile 1 */ 0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0, 0,0,0,
+            ],
+            &pixel_buffer[0..8*3]
+        );
+        let last_row = 239*256*3;
+        assert_pixels(
+            &[
+                0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 255,255,255
+            ],
+            &pixel_buffer[last_row..last_row+8*3] //last line
+        );
+    }
 }
 
 #[test]

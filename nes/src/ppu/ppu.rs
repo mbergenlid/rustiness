@@ -3,6 +3,7 @@ use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer, Rectangle};
 use ppu::vram_registers::VRAMRegisters;
 use ppu::attributetable::AttributeTable;
 use ppu::ppumemory;
+use ppu::tile_cache::TileCache;
 
 struct PPUCtrl {
     value: u8,
@@ -77,6 +78,7 @@ pub struct PPU {
     vram_registers: VRAMRegisters,
 
     vram_changed: bool,
+    tile_cache: TileCache,
 
     cycle_count: u32,
     mirroring: ppumemory::Mirroring,
@@ -121,6 +123,7 @@ impl PPU {
             vram_registers: VRAMRegisters::new(),
 
             vram_changed: true,
+            tile_cache: TileCache::new(),
 
             cycle_count: 0,
             mirroring: mirroring,
@@ -162,6 +165,7 @@ impl PPU {
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
+        self.tile_cache.update(self.vram_registers.current);
         self.vram_changed = true;
         self.memory.set(self.vram_registers.current, value);
         self.vram_registers.current += self.control_register.vram_pointer_increment();
@@ -321,44 +325,64 @@ impl PPU {
         };
     }
 
-    fn update_tile_for_nametable(&mut self, pixel_buffer: &mut PixelBuffer, name_table_index: u16) {
-        let pattern_table_base_address = self.control_register.background_pattern_table();
-        let name_table_base = 0x2000 + name_table_index*0x400;
+    fn update_tile_for_nametable(&mut self, pixel_buffer: &mut PixelBuffer, name_table_index: usize) {
+        let name_table_base = (0x2000 + name_table_index*0x400) as u16;
         let mut name_table = name_table_base;
-        let x_offset: usize = ((name_table_index & 0x1)*256) as usize;
-        let y_offset: usize = (((name_table_index & 0x2) >> 1)*240) as usize;
+        let x_offset_multiplier = name_table_index & 0x01;
+        let y_offset_multiplier = (name_table_index & 0x2) >> 1;
+        let x_offset: usize = (x_offset_multiplier*256) as usize;
+        let y_offset: usize = (y_offset_multiplier*240) as usize;
         for row in 0..30 {
             for col in 0..32 {
-                let pattern_table_address = self.memory.get(name_table) as u16;
-                let colour_palette = {
-                    let attribute_table = AttributeTable {
-                        memory: &(*self.memory),
-                        address: name_table_base + 0x3C0,
-                    };
-                    attribute_table.get_palette_address(row, col)
-                };
-                let mut pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
-                for pattern_row in 0..8 {
-                    let mut low_bits = self.memory.get(pattern_table_address);
-                    let mut high_bits = self.memory.get(pattern_table_address+8);
-                    for bit_index in 0..8 {
-                        let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
-                        let colour_address: u16 = if pixel == 0 { 0x3F00 } else { colour_palette + pixel as u16 };
-
-                        let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
-                        pixel_buffer.set_pixel(
-                            x_offset + (col*8 + (7-bit_index)) as usize,
-                            y_offset + (row*8 + pattern_row) as usize,
-                            colour
-                        );
-                        low_bits >>= 1;
-                        high_bits >>= 1;
-                    }
-                    pattern_table_address += 1;
+                let absolute_row = y_offset_multiplier*30 + row;
+                let absolute_col = x_offset_multiplier*32 + col;
+                if self.tile_cache.is_modified(absolute_row, absolute_col) {
+                    self.update_tile(pixel_buffer, row, col, x_offset, y_offset, name_table_base, name_table);
+                    self.tile_cache.clear(absolute_row, absolute_col);
                 }
 
                 name_table += 1;
             }
+        }
+    }
+
+    fn update_tile(
+        &self,
+        pixel_buffer: &mut PixelBuffer,
+        row: usize,
+        col: usize,
+        x_offset: usize,
+        y_offset: usize,
+        name_table_base: u16,
+        name_table: u16
+    ) {
+        let pattern_table_address = self.memory.get(name_table) as u16;
+        let pattern_table_base_address = self.control_register.background_pattern_table();
+        let colour_palette = {
+            let attribute_table = AttributeTable {
+                memory: &(*self.memory),
+                address: name_table_base + 0x3C0,
+            };
+            attribute_table.get_palette_address(row as u16, col as u16)
+        };
+        let mut pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
+        for pattern_row in 0..8 {
+            let mut low_bits = self.memory.get(pattern_table_address);
+            let mut high_bits = self.memory.get(pattern_table_address+8);
+            for bit_index in 0..8 {
+                let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                let colour_address: u16 = if pixel == 0 { 0x3F00 } else { colour_palette + pixel as u16 };
+
+                let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                pixel_buffer.set_pixel(
+                    x_offset + (col*8 + (7-bit_index)) as usize,
+                    y_offset + (row*8 + pattern_row) as usize,
+                    colour
+                );
+                low_bits >>= 1;
+                high_bits >>= 1;
+            }
+            pattern_table_address += 1;
         }
     }
 
