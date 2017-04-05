@@ -6,6 +6,7 @@ extern crate sdl2;
 mod debugger;
 mod sdlscreentest;
 mod soundtest;
+mod instruction_benchmark;
 
 use std::env;
 
@@ -19,6 +20,7 @@ fn main() {
         "debug" => debugger::start(),
         "sdl2screen" => sdlscreentest::start(),
         "sound" => soundtest::start(),
+        "bench" => instruction_benchmark::run(),
         _ => panic!("Unknown command {}", args[1]),
     }
 }

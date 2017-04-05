@@ -6,3 +6,4 @@ authors = ["Marcus Bergenlid <marcus.bergenlid@ooyala.com>"]
 [dependencies]
 nes = { path = "../nes" }
 sdl2 = { path = "../sdl2" }
+rand = "0.3"

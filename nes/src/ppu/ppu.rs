@@ -255,7 +255,6 @@ impl PPU {
         //Update sprites
         self.draw_sprite(screen);
 
-        
         screen.present();
     }
 
