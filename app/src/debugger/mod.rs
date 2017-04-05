@@ -1,16 +1,19 @@
 extern crate nes;
 extern crate sdl2;
+
 mod opcodes;
 mod fakecontroller;
+use nes::NES;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
 use nes::ines::INes;
 use nes::ppu::{PPU, attributetable};
-use nes::ppu::screen::COLOUR_PALETTE;
+use nes::ppu::screen::{Screen, ScreenMock, COLOUR_PALETTE};
 use nes::input::standard_controller::StandardController;
-use sdl2::{SDL2, SDL2Screen, SDLAudioDevice};
+use sdl2::SDL2;
 use nes::sound::AudioDevice;
 use nes::sound::APU;
+use sdl2::standard_controller::SdlEvents;
 use self::fakecontroller::FakeController;
 
 use std::fs::File;
@@ -34,12 +37,10 @@ pub fn start() {
 
     let ppu = PPU::with_mirroring(ppu_memory, rom_file.mirroring);
     let sdl = SDL2::new();
-    let screen = box sdl.screen(2);
 
     let fake_controller: Option<FakeController> =
         args.iter().find(|&a| a == "-c")
             .map(|_| FakeController::new());
-
     let source = sdl.event_pump();
     let mut standard_controller =
         fake_controller.as_ref()
@@ -48,8 +49,23 @@ pub fn start() {
                 StandardController::new(&source)
             });
     let apu = APU::new(sdl.audio(), 500);
-    let mut nes: nes::NES<SDL2Screen, SDLAudioDevice> = nes::NES::new(ppu, apu, memory, screen, &mut standard_controller);
+    let use_screen_mock = args.iter().find(|&a| a == "-g").map(|_| true).unwrap_or(false);
 
+    if use_screen_mock {
+        let screen = box ScreenMock::new();
+        let nes = nes::NES::new(ppu, apu, memory, screen, &mut standard_controller);
+
+        run(nes, &source, &fake_controller);
+    } else {
+        let screen = box sdl.screen(2);
+
+        let nes = nes::NES::new(ppu, apu, memory, screen, &mut standard_controller);
+
+        run(nes, &source, &fake_controller);
+    }
+}
+
+fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &Option<FakeController>) where S: Screen + Sized, A: AudioDevice + Sized {
     loop {
         print(&nes);
         print_next_instruction(&nes);
@@ -172,13 +188,13 @@ pub fn start() {
                 println!("Memory 0x{:04x} -> 0x{:02x}", address, nes.memory.get(address));
             }
             "press" => {
-                match fake_controller {
+                match *fake_controller {
                     Some(ref ctrl) => ctrl.press(cmd.arg(1).map(|s| s.trim()).unwrap_or("")),
                     None => println!("Unable to fake button press since you're not using a fake controller, try run with '-c' flag")
                 }
             },
             "release" => {
-                match fake_controller {
+                match *fake_controller {
                     Some(ref ctrl) => ctrl.release(cmd.arg(1).map(|s| s.trim()).unwrap_or("")),
                     None => println!("Unable to fake button press since you're not using a fake controller, try run with '-c' flag")
                 }
@@ -189,7 +205,6 @@ pub fn start() {
 
     }
 }
-
 struct Command {
     value: Vec<String>
 }
@@ -228,22 +243,15 @@ impl Command {
     }
 }
 
-fn print(nes: &nes::NES<SDL2Screen, SDLAudioDevice>) {
+fn print<S, A>(nes: &nes::NES<S, A>) where S: Screen + Sized, A: AudioDevice + Sized {
     println!("Cycle count: {}", nes.cycle_count);
+    println!("Clock: {}", nes.clock);
     print_cpu_and_ppu(nes);
 }
 
-//use std::cell::RefCell;
-//use std::fmt::{Formatter, Error, Display};
-//impl Display for RefCell<PPU> {
-//    fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
-//        self.borrow().fmt(formatter)
-//    }
-//}
-
 use std::ops::Deref;
 use std::io::{BufReader, BufRead};
-fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen, SDLAudioDevice>) {
+fn print_cpu_and_ppu<S, A>(nes: &nes::NES<S, A>) where S: Screen + Sized, A: AudioDevice + Sized {
     let cpu = &nes.cpu;
     let ppu = &nes.ppu;
 
@@ -262,7 +270,7 @@ fn print_cpu_and_ppu(nes: &nes::NES<SDL2Screen, SDLAudioDevice>) {
     }
 }
 
-fn print_next_instruction(nes: &nes::NES<SDL2Screen, SDLAudioDevice>) {
+fn print_next_instruction<S, A>(nes: &nes::NES<S, A>) where S: Screen + Sized, A: AudioDevice + Sized {
     let op_code = nes.memory.get(nes.cpu.program_counter());
 
     opcodes::debug_instruction(op_code, &nes.cpu, &nes.memory);
