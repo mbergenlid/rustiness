@@ -205,8 +205,10 @@ impl PPU {
         } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.status_register = self.status_register & 0x7F;
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
-            if self.mask_register.is_drawing_enabled() {
-                self.update_screen(screen);
+            if cfg!(feature = "ppu") {
+                if self.mask_register.is_drawing_enabled() {
+                    self.update_screen(screen);
+                }
             }
             return false
         } else {

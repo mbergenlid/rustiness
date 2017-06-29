@@ -62,7 +62,9 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
 
     pub fn execute(&mut self) {
         let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut self.memory);
-        self.apu.update(cycles);
+        if cfg!(feature = "sound") {
+            self.apu.update(cycles);
+        }
         let nmi = self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
         self.cycle_count += cycles as u64;
         self.clock.tick(cycles as u32);

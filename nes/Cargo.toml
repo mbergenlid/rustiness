@@ -5,3 +5,7 @@ authors = ["Marcus Bergenlid <marcus.bergenlid@ooyala.com>"]
 
 [dependencies]
 rand = "0.3"
+
+[features]
+sound = []
+ppu = []
