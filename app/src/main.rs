@@ -20,7 +20,7 @@ fn main() {
         "debug" => debugger::start(),
         "sdl2screen" => sdlscreentest::start(),
         "sound" => soundtest::start(),
-        "bench" => instruction_benchmark::run(),
+        "bench" => instruction_benchmark::run(&args[2..]),
         _ => panic!("Unknown command {}", args[1]),
     }
 }

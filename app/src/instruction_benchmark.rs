@@ -6,15 +6,24 @@ use nes::opcodes::*;
 use nes::cpu::CPU;
 
 
-pub fn run() {
+pub fn run(args: &[String]) {
     let mut bench = InstructionBenchmark::new();
-    for _ in 0..10000 {
-        bench.run_random_instruction();
-    }
-    bench.timing_results.sort_by_key(|t| t.max);
-    //timing_vector.sort_by_key(|&(_, d)| d);
-    for t in bench.timing_results {
-        println!("{:?}", t);
+    if args.len() > 0 {
+        let op_code = args[0].parse::<u8>().unwrap();
+        let mut timing = InstructionTiming::new(op_code);
+        for _ in 0..10000 {
+            timing += bench.run_one_instruction(op_code);
+        }
+        println!("{:?}", timing);
+    } else {
+        for _ in 0..10000 {
+            bench.run_random_instruction();
+        }
+        bench.timing_results.sort_by_key(|t| t.mean);
+        //timing_vector.sort_by_key(|&(_, d)| d);
+        for t in bench.timing_results {
+            println!("{:?}", t);
+        }
     }
 }
 
@@ -72,6 +81,11 @@ impl InstructionBenchmark {
     fn run_random_instruction(&mut self) {
         let op_code_index = (rand::random::<u8>() % 151) as usize;
         let op_code = OP_CODES[op_code_index];
+        let elapsed = self.run_one_instruction(op_code);
+        self.timing_results[op_code_index] += elapsed;
+    }
+
+    fn run_one_instruction(&mut self, op_code: u8) -> Duration {
         let start_address = self.cpu.program_counter();
 
         let mut memory = external_memory!(
@@ -85,8 +99,7 @@ impl InstructionBenchmark {
 
         let start = Instant::now();
         self.op_codes.execute_instruction(&mut self.cpu, &mut memory);
-        let elapsed = start.elapsed();
-        self.timing_results[op_code_index] += elapsed;
+        start.elapsed()
     }
 }
 
