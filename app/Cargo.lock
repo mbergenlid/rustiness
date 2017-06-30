@@ -2,6 +2,7 @@
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "histogram 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "nes 0.1.0",
  "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "sdl2 0.1.0",
@@ -10,6 +11,11 @@ dependencies = [
 [[package]]
 name = "bitflags"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "histogram"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -100,6 +106,7 @@ dependencies = [
 
 [metadata]
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
+"checksum histogram 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)" = "a604d78d5cfc9a7d5f49a29e91be11d35f550d149a122b3fd6d4eadbc23e119d"
 "checksum lazy_static 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6abe0ee2e758cd6bc8a2cd56726359007748fbf4128da998b65d0b70f881e19b"
 "checksum libc 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)" = "9e030dc72013ed68994d1b2cbf36a94dd0e58418ba949c4b0db7eeb70a7a6352"
 "checksum num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)" = "bde7c03b09e7c6a301ee81f6ddf66d7a28ec305699e3d3b056d2fc56470e3120"

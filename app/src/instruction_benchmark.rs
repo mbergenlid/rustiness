@@ -1,10 +1,10 @@
 extern crate nes;
 extern crate rand;
+extern crate histogram;
 
 use std::time::{Instant, Duration};
 use nes::opcodes::*;
 use nes::cpu::CPU;
-
 
 pub fn run(args: &[String]) {
     let mut bench = InstructionBenchmark::new();
@@ -28,11 +28,11 @@ pub fn run(args: &[String]) {
 }
 
 
-#[derive(Copy, Clone, Debug)]
 struct InstructionTiming {
     op_code: OpCode,
     duration: Duration,
     count: u32,
+    histogram: histogram::Histogram,
     min: Duration,
     max: Duration,
     mean: Duration,
@@ -44,10 +44,18 @@ impl InstructionTiming {
             op_code: op_code,
             duration: Duration::new(0,0),
             count: 0,
+            histogram: histogram::Histogram::new(),
             min: Duration::new(10,0),
             max: Duration::new(0,0),
             mean: Duration::new(0,0),
         }
+    }
+}
+
+use std::fmt::{Debug, Formatter, Result};
+impl Debug for InstructionTiming {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.write_fmt(format_args!("OpCode: {:x} {}ns (90 pct), {}ns (95pct)\n", self.op_code, self.histogram.percentile(90.0).unwrap(), self.histogram.percentile(95.0).unwrap()))
     }
 }
 
@@ -57,6 +65,7 @@ impl ops::AddAssign<Duration> for InstructionTiming {
     fn add_assign(&mut self, duration: Duration) {
         self.duration += duration;
         self.count += 1;
+        self.histogram.increment(duration.subsec_nanos() as u64).unwrap();
         self.min = min(self.min, duration);
         self.max = max(self.max, duration);
         self.mean = self.duration / self.count;

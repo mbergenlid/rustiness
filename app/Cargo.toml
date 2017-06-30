@@ -7,6 +7,7 @@ authors = ["Marcus Bergenlid <marcus.bergenlid@ooyala.com>"]
 nes = { path = "../nes" }
 sdl2 = { path = "../sdl2" }
 rand = "0.3"
+histogram = "0.6.6"
 
 [features]
 sound = ["nes/sound"]
