@@ -371,6 +371,9 @@ impl CPU {
 
     pub fn push_stack(&mut self) -> u16 {
         let stack = self.stack_pointer.wrapping_sub(1) as u16 + 0x100;
+        if cfg!(feature = "sod") && stack as u8 > self.stack_pointer {
+            panic!("STACK OVERFLOW");
+        }
         self.stack_pointer = stack as u8;
         return stack;
     }

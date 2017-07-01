@@ -12,3 +12,4 @@ histogram = "0.6.6"
 [features]
 sound = ["nes/sound"]
 ppu = ["nes/ppu"]
+sod = ["nes/sod"]
