@@ -183,10 +183,18 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                     println!("");
                 }
             },
+            "stack" => {
+                let mut stack = nes.cpu.stack_pointer;
+                while stack != 0 {
+                    let pointer = stack as u16 + 0x100;
+                    println!("Stack pointer 0x{:04x} -> 0x{:02x}", pointer, nes.memory.get(pointer));
+                    stack = stack.wrapping_add(1);
+                }
+            },
             "mem" => {
                 let address = cmd.hex_arg(1).unwrap_or(0);
                 println!("Memory 0x{:04x} -> 0x{:02x}", address, nes.memory.get(address));
-            }
+            },
             "press" => {
                 match *fake_controller {
                     Some(ref ctrl) => ctrl.press(cmd.arg(1).map(|s| s.trim()).unwrap_or("")),
