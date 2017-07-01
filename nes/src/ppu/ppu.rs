@@ -74,6 +74,7 @@ pub struct PPU {
     control_register: PPUCtrl,
     mask_register: PPUMask,
     status_register: u8,
+    vblank_triggered: bool,
     memory: Box<Memory>,
     vram_registers: VRAMRegisters,
 
@@ -119,6 +120,7 @@ impl PPU {
             control_register: PPUCtrl::new(),
             mask_register: PPUMask { value: 0 },
             status_register: 0,
+            vblank_triggered: false,
             memory: memory,
             vram_registers: VRAMRegisters::new(),
 
@@ -199,12 +201,14 @@ impl PPU {
         where T: Screen + Sized
     {
         self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
-        if !self.status_register.is_vblank() && self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME {
-            self.status_register = self.status_register | 0x80;
+        if !self.vblank_triggered && self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME {
+            self.status_register = self.status_register | 0x80; //set vblank
+            self.vblank_triggered = true;
             return self.control_register.nmi_enabled();
         } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.status_register = self.status_register & 0x7F;
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
+            self.vblank_triggered = false;
             if cfg!(feature = "ppu") {
                 if self.mask_register.is_drawing_enabled() {
                     self.update_screen(screen);
@@ -406,6 +410,7 @@ pub mod tests {
 
         assert_eq!(true, ppu.status().is_vblank());
         assert_eq!(0b0100_0000, ppu.status_register);
+        assert_eq!(false, ppu.status().is_vblank());
     }
 
     #[test]
@@ -447,5 +452,19 @@ pub mod tests {
 
         assert_eq!(false, ppu.update(1, screen));
         assert_eq!(false, ppu.status_register.is_vblank());
+    }
+
+    #[test]
+    fn test_vblank_cleared_manually() {
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(box BasicMemory::new());
+        ppu.set_ppu_ctrl(0x80);
+        assert_eq!(true, ppu.update(27_508, screen)); //cycle count = 82_524
+        assert_eq!(true, ppu.status_register.is_vblank());
+
+        ppu.status(); //To clear vblank
+        assert_eq!(false, ppu.status_register.is_vblank());
+
+        assert_eq!(false, ppu.update(5, screen));
     }
 }
