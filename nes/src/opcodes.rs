@@ -26,11 +26,12 @@ impl OpCodes {
     }
 
     pub fn execute_instruction(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
-        let op_code: u8 = memory.get(cpu.get_and_increment_pc());
+        let pc = cpu.get_and_increment_pc();
+        let op_code: u8 = memory.get(pc);
 
         match self.codes[op_code as usize] {
             Some(ref instruction) => (instruction)(cpu, memory),
-            None => panic!("Unknown opcode {}", op_code),
+            None => panic!("Unknown opcode {} at location 0x{:x}.", op_code, pc),
         }
     }
 }
