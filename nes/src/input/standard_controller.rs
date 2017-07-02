@@ -77,11 +77,12 @@ impl <'a> MemoryMappedIO for StandardController<'a> {
     }
 
     fn write(&mut self, _: &mut BasicMemory, value: u8) {
-        if value == 0 && !self.state_loaded {
+        let strobe_bit = value & 0x01;
+        if strobe_bit == 0 && !self.state_loaded {
             self.state = self.source.load();
             self.state_index.set(0);
         }
-        self.state_loaded = if value == 0 { true } else { false };
+        self.state_loaded = if strobe_bit == 0  { true } else { false };
     }
 }
 
