@@ -3,6 +3,7 @@ extern crate sdl2;
 
 mod opcodes;
 mod fakecontroller;
+mod breakpoint;
 use nes::NES;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
@@ -65,7 +66,10 @@ pub fn start() {
     }
 }
 
+use self::breakpoint::BreakPoint;
+
 fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &Option<FakeController>) where S: Screen + Sized, A: AudioDevice + Sized {
+    let mut break_points: Vec<Box<BreakPoint>> = vec!();
     loop {
         print(&nes);
         print_next_instruction(&nes);
@@ -73,30 +77,7 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
         io::stdout().flush().unwrap();
         let cmd = read_input();
         match cmd.name() {
-            "next" => {
-                let arg: u32 = cmd.arg(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
-                if arg > 1 {
-                    for _ in 0..(arg) {
-                        nes.execute();
-                        println!("Cycle count: {}", nes.cycle_count);
-                    }
-                } else {
-                    nes.execute();
-                }
-            },
-            "goto" => {
-                match cmd.hex_arg(1) {
-                    Some(destination_address) => {
-                        println!("Continuing to address 0x{:02X}", destination_address);
-                        nes.execute();
-                        while nes.cpu.program_counter() != destination_address {
-                            nes.execute();
-                        }
-                    },
-                    None => println!("Please specify address"),
-                };
-            },
-            "run" => {
+            "c" => {
                 let cycles: u64 = cmd.arg(1).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
                 let end_cycle = nes.cycle_count + cycles;
                 println!("Running to cycle {}", end_cycle);
@@ -110,8 +91,29 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                         should_exit = source.should_exit();
                         counter = 0;
                     }
+                    should_exit = should_exit || break_points.breakpoint(&nes.cpu, &nes.memory);
                 }
                 println!("Clock {}", nes.clock);
+            },
+            "next" => {
+                let arg: u32 = cmd.arg(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
+                if arg > 1 {
+                    for _ in 0..(arg) {
+                        nes.execute();
+                        println!("Cycle count: {}", nes.cycle_count);
+                    }
+                } else {
+                    nes.execute();
+                }
+            },
+            "break" => {
+                match cmd.hex_arg(1) {
+                    Some(destination_address) => {
+                        println!("Set break point at address 0x{:02X}", destination_address);
+                        break_points.push(box destination_address);
+                    },
+                    None => println!("Please specify address"),
+                };
             },
             "pattern" => {
                 match cmd.hex_arg(1) {
