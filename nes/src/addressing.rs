@@ -88,12 +88,12 @@ impl AddressingMode {
     }
 
     pub fn indirect_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let index1 = memory.get(cpu.get_and_increment_pc()) as u16;
-        let base_address = index1 + cpu.register_x() as u16;
+        let index = memory.get(cpu.get_and_increment_pc());
+        let base_address = index.wrapping_add(cpu.register_x());
 
         let operand_address = {
-            let lsb: u16 = memory.get(base_address) as u16;
-            let msb: u16 = memory.get(base_address+1) as u16;
+            let lsb: u16 = memory.get(base_address as u16) as u16;
+            let msb: u16 = memory.get(base_address.wrapping_add(1) as u16) as u16;
             (msb << 8) | lsb
         };
         return AddressingMode {
@@ -282,6 +282,42 @@ mod test {
         );
         let mut cpu = cpu::CpuBuilder::new()
             .register_x(0x5)
+            .build();
+        let addressing = AddressingMode::indirect_x(&mut cpu, &memory);
+        assert_eq!(0x1234, addressing.operand_address);
+        assert_eq!(cpu.program_counter(), 0x8001);
+    }
+
+    #[test]
+    fn indexed_indirect_addressing_should_wrap_around_on_index() {
+        let memory = memory!(
+            0x8000 => 0xFE,
+
+            0x0000 => 0x34,
+            0x0001 => 0x12
+        );
+        let mut cpu = cpu::CpuBuilder::new()
+            .register_x(0x2)
+            .build();
+        let addressing = AddressingMode::indirect_x(&mut cpu, &memory);
+        assert_eq!(0x1234, addressing.operand_address);
+        assert_eq!(cpu.program_counter(), 0x8001);
+    }
+
+    #[test]
+    fn indexed_indirect_addressing_should_wrap_around() {
+        let memory = memory!(
+            0x8000 => 0xFF,
+
+            0x0000 => 0x12,
+            0x00FF => 0x34,
+
+            0x00A5 => 0x34,
+            0x00A6 => 0x12
+
+        );
+        let mut cpu = cpu::CpuBuilder::new()
+            .register_x(0x0)
             .build();
         let addressing = AddressingMode::indirect_x(&mut cpu, &memory);
         assert_eq!(0x1234, addressing.operand_address);
