@@ -501,15 +501,17 @@ mod tests {
             &[
                 cpu::CpuBuilder::new()
                     .program_counter(0x8002)
-                    .accumulator(0x05)
-                    .build(),
-                cpu::CpuBuilder::new()
-                    .program_counter(0x8003)
                     .stack_pointer(0xFF)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
+                    .program_counter(0x8003)
+                    .stack_pointer(0xFE)
+                    .accumulator(0x05)
+                    .build(),
+                cpu::CpuBuilder::new()
                     .program_counter(0x8004)
+                    .stack_pointer(0xFF)
                     .flags(0x05)
                     .accumulator(0x05)
                     .build(),
@@ -536,15 +538,16 @@ mod tests {
             &[
                 cpu::CpuBuilder::new()
                     .program_counter(0x8020)
-                    .stack_pointer(0xFE)
+                    .stack_pointer(0xFD)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8022)
-                    .stack_pointer(0xFE)
+                    .stack_pointer(0xFD)
                     .accumulator(0x01)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8003)
+                    .stack_pointer(0xFF)
                     .accumulator(0x01)
                     .build(),
                 cpu::CpuBuilder::new()
@@ -575,12 +578,12 @@ mod tests {
             &[
                 cpu::CpuBuilder::new()
                     .program_counter(0x8020)
-                    .stack_pointer(0xFD)
+                    .stack_pointer(0xFC)
                     .flags(0x34 | cpu::BREAK_FLAG)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8022)
-                    .stack_pointer(0xFD)
+                    .stack_pointer(0xFC)
                     .accumulator(0x01)
                     .flags(0x34 | cpu::BREAK_FLAG)
                     .build(),

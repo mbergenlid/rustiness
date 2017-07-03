@@ -200,11 +200,13 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 }
             },
             "stack" => {
-                let mut stack = nes.cpu.stack_pointer;
-                while stack != 0 {
+                let mut entries: u8 = cmd.arg(1).and_then(|s| s.parse::<u8>().ok()).unwrap_or(5);
+                let mut stack = nes.cpu.stack_pointer.wrapping_add(1);
+                while entries > 0 && stack != 0xFF {
                     let pointer = stack as u16 + 0x100;
                     println!("Stack pointer 0x{:04x} -> 0x{:02x}", pointer, nes.memory.get(pointer));
                     stack = stack.wrapping_add(1);
+                    entries -= 1;
                 }
             },
             "mem" => {

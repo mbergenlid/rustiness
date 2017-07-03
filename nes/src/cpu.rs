@@ -74,7 +74,7 @@ impl CPU {
     pub fn new(start_address: u16) -> CPU {
         return CPU {
             program_counter: start_address,
-            stack_pointer: 0x00,
+            stack_pointer: 0xFF,
             accumulator: 0,
             register_x: 0,
             register_y: 0,
@@ -374,17 +374,17 @@ impl CPU {
     }
 
     pub fn push_stack(&mut self) -> u16 {
-        let stack = self.stack_pointer.wrapping_sub(1) as u16 + 0x100;
+        let stack = self.stack_pointer as u16 + 0x100;
         if cfg!(feature = "sod") && stack as u8 > self.stack_pointer {
             panic!("STACK OVERFLOW");
         }
-        self.stack_pointer = stack as u8;
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
         return stack;
     }
 
     pub fn pop_stack(&mut self) -> u16 {
-        let stack = self.stack_pointer as u16 + 0x100;
-        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+        let stack = self.stack_pointer.wrapping_add(1) as u16 + 0x100;
+        self.stack_pointer = stack as u8;
         return stack;
     }
 
