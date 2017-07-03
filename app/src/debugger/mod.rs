@@ -70,9 +70,9 @@ use self::breakpoint::BreakPoint;
 
 fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &Option<FakeController>) where S: Screen + Sized, A: AudioDevice + Sized {
     let mut break_points: Vec<Box<BreakPoint>> = vec!();
+    print(&nes);
+    print_next_instruction(&nes);
     loop {
-        print(&nes);
-        print_next_instruction(&nes);
         print!(">");
         io::stdout().flush().unwrap();
         let cmd = read_input();
@@ -94,6 +94,8 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                     should_exit = should_exit || break_points.breakpoint(&nes.cpu, &nes.memory);
                 }
                 println!("Clock {}", nes.clock);
+                print(&nes);
+                print_next_instruction(&nes);
             },
             "next" => {
                 let arg: u32 = cmd.arg(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
@@ -105,6 +107,8 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 } else {
                     nes.execute();
                 }
+                print(&nes);
+                print_next_instruction(&nes);
             },
             "break" => {
                 match cmd.hex_arg(1) {
