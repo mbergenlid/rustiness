@@ -255,13 +255,17 @@ impl CPU {
     fn cmp(&mut self, left: u8, right: u8) {
         if left == right {
             self.set_flags(ZERO_FLAG | CARRY_FLAG);
-            self.clear_flags(NEGATIVE_FLAG);
         } else if left > right {
             self.set_flags(CARRY_FLAG);
-            self.clear_flags(ZERO_FLAG | NEGATIVE_FLAG);
+            self.clear_flags(ZERO_FLAG);
         } else {
-            self.set_flags(NEGATIVE_FLAG);
             self.clear_flags(CARRY_FLAG | ZERO_FLAG);
+        }
+        let result = left.wrapping_sub(right);
+        if result.is_negative() {
+            self.set_flags(NEGATIVE_FLAG);
+        } else {
+            self.clear_flags(NEGATIVE_FLAG);
         }
     }
 
@@ -722,6 +726,19 @@ mod test {
         assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
         assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
         assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+    }
+
+    #[test]
+    fn test_cmp_80_and_0() {
+        let mut cpu = super::CpuBuilder::new()
+            .accumulator(0x80)
+            .flags(super::OVERFLOW_FLAG)
+            .build();
+        cpu.cmp_accumulator(0x00);
+        assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
+        assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
         assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
     }
 
