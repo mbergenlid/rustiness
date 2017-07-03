@@ -119,6 +119,16 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                     None => println!("Please specify address"),
                 };
             },
+            "set-pc" => {
+                match cmd.hex_arg(1) {
+                    Some(address) => {
+                        nes.cpu.set_program_counter(address);
+                        print(&nes);
+                        print_next_instruction(&nes);
+                    },
+                    None => println!("Please specify address"),
+                };
+            },
             "pattern" => {
                 match cmd.hex_arg(1) {
                     Some(pattern) => {
