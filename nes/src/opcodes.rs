@@ -184,7 +184,7 @@ const OP_CODES: [OpCodeInstruction; 156] = [
     OpCodeInstruction(PHA                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.accumulator()); 3 }),
     OpCodeInstruction(PLA                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.load_accumulator(temp); 4}),
     OpCodeInstruction(PHP                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.processor_status()); 3 }),
-    OpCodeInstruction(PLP                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.clear_flags(0xFF); cpu.set_flags(temp); 4}),
+    OpCodeInstruction(PLP                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.clear_flags(0xDF); cpu.set_flags(temp); 4}),
     OpCodeInstruction(STX_ZERO_PAGE         , &|cpu, memory| {instructions::stx(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}),
     OpCodeInstruction(STX_ZERO_PAGE_Y       , &|cpu, memory| {instructions::stx(AddressingMode::zero_paged_y(cpu, memory), cpu, memory); 4}),
     OpCodeInstruction(STX_ABSOLUTE          , &|cpu, memory| {instructions::stx(AddressingMode::absolute(cpu, memory), cpu, memory); 4}),

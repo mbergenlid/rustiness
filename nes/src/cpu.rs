@@ -3,6 +3,7 @@ use memory::Address;
 
 pub const NEGATIVE_FLAG: u8 = 0b1000_0000;
 pub const OVERFLOW_FLAG: u8 = 0b0100_0000;
+pub const UNUSED_FLAG: u8 = 0b0010_0000;
 pub const BREAK_FLAG: u8 = 0b0001_0000;
 pub const DECIMAL_FLAG: u8 = 0b0000_1000;
 pub const INTERRUPT_DISABLE_FLAG: u8 = 0b0000_0100;
@@ -356,7 +357,7 @@ impl CPU {
     }
 
     pub fn set_processor_status(&mut self, status: u8) {
-        self.processor_status = status;
+        self.processor_status = status | 0x20;
     }
 
     pub fn get_and_increment_pc(&mut self) -> Address {
@@ -1019,10 +1020,11 @@ mod test {
     fn bit_test_should_only_affect_N_V_C_flags() {
         let non_affected_flags =
             super::BREAK_FLAG | super::DECIMAL_FLAG |
-            super::INTERRUPT_DISABLE_FLAG | super::CARRY_FLAG;
+            super::INTERRUPT_DISABLE_FLAG | super::CARRY_FLAG |
+            super::UNUSED_FLAG;
         for _ in 0..100 {
             let accumulator = rand::random::<u8>();
-            let flags = rand::random::<u8>();
+            let flags = rand::random::<u8>() | super::UNUSED_FLAG;
             let mut cpu = super::CpuBuilder::new()
                 .accumulator(accumulator)
                 .flags(flags)
