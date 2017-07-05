@@ -502,17 +502,19 @@ mod tests {
                 cpu::CpuBuilder::new()
                     .program_counter(0x8002)
                     .stack_pointer(0xFF)
+                    .flags(0x34)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8003)
                     .stack_pointer(0xFE)
+                    .flags(0x34)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8004)
                     .stack_pointer(0xFF)
-                    .flags(0x05)
+                    .flags(0x25)
                     .accumulator(0x05)
                     .build(),
             ]

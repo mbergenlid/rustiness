@@ -100,15 +100,15 @@ impl AddressingMode {
     }
 
     pub fn indirect_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let base_address = memory.get(cpu.get_and_increment_pc()) as u16;
-        let indexed_address: u32 = {
-            let lsb: u16 = memory.get(base_address) as u16;
-            let msb: u16 = memory.get(base_address+1) as u16;
-            ((msb << 8) | lsb) as u32
-        };
-        let operand_address = (indexed_address + cpu.register_y() as u32) as u16;
+        let ial = memory.get(cpu.get_and_increment_pc());
+        let bal = memory.get(ial as u16);
+        let bah = memory.get(ial.wrapping_add(1) as u16);
+
+        let base_address = ((bah as u16) << 8) | bal as u16;
+
+        let operand_address = base_address.wrapping_add(cpu.register_y() as u16);
         return AddressingMode {
-            cycles: 4 + ((operand_address >> 8) > (indexed_address as u16 >> 8)) as u8,
+            cycles: 4 + ((operand_address >> 8) > (base_address >> 8)) as u8,
             operand_address: operand_address,
         }
     }
