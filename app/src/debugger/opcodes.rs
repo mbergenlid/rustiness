@@ -6,12 +6,12 @@ use nes;
 
 struct OpCodeDebug(u8, &'static str, &'static Fn(&mut CPU, &CPUMemory) -> String);
 
-pub fn debug_instruction(op_code: u8, cpu: &CPU, memory: &CPUMemory) {
+pub fn debug_instruction(op_code: u8, cpu: &CPU, memory: &CPUMemory) -> String {
     let mut cloned_cpu = cpu.clone();
     cloned_cpu.get_and_increment_pc();
     match OP_CODES.iter().find(|opd| opd.0 == op_code) {
-        Some(&OpCodeDebug(_, name, args)) => println!("Next instruction: {} (0x{:x}): {}", name, op_code, args(&mut cloned_cpu, memory)),
-        None => println!("Next instruction is unknown: {:x}", op_code),
+        Some(&OpCodeDebug(_, name, args)) => format!("${:04x}: {} (0x{:x}): {}", cpu.program_counter(), name, op_code, args(&mut cloned_cpu, memory)),
+        None => format!("Next instruction is unknown: {:x}", op_code),
     }
 }
 

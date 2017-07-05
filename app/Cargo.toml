@@ -8,6 +8,7 @@ nes = { path = "../nes" }
 sdl2 = { path = "../sdl2" }
 rand = "0.3"
 histogram = "0.6.6"
+chrono = "0.4"
 
 [features]
 sound = ["nes/sound"]
