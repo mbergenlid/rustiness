@@ -71,16 +71,13 @@ impl AddressingMode {
     }
 
     pub fn indirect(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
-        let base_address = {
-            let lsb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
-            let msb: u16 = memory.get(cpu.get_and_increment_pc()) as u16;
-            (msb << 8) | lsb
-        };
-        let operand_address = {
-            let lsb: u16 = memory.get(base_address) as u16;
-            let msb: u16 = memory.get(base_address+1) as u16;
-            (msb << 8) | lsb
-        };
+        let ial = memory.get(cpu.get_and_increment_pc());
+        let iah = memory.get(cpu.get_and_increment_pc());
+
+        let adl = memory.get(((iah as u16) << 8) | ial as u16) as u16;
+        let adh = memory.get(((iah as u16) << 8) | ial.wrapping_add(1) as u16) as u16;
+        let operand_address = (adh << 8) | adl;
+
         return AddressingMode {
             cycles: 5,
             operand_address: operand_address
