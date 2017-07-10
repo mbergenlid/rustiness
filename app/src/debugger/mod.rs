@@ -4,6 +4,7 @@ extern crate sdl2;
 mod opcodes;
 mod fakecontroller;
 mod breakpoint;
+mod command;
 use nes::NES;
 use nes::memory::BasicMemory;
 use nes::memory::Memory;
@@ -22,6 +23,8 @@ use std::env;
 use std::string::String;
 use std::io;
 use std::io::Write;
+
+use self::command::Command;
 
 pub fn start() {
     let args: Vec<String> = env::args().collect();
@@ -78,13 +81,13 @@ fn open_log_file() -> File {
 
 fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &Option<FakeController>) where S: Screen + Sized, A: AudioDevice + Sized {
     let mut break_points: Vec<Box<BreakPoint>> = vec!();
-    let mut log_file = open_log_file();
+    let mut log_file: Option<File> = None;
     print(&nes);
     print_next_instruction(&nes);
     loop {
         print!(">");
         io::stdout().flush().unwrap();
-        let cmd = read_input();
+        let cmd: Command = read_input();
         match cmd.name() {
             "c" => {
                 let cycles: u64 = cmd.arg(1).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
@@ -111,25 +114,24 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 let arg: u32 = cmd.arg(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
                 if arg > 1 {
                     for _ in 0..(arg) {
-                        log_file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap();
+                        for mut file in log_file.iter() { file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap(); }
                         nes.execute();
                         println!("Cycle count: {}", nes.cycle_count);
                     }
                 } else {
-                    log_file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap();
+                    for mut file in log_file.iter() { file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap(); }
                     nes.execute();
                 }
                 print(&nes);
                 print_next_instruction(&nes);
             },
             "break" => {
-                match cmd.hex_arg(1) {
-                    Some(destination_address) => {
-                        println!("Set break point at address 0x{:02X}", destination_address);
-                        break_points.push(box destination_address);
+                match BreakPoint::parse(cmd.args()) {
+                    Ok(bp) => {
+                        break_points.push(bp);
                     },
-                    None => println!("Please specify address"),
-                };
+                    Err(f) => println!("{:?}", f),
+                }
             },
             "set-pc" => {
                 match cmd.hex_arg(1) {
@@ -244,43 +246,6 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
             _ => println!("Unknown cmd '{}'", cmd.name()),
         }
 
-    }
-}
-struct Command {
-    value: Vec<String>
-}
-
-impl Command {
-    pub fn from(string: String) -> Command {
-        Command {
-            value: string.split_whitespace().map(|s| s.to_string()).collect()
-        }
-    }
-    pub fn name(&self) -> &str {
-        &self.value[0]
-    }
-
-    pub fn arg(&self, index: usize) -> Option<&String> {
-        self.value.get(index)
-    }
-
-    pub fn hex_arg(&self, index: usize) -> Option<u16> {
-        self.arg(index).and_then(|s| Command::parse_hex(s))
-    }
-
-    fn parse_hex(string: &String) -> Option<u16> {
-        let mut value: u16 = 0;
-        for c in string.chars() {
-            let digit = c as u16;
-            if digit >= 0x30 && digit <= 0x39 {
-                value = value*16 + (digit - 0x30);
-            } else if digit >= 0x41 && digit <= 0x46 {
-                value = value*16 + (digit - 0x41 + 10);
-            } else {
-                return None;
-            }
-        }
-        return Some(value);
     }
 }
 
