@@ -94,14 +94,14 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 let mut should_exit = false;
                 let mut counter = 0;
                 while (cycles == 0 || nes.cycle_count < end_cycle) && !should_exit {
-                    log_file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap();
+                    for mut file in log_file.iter() { file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap(); }
                     nes.execute();
                     counter += 1;
                     if counter > 0x100_000 {
                         should_exit = source.should_exit();
                         counter = 0;
                     }
-                    should_exit = should_exit || break_points.breakpoint(&nes.cpu, &nes.memory);
+                    should_exit = should_exit || break_points.breakpoint(&nes.cpu, &nes.ppu.borrow(), &nes.memory);
                 }
                 println!("Clock {}", nes.clock);
                 print(&nes);
@@ -140,6 +140,9 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                     },
                     None => println!("Please specify address"),
                 };
+            },
+            "trace" => {
+                log_file = Some(open_log_file());
             },
             "pattern" => {
                 match cmd.hex_arg(1) {
