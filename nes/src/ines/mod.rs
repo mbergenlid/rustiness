@@ -41,7 +41,13 @@ impl <'a> INes  {
 
     pub fn load(&self, cpu_memory: &mut Memory) {
         cpu_memory.set_slice(0x8000, self.prg_rom(0));
-        cpu_memory.set_slice(0xC000, self.prg_rom(0));
+        if self.num_prg_roms == 1 {
+            cpu_memory.set_slice(0xC000, self.prg_rom(0));
+        } else if self.num_prg_roms == 2 {
+            cpu_memory.set_slice(0xC000, self.prg_rom(1));
+        } else {
+            panic!(".nes file contains more than 2 prg rom banks which is not allowed");
+        }
     }
 
     pub fn ppu_memory(&self) -> Box<PPUMemory> {
