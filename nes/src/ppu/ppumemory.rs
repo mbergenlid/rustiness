@@ -34,7 +34,7 @@ impl Memory for PPUMemory {
         } else if address >= 0x3000 && address < 0x3F00 {
             self.get(address & 0xEFFF)
         } else if address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
-            self.get(0x3F00)
+            self.get(address & 0xFFEF)
         } else if address >= 0x3F20 && address < 0x4000 {
             self.get(address & 0xFF1F)
         } else {
@@ -47,7 +47,7 @@ impl Memory for PPUMemory {
         } else if address >= 0x3000 && address < 0x3F00 {
             self.set(address & 0xEFFF, value);
         } else if address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
-            self.basic_memory.set(0x3F00, value);
+            self.basic_memory.set(address & 0xFFEF, value);
         } else if address >= 0x3F20 && address < 0x4000 {
             self.set(address & 0xFF1F, value);
         } else {
@@ -227,9 +227,9 @@ pub mod tests {
 
         //$3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C
         assert_mirrored_addresses(&mut ppu_mem, 0x3F10, 0x3F00);
-        assert_mirrored_addresses(&mut ppu_mem, 0x3F14, 0x3F00);
-        assert_mirrored_addresses(&mut ppu_mem, 0x3F18, 0x3F00);
-        assert_mirrored_addresses(&mut ppu_mem, 0x3F1C, 0x3F00);
+        assert_mirrored_addresses(&mut ppu_mem, 0x3F14, 0x3F04);
+        assert_mirrored_addresses(&mut ppu_mem, 0x3F18, 0x3F08);
+        assert_mirrored_addresses(&mut ppu_mem, 0x3F1C, 0x3F0C);
 
         for address in 0x3F00..0x3F20 {
             assert_mirrored_addresses(&mut ppu_mem, address, address+0x20*1);
