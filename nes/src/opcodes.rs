@@ -183,7 +183,7 @@ const OP_CODES: [OpCodeInstruction; 156] = [
     OpCodeInstruction(TSX                   , &|cpu,      _| { let temp = cpu.stack_pointer; cpu.load_x(temp); 2}),
     OpCodeInstruction(PHA                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.accumulator()); 3 }),
     OpCodeInstruction(PLA                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.load_accumulator(temp); 4}),
-    OpCodeInstruction(PHP                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.processor_status()); 3 }),
+    OpCodeInstruction(PHP                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.processor_status() | 0x30); 3 }),
     OpCodeInstruction(PLP                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.clear_flags(0xDF); cpu.set_flags(temp); 4}),
     OpCodeInstruction(STX_ZERO_PAGE         , &|cpu, memory| {instructions::stx(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}),
     OpCodeInstruction(STX_ZERO_PAGE_Y       , &|cpu, memory| {instructions::stx(AddressingMode::zero_paged_y(cpu, memory), cpu, memory); 4}),
@@ -424,12 +424,11 @@ mod tests {
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8004)
-                    .flags(0x34 | cpu::ZERO_FLAG)
+                    .flags(0x04 | cpu::ZERO_FLAG)
                     .accumulator(0x00)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8006)
-//                    .flags(0x34 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
@@ -438,48 +437,48 @@ mod tests {
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8008)
-                    .flags(0x34 | cpu::CARRY_FLAG)
+                    .flags(0x04 | cpu::CARRY_FLAG)
                     .accumulator(0x0A) //1010
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x800A)
-                    .flags(0x34 | cpu::CARRY_FLAG)
+                    .flags(0x04 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x800B)
-                    .flags(0x34 | cpu::CARRY_FLAG)
+                    .flags(0x04 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .register_x(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x800C)
-                    .flags(0x34 | cpu::CARRY_FLAG)
+                    .flags(0x04 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .register_x(0x05)
                     .register_y(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x800E)
-                    .flags(0x34 | cpu::CARRY_FLAG)
+                    .flags(0x04 | cpu::CARRY_FLAG)
                     .accumulator(0x05)
                     .register_x(0x05)
                     .register_y(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8010)
-                    .flags(0x34 | cpu::CARRY_FLAG | cpu::ZERO_FLAG)
+                    .flags(0x04 | cpu::CARRY_FLAG | cpu::ZERO_FLAG)
                     .register_x(0x05)
                     .register_y(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8011)
-                    .flags(0x34 | cpu::CARRY_FLAG | cpu::ZERO_FLAG)
+                    .flags(0x04 | cpu::CARRY_FLAG | cpu::ZERO_FLAG)
                     .register_y(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8013)
-                    .flags(0x34 | cpu::CARRY_FLAG)
+                    .flags(0x04 | cpu::CARRY_FLAG)
                     .register_x(0x05)
                     .register_y(0x05)
                     .build()
@@ -502,19 +501,19 @@ mod tests {
                 cpu::CpuBuilder::new()
                     .program_counter(0x8002)
                     .stack_pointer(0xFF)
-                    .flags(0x34)
+                    .flags(0x04)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8003)
                     .stack_pointer(0xFE)
-                    .flags(0x34)
+                    .flags(0x04)
                     .accumulator(0x05)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8004)
                     .stack_pointer(0xFF)
-                    .flags(0x25)
+                    .flags(0x05)
                     .accumulator(0x05)
                     .build(),
             ]
@@ -581,13 +580,11 @@ mod tests {
                 cpu::CpuBuilder::new()
                     .program_counter(0x8020)
                     .stack_pointer(0xFC)
-                    .flags(0x34 | cpu::BREAK_FLAG)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8022)
                     .stack_pointer(0xFC)
                     .accumulator(0x01)
-                    .flags(0x34 | cpu::BREAK_FLAG)
                     .build(),
                 cpu::CpuBuilder::new()
                     .program_counter(0x8001)
@@ -641,6 +638,20 @@ mod tests {
         execute_instruction(&mut cpu, memory);
 
         assert_eq!(6, memory.get(0x0010));
+    }
+
+    #[test]
+    fn php_should_set_bits_4_and_5() {
+        let mut cpu = cpu::CpuBuilder::new()
+            .program_counter(0x8000)
+            .flags(0)
+            .build();
+        let mut memory = &mut memory!(
+            0x8000 => super::PHP
+        );
+        execute_instruction(&mut cpu, memory);
+
+        assert_eq!(0x30, memory.get(0x01ff));
     }
 
     fn test_instruction(memory: &mut Memory, expected_cpu: cpu::CPU) {

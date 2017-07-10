@@ -99,12 +99,11 @@ pub fn brk(cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let current_pc = cpu.program_counter();
     memory.set(cpu.push_stack(), (current_pc >> 8) as u8);
     memory.set(cpu.push_stack(), current_pc as u8);
-    memory.set(cpu.push_stack(), cpu.processor_status());
+    memory.set(cpu.push_stack(), cpu.processor_status() | 0x30);
 
     let lsbs: u8 = memory.get(0xFFFE);
     let msbs: u8 = memory.get(0xFFFF);
     cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
-    cpu.set_flags(cpu::BREAK_FLAG);
     return 7;
 }
 
@@ -112,12 +111,11 @@ pub fn nmi(cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let current_pc = cpu.program_counter();
     memory.set(cpu.push_stack(), (current_pc >> 8) as u8);
     memory.set(cpu.push_stack(), current_pc as u8);
-    memory.set(cpu.push_stack(), cpu.processor_status());
+    memory.set(cpu.push_stack(), cpu.processor_status() | 0x20);
 
     let lsbs: u8 = memory.get(0xFFFA);
     let msbs: u8 = memory.get(0xFFFB);
     cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
-    cpu.set_flags(cpu::BREAK_FLAG);
     return 7;
 }
 

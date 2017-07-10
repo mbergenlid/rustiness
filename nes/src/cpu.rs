@@ -3,8 +3,6 @@ use memory::Address;
 
 pub const NEGATIVE_FLAG: u8 = 0b1000_0000;
 pub const OVERFLOW_FLAG: u8 = 0b0100_0000;
-pub const UNUSED_FLAG: u8 = 0b0010_0000;
-pub const BREAK_FLAG: u8 = 0b0001_0000;
 pub const DECIMAL_FLAG: u8 = 0b0000_1000;
 pub const INTERRUPT_DISABLE_FLAG: u8 = 0b0000_0100;
 pub const ZERO_FLAG: u8 = 0b0000_0010;
@@ -52,11 +50,10 @@ impl Display for CPU {
             format_args!("\tProgram counter:  0x{:4X}\t|\n", self.program_counter)
         ).unwrap();
 
-        formatter.write_str("\tProcessor status: N O B D I Z C\t|\n").unwrap();
-        formatter.write_fmt(format_args!("\t                  {} {} {} {} {} {} {}\t|\n",
+        formatter.write_str("\tProcessor status: N O D I Z C\t|\n").unwrap();
+        formatter.write_fmt(format_args!("\t                  {} {} {} {} {} {}\t|\n",
                  self.is_flag_set(NEGATIVE_FLAG) as u8,
                  self.is_flag_set(OVERFLOW_FLAG) as u8,
-                 self.is_flag_set(BREAK_FLAG) as u8 ,
                  self.is_flag_set(DECIMAL_FLAG) as u8,
                  self.is_flag_set(INTERRUPT_DISABLE_FLAG) as u8,
                  self.is_flag_set(ZERO_FLAG) as u8,
@@ -79,7 +76,7 @@ impl CPU {
             accumulator: 0,
             register_x: 0,
             register_y: 0,
-            processor_status: 0x34,
+            processor_status: 0x04,
         }
     }
 
@@ -357,7 +354,7 @@ impl CPU {
     }
 
     pub fn set_processor_status(&mut self, status: u8) {
-        self.processor_status = status | 0x20;
+        self.processor_status = status & 0xCF;
     }
 
     pub fn get_and_increment_pc(&mut self) -> Address {
@@ -1015,16 +1012,18 @@ mod test {
     }
 
     extern crate rand;
+    const UNUSED_BREAK_FLAG: u8 = 0b0001_0000;
+    const UNUSED_FLAG: u8 = 0b0010_0000;
     #[test]
     #[allow(non_snake_case)]
     fn bit_test_should_only_affect_N_V_C_flags() {
         let non_affected_flags =
-            super::BREAK_FLAG | super::DECIMAL_FLAG |
+            UNUSED_BREAK_FLAG | super::DECIMAL_FLAG |
             super::INTERRUPT_DISABLE_FLAG | super::CARRY_FLAG |
-            super::UNUSED_FLAG;
+            UNUSED_FLAG;
         for _ in 0..100 {
             let accumulator = rand::random::<u8>();
-            let flags = rand::random::<u8>() | super::UNUSED_FLAG;
+            let flags = rand::random::<u8>() | UNUSED_FLAG;
             let mut cpu = super::CpuBuilder::new()
                 .accumulator(accumulator)
                 .flags(flags)
