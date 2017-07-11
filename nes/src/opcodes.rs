@@ -31,7 +31,7 @@ impl OpCodes {
 
         match self.codes[op_code as usize] {
             Some(ref instruction) => (instruction)(cpu, memory),
-            None => panic!("Unknown opcode {} at location 0x{:x}.", op_code, pc),
+            None => panic!("Unknown opcode {:x} at location 0x{:x}.", op_code, pc),
         }
     }
 }
