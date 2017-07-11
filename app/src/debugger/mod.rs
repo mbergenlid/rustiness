@@ -79,6 +79,13 @@ fn open_log_file() -> File {
     return File::create(file_name).unwrap();
 }
 
+#[inline]
+fn log<'a, S, A>(log_file: &Option<File>, nes: &NES<'a, S, A>) where S: Screen + Sized, A: AudioDevice + Sized {
+    for mut file in log_file.iter() {
+        file.write_fmt(format_args!("Cycle: {} - {}\n", nes.cycle_count, next_instruction_as_string(&nes))).unwrap();
+    }
+}
+
 fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &Option<FakeController>) where S: Screen + Sized, A: AudioDevice + Sized {
     let mut break_points: Vec<Box<BreakPoint>> = vec!();
     let mut log_file: Option<File> = None;
@@ -97,7 +104,7 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 let mut should_exit = false;
                 let mut counter = 0;
                 while (cycles == 0 || nes.cycle_count < end_cycle) && !should_exit {
-                    for mut file in log_file.iter() { file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap(); }
+                    log(&log_file, &nes);
                     nes.execute();
                     counter += 1;
                     if counter > 0x100_000 {
@@ -114,12 +121,12 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 let arg: u32 = cmd.arg(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
                 if arg > 1 {
                     for _ in 0..(arg) {
-                        for mut file in log_file.iter() { file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap(); }
+                        log(&log_file, &nes);
                         nes.execute();
                         println!("Cycle count: {}", nes.cycle_count);
                     }
                 } else {
-                    for mut file in log_file.iter() { file.write_fmt(format_args!("{}\n", next_instruction_as_string(&nes))).unwrap(); }
+                    log(&log_file, &nes);
                     nes.execute();
                 }
                 print(&nes);
