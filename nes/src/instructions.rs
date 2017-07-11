@@ -1,7 +1,6 @@
 use addressing::AddressingMode;
 use cpu::CPU;
 use memory::Memory;
-use cpu;
 
 pub fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.add_accumulator(memory.get(addressing_mode.operand_address));
@@ -96,7 +95,7 @@ pub fn jmp(addressing_mode: AddressingMode, cpu: &mut CPU) {
 }
 
 pub fn brk(cpu: &mut CPU, memory: &mut Memory) -> u8 {
-    let current_pc = cpu.program_counter();
+    let current_pc = cpu.program_counter() + 1;
     memory.set(cpu.push_stack(), (current_pc >> 8) as u8);
     memory.set(cpu.push_stack(), current_pc as u8);
     memory.set(cpu.push_stack(), cpu.processor_status() | 0x30);

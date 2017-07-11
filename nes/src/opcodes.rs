@@ -184,7 +184,7 @@ const OP_CODES: [OpCodeInstruction; 156] = [
     OpCodeInstruction(PHA                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.accumulator()); 3 }),
     OpCodeInstruction(PLA                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.load_accumulator(temp); 4}),
     OpCodeInstruction(PHP                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.processor_status() | 0x30); 3 }),
-    OpCodeInstruction(PLP                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.clear_flags(0xDF); cpu.set_flags(temp); 4}),
+    OpCodeInstruction(PLP                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.set_processor_status(temp); 4}),
     OpCodeInstruction(STX_ZERO_PAGE         , &|cpu, memory| {instructions::stx(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}),
     OpCodeInstruction(STX_ZERO_PAGE_Y       , &|cpu, memory| {instructions::stx(AddressingMode::zero_paged_y(cpu, memory), cpu, memory); 4}),
     OpCodeInstruction(STX_ABSOLUTE          , &|cpu, memory| {instructions::stx(AddressingMode::absolute(cpu, memory), cpu, memory); 4}),
@@ -564,9 +564,10 @@ mod tests {
         test_program(
             &mut memory!(
                 0x8000 => opcodes::BRK,
+                0x8001 => opcodes::NOP_IMPLIED,
 
-                0x8001 => opcodes::ADC_IMMEDIATE,
-                0x8002 => 0x05,
+                0x8002 => opcodes::ADC_IMMEDIATE,
+                0x8003 => 0x05,
 
                 //Interrupt routine
                 0x8020 => opcodes::LDA_IMMEDIATE,
@@ -587,11 +588,11 @@ mod tests {
                     .accumulator(0x01)
                     .build(),
                 cpu::CpuBuilder::new()
-                    .program_counter(0x8001)
+                    .program_counter(0x8002)
                     .accumulator(0x01)
                     .build(),
                 cpu::CpuBuilder::new()
-                    .program_counter(0x8003)
+                    .program_counter(0x8004)
                     .accumulator(0x06)
                     .build(),
             ]
