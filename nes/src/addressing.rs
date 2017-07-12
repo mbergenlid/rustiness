@@ -117,7 +117,6 @@ impl AddressingMode {
 #[cfg(test)]
 mod test {
     use cpu;
-    use memory::Memory;
     use super::AddressingMode;
 
     #[test]

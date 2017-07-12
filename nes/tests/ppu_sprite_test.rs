@@ -8,7 +8,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 fn create_ppu() -> Rc<RefCell<PPU>> {
-    let memory = external_memory!(
+    let memory = memory!(
             0x3F10 => 0x1F, //Black
             0x3F11 => 0x20, //White
             0x3F13 => 0x0B, //(0x00,0x3F,0x17)
@@ -49,7 +49,7 @@ fn test_basic_sprite_rendering() {
     let mut sprites = [0; 64*4];
     sprites[0..4].copy_from_slice(&[0x00, 0x01, 0x00, 0x00]);
     let mut screen = ScreenMock::new();
-    let basic_memory = external_memory!(
+    let basic_memory = memory!(
         0x0200 => 0x00,
         0x0201 => 0x01,
         0x0202 => 0x00,
@@ -118,7 +118,7 @@ fn test_multiple_sprite_rendering() {
     let mut sprites = [0; 64*4];
     sprites[0..4].copy_from_slice(&[0x00, 0x01, 0x00, 0x00]);
     let mut screen = ScreenMock::new();
-    let basic_memory = external_memory!(
+    let basic_memory = memory!(
         0x0200 => 0x00,
         0x0201 => 0x01,
         0x0202 => 0x00,

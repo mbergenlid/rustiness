@@ -108,7 +108,6 @@ impl BreakPoint for VRAMValue {
 #[cfg(test)]
 mod test {
     use super::BreakPoint;
-    use nes;
     use nes::cpu::CpuBuilder;
     use nes::opcodes;
     use nes::memory::BasicMemory;
@@ -126,7 +125,7 @@ mod test {
     fn operand_address_breakpoint() {
         let break_point = BreakPoint::parse(&[String::from("-a"), String::from("2")]).unwrap();
         let cpu = CpuBuilder::new().program_counter(0x8000).build();
-        let memory = external_memory!(
+        let memory = memory!(
             0x8000 => opcodes::ADC_ZERO_PAGE,
             0x8001 => 0x02
         );
@@ -139,7 +138,7 @@ mod test {
         let args: Vec<String> = ["-a", "2", "-l", "8002"].iter().map(|&s| String::from(s)).collect();
         let break_point = BreakPoint::parse(args.as_slice()).unwrap();
         let cpu = CpuBuilder::new().program_counter(0x8002).build();
-        let memory = external_memory!(
+        let memory = memory!(
             0x8002 => opcodes::ADC_ZERO_PAGE,
             0x8003 => 0x01,
             0x8004 => opcodes::ADC_ZERO_PAGE,

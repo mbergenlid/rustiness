@@ -7,7 +7,7 @@ use nes::ppu::PPU;
 
 #[test]
 fn draw_buffer_from_name_table_1() {
-    let memory = external_memory!(
+    let memory = memory!(
             0x3F00 => 0x1F, //Black
             0x3F01 => 0x20, //White
             0x3F03 => 0x0B, //(0x00, 0x3F, 0x17)
@@ -61,7 +61,7 @@ fn draw_buffer_from_name_table_1() {
 
 #[test]
 fn draw_buffer_from_name_table_2() {
-    let memory = external_memory!(
+    let memory = memory!(
             0x3F00 => 0x1F, //Black
             0x3F01 => 0x20, //White
             0x3F03 => 0x0B, //(0x00, 0x3F, 0x17)
@@ -119,7 +119,7 @@ fn draw_buffer_from_name_table_2() {
 
 #[test]
 fn draw_buffer_from_name_table_1_with_scrolling_y() {
-    let memory = external_memory!(
+    let memory = memory!(
             0x3F00 => 0x1F, //Black
             0x3F01 => 0x20, //White
             0x3F03 => 0x0B, //(0x00, 0x3F, 0x17)
@@ -186,7 +186,7 @@ fn draw_buffer_from_name_table_1_with_scrolling_y() {
 
 #[test]
 fn draw_buffer_from_name_table_1_with_scrolling_x() {
-    let memory = external_memory!(
+    let memory = memory!(
             0x3F00 => 0x1F, //Black
             0x3F01 => 0x20, //White
             0x3F03 => 0x0B, //(0x00, 0x3F, 0x17)

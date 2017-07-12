@@ -114,25 +114,12 @@ macro_rules! cpu_memory {
     };
 }
 
+#[macro_export]
 macro_rules! memory {
     ( $( $x:expr => $y:expr ),* ) => {
         {
-            use memory;
-            let mut temp_memory = memory::BasicMemory::new();
-            $(
-                temp_memory.set($x, $y);
-            )*
-            temp_memory
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! external_memory {
-    ( $( $x:expr => $y:expr ),* ) => {
-        {
-            use nes::memory::Memory;
-            let mut temp_memory = nes::memory::BasicMemory::new();
+            use $crate::memory::{Memory, BasicMemory};
+            let mut temp_memory = BasicMemory::new();
             $(
                 temp_memory.set($x, $y);
             )*

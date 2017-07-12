@@ -97,7 +97,7 @@ impl InstructionBenchmark {
     fn run_one_instruction(&mut self, op_code: u8) -> Duration {
         let start_address = self.cpu.program_counter();
 
-        let mut memory = external_memory!(
+        let mut memory = memory!(
             start_address => op_code,
             start_address.wrapping_add(1) => rand::random::<u8>(),
             start_address.wrapping_add(2) => rand::random::<u8>(),

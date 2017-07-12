@@ -7,7 +7,7 @@ use nes::ppu::PPU;
 use nes::ppu::ppumemory::Mirroring;
 
 fn create_ppu(mirroring: Mirroring) -> PPU {
-    let memory = external_memory!(
+    let memory = memory!(
             0x3F00 => 0x1F, //Black
             0x3F01 => 0x20, //White
             0x3F03 => 0x0B, //(0x00,0x3F,0x17)

@@ -29,7 +29,6 @@ impl<'a> AttributeTable<'a> {
 #[cfg(test)]
 mod test {
     use super::AttributeTable;
-    use memory::Memory;
     #[test]
     fn test_attribute_table() {
         let memory = memory!(
