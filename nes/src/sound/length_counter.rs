@@ -1,7 +1,6 @@
 pub struct LengthCounter {
     value: u8,
-    cpu_cycles: u32,
-    halted: bool
+    cpu_cycles: u32
 }
 const APU_CYCLES_CLOCK_RATE: u32 = 14913;
 
@@ -15,22 +14,17 @@ impl LengthCounter {
         LengthCounter {
             value: LENGTH_TABLE[length as usize],
             cpu_cycles: 0,
-            halted: false,
         }
     }
 
     pub fn clock(&mut self, cpu_cycles: u8) {
-        if self.value > 0 && !self.halted {
+        if self.value > 0 {
             self.cpu_cycles += cpu_cycles as u32;
             if self.cpu_cycles >= APU_CYCLES_CLOCK_RATE {
                 self.value -= 1;
                 self.cpu_cycles -= APU_CYCLES_CLOCK_RATE;
             }
         }
-    }
-
-    pub fn halt(&mut self) {
-        self.halted = true;
     }
 
     pub fn value(&self) -> u8 {
@@ -67,14 +61,14 @@ mod test {
         }
     }
 
-    #[test]
-    fn length_counter_should_be_haltable() {
-        let mut length_counter = LengthCounter::new(10);
-        length_counter.halt();
+    //#[test]
+    //fn length_counter_should_be_haltable() {
+    //    let mut length_counter = LengthCounter::new(10);
+    //    length_counter.halt();
 
-        for _ in 0..(super::APU_CYCLES_CLOCK_RATE*2) {
-            length_counter.clock(1);
-            assert_eq!(length_counter.value(), 60);
-        }
-    }
+    //    for _ in 0..(super::APU_CYCLES_CLOCK_RATE*2) {
+    //        length_counter.clock(1);
+    //        assert_eq!(length_counter.value(), 60);
+    //    }
+    //}
 }
