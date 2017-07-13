@@ -1,12 +1,13 @@
 use memory::{Address, Memory, BasicMemory};
 use ines::INes;
 
-
 pub struct MMC1MemoryMapper {
     internal_memory: BasicMemory,
     prg_rom_banks: Vec<[u8; 0x4000]>,
     low_prg_rom_bank: usize,
     high_prg_rom_bank: usize,
+
+    shift_register: u8,
 }
 
 impl MMC1MemoryMapper {
@@ -23,6 +24,8 @@ impl MMC1MemoryMapper {
             prg_rom_banks: prg_rom,
             low_prg_rom_bank: 0,
             high_prg_rom_bank: 15,
+
+            shift_register: 0b1_0000,
         }
     }
 }
@@ -37,8 +40,14 @@ impl Memory for MMC1MemoryMapper {
             self.internal_memory.get(address)
         }
     }
-    fn set(&mut self, _: Address, _: u8) {
-        unimplemented!();
+    fn set(&mut self, _: Address, value: u8) {
+        let new_shift_register = (value & 0x01) << 4 | (self.shift_register >> 1);
+        if self.shift_register & 0x01 == 0 {
+            self.shift_register = new_shift_register;
+        } else {
+            self.low_prg_rom_bank = new_shift_register as usize;
+            self.shift_register = 0x10;
+        }
     }
 }
 
@@ -58,6 +67,31 @@ mod test {
         assert_eq!(1, mapper.get(0x8000)); //8000 -> switched to first bank.
         assert_eq!(16, mapper.get(0xC000)); //C000 -> fixed to last bank
         assert_eq!(0, mapper.get(0x1000)); //1000 -> mapped to NES internal memory
+    }
+
+    #[test]
+    fn should_be_able_to_switch_the_log_bank() {
+        let mut mapper = MMC1MemoryMapper::new(&INes::read(&mut ArrayStream(fill_banks().iter())));
+        assert_eq!(1, mapper.get(0x8000)); //8000 -> switched to first bank.
+        write_to_prg_bank_register(&mut mapper, 1);
+        assert_eq!(2, mapper.get(0x8000)); //8000 -> switched to second bank.
+        write_to_prg_bank_register(&mut mapper, 5);
+        assert_eq!(6, mapper.get(0x8000));
+    }
+
+    #[test]
+    fn writing_only_four_times_to_load_register_should_not_switch() {
+        let mut mapper = MMC1MemoryMapper::new(&INes::read(&mut ArrayStream(fill_banks().iter())));
+        for _ in 0..4 { mapper.set(0xE000, 1); }
+        assert_eq!(1, mapper.get(0x8000)); //8000 -> switched to first bank.
+    }
+
+    fn write_to_prg_bank_register(mapper: &mut MMC1MemoryMapper, value: u8) {
+        let mut index = value;
+        for _ in 0..5 {
+            mapper.set(0xE000, index);
+            index = index >> 1;
+        }
     }
 
     fn fill_banks() -> Vec<u8> {
