@@ -1,5 +1,5 @@
 use nes::ppu::screen::{Pattern, Screen};
-use sdl2::SDL2;
+use nes_sdl2::SDL2;
 
 use std;
 use std::time::Duration;

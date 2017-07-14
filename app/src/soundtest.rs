@@ -1,4 +1,4 @@
-use sdl2::SDL2;
+use nes_sdl2::SDL2;
 
 
 use nes::sound::APU;

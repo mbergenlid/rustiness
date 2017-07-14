@@ -1,5 +1,5 @@
 [package]
-name = "sdl2"
+name = "nes_sdl2"
 version = "0.1.0"
 authors = ["Marcus Bergenlid <marcus.bergenlid@gmail.com>"]
 

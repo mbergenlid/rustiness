@@ -1,5 +1,5 @@
 extern crate nes;
-extern crate sdl2;
+extern crate nes_sdl2;
 
 mod opcodes;
 mod fakecontroller;
@@ -12,10 +12,10 @@ use nes::ines::INes;
 use nes::ppu::{PPU, attributetable};
 use nes::ppu::screen::{Screen, ScreenMock, COLOUR_PALETTE};
 use nes::input::standard_controller::StandardController;
-use sdl2::SDL2;
+use nes_sdl2::SDL2;
 use nes::sound::AudioDevice;
 use nes::sound::APU;
-use sdl2::standard_controller::SdlEvents;
+use nes_sdl2::standard_controller::SdlEvents;
 use self::fakecontroller::FakeController;
 
 use std::fs::File;
