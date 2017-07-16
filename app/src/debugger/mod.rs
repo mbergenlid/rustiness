@@ -6,15 +6,12 @@ mod fakecontroller;
 mod breakpoint;
 mod command;
 use nes::NES;
-use nes::memory::BasicMemory;
 use nes::memory::Memory;
-use nes::ines::INes;
-use nes::ppu::{PPU, attributetable};
+use nes::ppu::attributetable;
 use nes::ppu::screen::{Screen, ScreenMock, COLOUR_PALETTE};
 use nes::input::standard_controller::StandardController;
 use nes_sdl2::SDL2;
 use nes::sound::AudioDevice;
-use nes::sound::APU;
 use nes_sdl2::standard_controller::SdlEvents;
 use self::fakecontroller::FakeController;
 
@@ -25,6 +22,7 @@ use std::io;
 use std::io::Write;
 
 use self::command::Command;
+use nes::borrow::MutableRef;
 
 pub fn start() {
     let args: Vec<String> = env::args().collect();
@@ -32,14 +30,7 @@ pub fn start() {
         panic!("Usage: {} debug FILE", args[0]);
     }
 
-    let mut memory = box BasicMemory::new();
-
-    let file = File::open(&args[2]).unwrap();
-    let rom_file = box INes::from_file(file);
-    rom_file.load(memory.as_mut());
-    let ppu_memory = rom_file.ppu_memory();
-
-    let ppu = PPU::with_mirroring(ppu_memory, rom_file.mirroring);
+    let file = &args[2];
     let sdl = SDL2::new();
 
     let fake_controller: Option<FakeController> =
@@ -52,18 +43,16 @@ pub fn start() {
             .unwrap_or_else(|| {
                 StandardController::new(&source)
             });
-    let apu = APU::new(sdl.audio(), 500);
     let use_screen_mock = args.iter().find(|&a| a == "-g").map(|_| true).unwrap_or(false);
 
     if use_screen_mock {
         let screen = box ScreenMock::new();
-        let nes = nes::NES::new(ppu, apu, memory, screen, &mut standard_controller);
+        let nes = nes::NES::from_file(file, MutableRef::Borrowed(&mut standard_controller), sdl.audio(), screen);
 
         run(nes, &source, &fake_controller);
     } else {
         let screen = box sdl.screen(2);
-
-        let nes = nes::NES::new(ppu, apu, memory, screen, &mut standard_controller);
+        let nes = nes::NES::from_file(file, MutableRef::Borrowed(&mut standard_controller), sdl.audio(), screen);
 
         run(nes, &source, &fake_controller);
     }

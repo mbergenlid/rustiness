@@ -39,14 +39,29 @@ pub struct NES<'a, T, A>
     pub clock: Clock,
 }
 
+use ines::INes;
+use std::fs::File;
+use borrow::MutableRef;
+
 impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
-    pub fn new(ppu: PPU, apu: APU<A>, memory: Box<BasicMemory>, screen: Box<T>, controller: &'a mut MemoryMappedIO) -> NES<T, A> {
+
+    pub fn from_file(file: &str, controller: MutableRef<'a, MemoryMappedIO>, audio: A, screen: Box<T>) -> NES<'a, T, A> {
+        let mut memory = box BasicMemory::new();
+
+        let file = File::open(file).unwrap();
+        let rom_file = box INes::from_file(file);
+        rom_file.load(memory.as_mut());
+        let ppu_memory = rom_file.ppu_memory();
+
+        let ppu = Rc::new(RefCell::new(PPU::with_mirroring(ppu_memory, rom_file.mirroring)));
+
+        let apu = APU::new(audio, 500);
+
         let cpu_start = {
             let lsbs: u8 = memory.get(0xFFFC);
             let msbs: u8 = memory.get(0xFFFD);
             (msbs as u16) << 8 | lsbs as u16
         };
-        let ppu = Rc::new(RefCell::new(ppu));
         let cpu_memory = CPUMemory::default(memory, ppu.clone(), &apu, Some(controller));
         NES {
             cpu: CPU::new(cpu_start),
@@ -91,7 +106,7 @@ impl <'a> CPUMemory<'a>  {
         memory: Box<BasicMemory>,
         ppu: Rc<RefCell<PPU>>,
         apu: &APU<A>,
-        controller: Option<&'a mut MemoryMappedIO>
+        controller: Option<MutableRef<'a, MemoryMappedIO>>
     ) -> CPUMemory<'a> where A: AudioDevice + Sized {
         //apu: &mut APU
         cpu_memory!(
@@ -111,7 +126,7 @@ impl <'a> CPUMemory<'a>  {
             0x4007 => MutableRef::Box(box Register4(apu.square2())),
 
             0x4014 => MutableRef::Box(box OAMAddress(ppu.clone())),
-            0x4016 => controller.map(|c| MutableRef::Borrowed(c)).unwrap_or_else(|| MutableRef::Box(box ()))
+            0x4016 => controller.unwrap_or_else(|| MutableRef::Box(box ()))
         )
     }
 }
@@ -217,42 +232,4 @@ mod test {
         let expected_max_duration = Duration::new(5, 595_900_000);
         assert!(elapsed <= expected_max_duration, "Should take at most {:?} but took {:?}", expected_max_duration, elapsed);
     }
-//    use std::time::Instant;
-//    use memory::Memory;
-//    use ppu::PPU;
-//    use memory::BasicMemory;
-//    use ppu::screen::ScreenMock;
-//
-//    impl super::NES {
-//        pub fn without_ppu() -> super::NES {
-//            super::NES::new(PPU::new(
-//                box (BasicMemory::new()),
-//                box (ScreenMock::new())
-//            ))
-//        }
-//    }
-
-//    #[test]
-//    fn timing_test() {
-//        let mut execution_time_total = 0;
-//        //One cycle: 500 ns,
-////        for _ in 1..100 {
-//            let mut memory = memory!(
-//                0x00A5 => 0xF0,
-//                0x00A6 => 0x10,
-//                //ADC $05
-//                0x8000 => 0x69,
-//                0x8001 => 0x05,
-//                0x8002 => 0x10
-//            );
-//
-//            let mut nes = super::NES::without_ppu();
-//            let start = Instant::now();
-//            nes.execute(&mut memory);
-//
-//            execution_time_total += start.elapsed().subsec_nanos();
-////        }
-//
-//        assert!(execution_time_total < 500, "Execution time more {}ns >= {}ns", execution_time_total, 500);
-//    }
 }
