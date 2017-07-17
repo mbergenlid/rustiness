@@ -8,13 +8,21 @@ irq:
 main:
     lda #$80
     sta $6000
+    jsr test
+    jsr test + $4000
+    jmp done
+
+test:
     lda #$3F
     sta $00
     lda $00
     cmp #$3F
-    beq done
+    beq test_done
     ldx #$01
     stx $6000
+test_done:
+    rts
+
 done:
     lda #$00
     sta $6000
