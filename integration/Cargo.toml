@@ -1,0 +1,8 @@
+[package]
+name = "integration"
+version = "0.1.0"
+authors = ["Marcus Bergenlid <marcus.bergenlid@gmail.com>"]
+
+[dependencies]
+nes = { path = "../nes" }
+
