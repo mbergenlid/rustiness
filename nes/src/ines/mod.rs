@@ -50,8 +50,8 @@ impl <'a> INes  {
         }
     }
 
-    pub fn ppu_memory(&self) -> Box<PPUMemory> {
-        let mut ppu_mem = box PPUMemory::new(self.mirroring);
+    pub fn ppu_memory(&self) -> PPUMemory {
+        let mut ppu_mem = PPUMemory::new(self.mirroring);
         ppu_mem.set_slice(0x0000, self.chr_rom(0));
         return ppu_mem;
     }

@@ -112,12 +112,13 @@ mod test {
     use nes::opcodes;
     use nes::memory::BasicMemory;
     use nes::ppu::PPU;
+    use nes::ppu::ppumemory::PPUMemory;
 
     #[test]
     fn address_breakpoint() {
         let break_point = BreakPoint::parse(&[String::from("-l"), String::from("C013")]).unwrap();
         let cpu = CpuBuilder::new().program_counter(0xC013).build();
-        let ppu = PPU::new(box BasicMemory::new());
+        let ppu = PPU::new(PPUMemory::no_mirroring());
         assert_eq!(break_point.breakpoint(&cpu, &ppu, &BasicMemory::new()), true);
     }
 
@@ -129,7 +130,7 @@ mod test {
             0x8000 => opcodes::ADC_ZERO_PAGE,
             0x8001 => 0x02
         );
-        let ppu = PPU::new(box BasicMemory::new());
+        let ppu = PPU::new(PPUMemory::no_mirroring());
         assert_eq!(break_point.breakpoint(&cpu, &ppu, &memory), true);
     }
 
@@ -144,7 +145,7 @@ mod test {
             0x8004 => opcodes::ADC_ZERO_PAGE,
             0x8005 => 0x02
         );
-        let ppu = PPU::new(box BasicMemory::new());
+        let ppu = PPU::new(PPUMemory::no_mirroring());
         assert_eq!(break_point.breakpoint(&cpu, &ppu, &memory), false);
     }
 }

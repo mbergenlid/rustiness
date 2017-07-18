@@ -15,12 +15,12 @@ pub trait Memory {
 }
 
 pub struct BasicMemory {
-    data: [u8; 65_536]
+    data: Vec<u8>
 }
 
 impl BasicMemory {
     pub fn new() -> BasicMemory {
-        return BasicMemory { data: [0; 65_536]};
+        return BasicMemory { data: vec![0; 65_536]};
     }
 }
 

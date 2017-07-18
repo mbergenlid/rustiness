@@ -1,5 +1,5 @@
 
-use memory::{Memory, BasicMemory, Address};
+use memory::{Memory, Address, SharedMemory};
 
 #[derive(Copy, Clone)]
 pub enum Mirroring {
@@ -9,14 +9,24 @@ pub enum Mirroring {
 }
 
 pub struct PPUMemory {
-    basic_memory: BasicMemory,
+    basic_memory: SharedMemory,
+    mirroring: Mirroring,
     name_table_mirror_mask: u16,
 }
 
 impl PPUMemory {
+    pub fn no_mirroring() -> PPUMemory {
+        PPUMemory::new(Mirroring::NoMirroring)
+    }
+
     pub fn new(mirroring: Mirroring) -> PPUMemory {
+        PPUMemory::wrap(SharedMemory::new(), mirroring)
+    }
+
+    pub fn wrap(shared: SharedMemory, mirroring: Mirroring) -> PPUMemory {
         PPUMemory {
-            basic_memory: BasicMemory::new(),
+            basic_memory: shared,
+            mirroring: mirroring,
             name_table_mirror_mask: match mirroring {
                 Mirroring::Horizontal => 0xFBFF,
                 Mirroring::Vertical => !0x0800,
@@ -25,6 +35,8 @@ impl PPUMemory {
 
         }
     }
+
+    pub fn mirroring(&self) -> Mirroring { return self.mirroring; }
 }
 
 impl Memory for PPUMemory {

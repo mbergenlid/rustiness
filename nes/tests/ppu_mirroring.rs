@@ -4,7 +4,8 @@ extern crate nes;
 
 use nes::ppu::screen::ScreenMock;
 use nes::ppu::PPU;
-use nes::ppu::ppumemory::Mirroring;
+use nes::ppu::ppumemory::{Mirroring, PPUMemory};
+use nes::memory::SharedMemory;
 
 fn create_ppu(mirroring: Mirroring) -> PPU {
     let memory = memory!(
@@ -27,7 +28,7 @@ fn create_ppu(mirroring: Mirroring) -> PPU {
             0x2C00 => 0x02, //pattern 2 (palette 1)
             0x2FC0 => 0b00_00_00_01
         );
-    let mut ppu = PPU::with_mirroring(box memory, mirroring);
+    let mut ppu = PPU::new(PPUMemory::wrap(SharedMemory::wrap(memory), mirroring));
     ppu.set_ppu_ctrl(0x08);
     ppu.load(
         0x0010,

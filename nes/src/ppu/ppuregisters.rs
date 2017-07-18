@@ -79,12 +79,15 @@ mod test {
     use memory::BasicMemory;
     use memory::Memory;
     use ppu::PPU;
+    use ppu::ppumemory::PPUMemory;
     use super::{PPUAddress,PPUData};
     use std::rc::Rc;
     use std::cell::RefCell;
 
+
     #[test]
-    fn test_write_to_vram() { let ppu = Rc::new(RefCell::new(PPU::new(box BasicMemory::new())));
+    fn test_write_to_vram() { 
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::no_mirroring())));
 
         {
             let basic_memory = BasicMemory::new();

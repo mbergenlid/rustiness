@@ -3,6 +3,7 @@ use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer, Rectangle};
 use ppu::vram_registers::VRAMRegisters;
 use ppu::attributetable::AttributeTable;
 use ppu::ppumemory;
+use ppu::ppumemory::PPUMemory;
 use ppu::tile_cache::TileCache;
 
 struct PPUCtrl {
@@ -75,7 +76,7 @@ pub struct PPU {
     mask_register: PPUMask,
     status_register: u8,
     vblank_triggered: bool,
-    memory: Box<Memory>,
+    memory: PPUMemory,
     vram_registers: VRAMRegisters,
 
     vram_changed: bool,
@@ -111,11 +112,12 @@ const SCANLINES_PER_FRAME: u32 = 262;
 const PPU_CYCLES_PER_VISIBLE_FRAME: u32 = (SCANLINES_PER_FRAME-SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE;
 
 impl PPU {
-    pub fn new(memory: Box<Memory>) -> PPU {
-        PPU::with_mirroring(memory, ppumemory::Mirroring::NoMirroring)
+    pub fn new(memory: PPUMemory) -> PPU {
+        let mirroring = memory.mirroring();
+        PPU::with_mirroring(memory, mirroring)
     }
 
-    pub fn with_mirroring(memory: Box<Memory>, mirroring: ppumemory::Mirroring) -> PPU {
+    pub fn with_mirroring(memory: PPUMemory, mirroring: ppumemory::Mirroring) -> PPU {
         PPU {
             control_register: PPUCtrl::new(),
             mask_register: PPUMask { value: 0 },
@@ -366,7 +368,7 @@ impl PPU {
         let pattern_table_base_address = self.control_register.background_pattern_table();
         let colour_palette = {
             let attribute_table = AttributeTable {
-                memory: &(*self.memory),
+                memory: &self.memory,
                 address: name_table_base + 0x3C0,
             };
             attribute_table.get_palette_address(row as u16, col as u16)
@@ -393,7 +395,7 @@ impl PPU {
     }
 
     pub fn memory(&self) -> &Memory {
-        self.memory.as_ref()
+        &self.memory
     }
 }
 
@@ -402,10 +404,11 @@ pub mod tests {
     use memory::BasicMemory;
     use ppu::screen::ScreenMock;
     use super::{PPU, PPUStatus};
+    use ppu::ppumemory::PPUMemory;
 
     #[test]
     fn reading_status_register_should_clear_vblank() {
-        let mut ppu = PPU::new(box BasicMemory::new());
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.status_register = 0b1100_0000;
 
         assert_eq!(true, ppu.status().is_vblank());
@@ -415,7 +418,7 @@ pub mod tests {
 
     #[test]
     fn should_not_cause_nmi_if_disabled() {
-        let mut ppu = PPU::new(box BasicMemory::new());
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x00); //Disable NMI
 
         assert_eq!(false, ppu.update(29_000, &mut ScreenMock::new()));
@@ -424,7 +427,7 @@ pub mod tests {
     #[test]
     fn test_vblank() {
         let screen = &mut ScreenMock::new();
-        let mut ppu = PPU::new(box BasicMemory::new());
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x80);
         assert_eq!(false, ppu.update(45, screen)); //cycle count = 135
         assert_eq!(true, ppu.update(27_508-45, screen)); //cycle count = 82_524
@@ -457,7 +460,7 @@ pub mod tests {
     #[test]
     fn test_vblank_cleared_manually() {
         let screen = &mut ScreenMock::new();
-        let mut ppu = PPU::new(box BasicMemory::new());
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x80);
         assert_eq!(true, ppu.update(27_508, screen)); //cycle count = 82_524
         assert_eq!(true, ppu.status_register.is_vblank());
