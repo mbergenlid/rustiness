@@ -1,4 +1,4 @@
-use memory::{MemoryMappedIO, BasicMemory};
+use memory::{MemoryMappedIO, Memory};
 use std::cell::Cell;
 
 static TRUE: bool = true;
@@ -65,7 +65,7 @@ impl Index<u8> for StandardControllerState {
 }
 
 impl <'a> MemoryMappedIO for StandardController<'a> {
-    fn read(&self, _: &BasicMemory) -> u8 {
+    fn read(&self, _: &Memory) -> u8 {
         if self.state_loaded {
             let state_index = self.state_index.get();
             let result = self.state[state_index] as u8;
@@ -76,7 +76,7 @@ impl <'a> MemoryMappedIO for StandardController<'a> {
         }
     }
 
-    fn write(&mut self, _: &mut BasicMemory, value: u8) {
+    fn write(&mut self, _: &mut Memory, value: u8) {
         let strobe_bit = value & 0x01;
         if strobe_bit == 0 && !self.state_loaded {
             self.state = self.source.load();

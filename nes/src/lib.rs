@@ -11,7 +11,7 @@ pub mod borrow;
 pub mod sound;
 
 use cpu::CPU;
-use memory::{BasicMemory, CPUMemory, Memory};
+use memory::{CPUMemory, Memory};
 use ppu::PPU;
 use ppu::screen::Screen;
 
@@ -39,21 +39,17 @@ pub struct NES<'a, T, A>
     pub clock: Clock,
 }
 
-use ines::INes;
-use std::fs::File;
+use ines::mapper;
 use borrow::MutableRef;
 
 impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
 
     pub fn from_file(file: &str, controller: MutableRef<'a, MemoryMappedIO>, audio: A, screen: Box<T>) -> NES<'a, T, A> {
-        let mut memory = box BasicMemory::new();
 
-        let file = File::open(file).unwrap();
-        let rom_file = box INes::from_file(file);
-        rom_file.load(memory.as_mut());
-        let ppu_memory = rom_file.ppu_memory();
+        let mapper = mapper::from_file(file);
+        let memory = mapper.cpu_memory;
 
-        let ppu = Rc::new(RefCell::new(PPU::with_mirroring(ppu_memory, rom_file.mirroring)));
+        let ppu = Rc::new(RefCell::new(PPU::new(mapper.ppu_memory)));
 
         let apu = APU::new(audio, 500);
 
@@ -103,7 +99,7 @@ use ppu::ppuregisters::*;
 use memory::MemoryMappedIO;
 impl <'a> CPUMemory<'a>  {
     pub fn default<A>(
-        memory: Box<BasicMemory>,
+        memory: Box<Memory>,
         ppu: Rc<RefCell<PPU>>,
         apu: &APU<A>,
         controller: Option<MutableRef<'a, MemoryMappedIO>>
@@ -132,8 +128,8 @@ impl <'a> CPUMemory<'a>  {
 }
 
 impl MemoryMappedIO for () {
-    fn read(&self, _: &BasicMemory) -> u8 { 0 }
-    fn write(&mut self, _: &mut BasicMemory, _: u8) { }
+    fn read(&self, _: &Memory) -> u8 { 0 }
+    fn write(&mut self, _: &mut Memory, _: u8) { }
 }
 
 

@@ -1,9 +1,17 @@
 
 pub type Address = u16;
+use std::iter::Iterator;
+use std::ops::{Range, Index};
 
 pub trait Memory {
     fn get(&self, address: Address) -> u8;
     fn set(&mut self, address: Address, value: u8);
+
+    fn dma(&self, range: Range<Address>, destination: &mut [u8]) {
+        for (i, address) in range.enumerate() {
+            destination[i] = self.get(address);
+        }
+    }
 
     fn set_slice(&mut self, start: Address, data: &[u8]) {
         let mut address = start;
@@ -35,7 +43,6 @@ impl Memory for BasicMemory {
 }
 
 
-use std::ops::{Range, Index};
 impl Index<Range<usize>> for BasicMemory {
     type Output = [u8];
     fn index(&self, index: Range<usize>) -> &[u8] {
@@ -44,8 +51,8 @@ impl Index<Range<usize>> for BasicMemory {
 }
 
 pub trait MemoryMappedIO {
-    fn read(&self, &BasicMemory) -> u8;
-    fn write(&mut self, &mut BasicMemory, value: u8);
+    fn read(&self, &Memory) -> u8;
+    fn write(&mut self, &mut Memory, value: u8);
 }
 
 

@@ -114,10 +114,6 @@ const PPU_CYCLES_PER_VISIBLE_FRAME: u32 = (SCANLINES_PER_FRAME-SCANLINES_PER_VBL
 impl PPU {
     pub fn new(memory: PPUMemory) -> PPU {
         let mirroring = memory.mirroring();
-        PPU::with_mirroring(memory, mirroring)
-    }
-
-    pub fn with_mirroring(memory: PPUMemory, mirroring: ppumemory::Mirroring) -> PPU {
         PPU {
             control_register: PPUCtrl::new(),
             mask_register: PPUMask { value: 0 },
@@ -192,8 +188,8 @@ impl PPU {
         self.vram_registers.current = current_vram;
     }
 
-    pub fn load_sprites(&mut self, oam_data: &[u8]) {
-        self.sprites.copy_from_slice(oam_data);
+    pub fn sprites(&mut self) -> &mut [u8] {
+        &mut self.sprites
     }
 
     /**
@@ -401,7 +397,6 @@ impl PPU {
 
 #[cfg(test)]
 pub mod tests {
-    use memory::BasicMemory;
     use ppu::screen::ScreenMock;
     use super::{PPU, PPUStatus};
     use ppu::ppumemory::PPUMemory;
