@@ -213,6 +213,9 @@ impl PPU {
                 }
             }
             return false
+        } else if self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME+2270*PPU_CYCLES_PER_CPU_CYCLE {
+            self.status_register = self.status_register & 0x7F;
+            return false;
         } else {
             return false;
         }
@@ -446,9 +449,6 @@ pub mod tests {
         assert_eq!(true, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(2_223, screen)); //cycle count = 89 341
-        assert_eq!(true, ppu.status_register.is_vblank());
-
-        assert_eq!(false, ppu.update(1, screen));
         assert_eq!(false, ppu.status_register.is_vblank());
     }
 
