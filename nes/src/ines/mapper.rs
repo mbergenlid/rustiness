@@ -26,7 +26,9 @@ pub fn from_file(file_name: &str) -> Mapper {
         },
         ppu_memory: {
             let mut ppu_mem = PPUMemory::new(ines.mirroring);
-            ppu_mem.set_slice(0x0000, ines.chr_rom(0));
+            if ines.num_chr_roms > 0 {
+                ppu_mem.set_slice(0x0000, ines.chr_rom(0));
+            }
             ppu_mem
         }
     }
