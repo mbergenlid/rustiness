@@ -78,6 +78,7 @@ pub struct PPU {
     vblank_triggered: bool,
     memory: PPUMemory,
     vram_registers: VRAMRegisters,
+    temp_vram_read_buffer: u8,
 
     vram_changed: bool,
     tile_cache: TileCache,
@@ -121,6 +122,7 @@ impl PPU {
             vblank_triggered: false,
             memory: memory,
             vram_registers: VRAMRegisters::new(),
+            temp_vram_read_buffer: 0,
 
             vram_changed: true,
             tile_cache: TileCache::new(),
@@ -172,7 +174,15 @@ impl PPU {
     }
 
     pub fn read_from_vram(&mut self) -> u8 {
-        let value = self.memory.get(self.vram_registers.current);
+        let current_vram = self.vram_registers.current;
+        let value = if current_vram >= 0x3F00 {
+            self.temp_vram_read_buffer = self.memory.get(current_vram - 0x1000);
+            self.memory.get(current_vram)
+        } else {
+            let value = self.temp_vram_read_buffer;
+            self.temp_vram_read_buffer = self.memory.get(current_vram);
+            value
+        };
         self.vram_registers.current += self.control_register.vram_pointer_increment();
         return value;
     }

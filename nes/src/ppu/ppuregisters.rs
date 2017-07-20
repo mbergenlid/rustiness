@@ -101,10 +101,6 @@ mod test {
             memory.set(0x2006, 0x01); //Low byte of vram pointer
 
             memory.set(0x2007, 0xA5); //write 0xA5 to PPU-MEM 0xFF01
-
-            memory.set(0x2006, 0xFF); //High byte of vram pointer
-            memory.set(0x2006, 0x01); //Low byte of vram pointer
-            assert_eq!(0xA5, memory.get(0x2007));
         }
         assert_eq!(0xA5, ppu.borrow().memory().get(0x3F01));
 
@@ -120,4 +116,82 @@ mod test {
         assert_eq!(0x3B, ppu.borrow().memory().get(0x3F02));
     }
 
+    use memory::SharedMemory;
+    use ppu::ppumemory::Mirroring;
+    #[test]
+    fn test_read_from_vram() { 
+        let ppu_internal_memory = memory!(
+            0x2000 => 0x05,
+            0x2001 => 0x10
+        );
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+
+        {
+            let basic_memory = BasicMemory::new();
+            let mut memory = cpu_memory!(
+                box basic_memory,
+                0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
+                0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
+            );
+
+            memory.set(0x2006, 0x20); //High byte of vram pointer
+            memory.set(0x2006, 0x00); //Low byte of vram pointer
+
+            memory.get(0x2007); //Dummy read
+            assert_eq!(0x05, memory.get(0x2007));
+            assert_eq!(0x10, memory.get(0x2007));
+        }
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn read_from_vram_3Fxx_does_not_require_dummy_read() {
+        let ppu_internal_memory = memory!(
+            0x3F00 => 0x05,
+            0x3F01 => 0x10
+        );
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+
+        {
+            let basic_memory = BasicMemory::new();
+            let mut memory = cpu_memory!(
+                box basic_memory,
+                0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
+                0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
+            );
+
+            memory.set(0x2006, 0x3F); //High byte of vram pointer
+            memory.set(0x2006, 0x00); //Low byte of vram pointer
+
+            assert_eq!(0x05, memory.get(0x2007));
+            assert_eq!(0x10, memory.get(0x2007));
+        }
+    }
+
+    #[test]
+    fn palette_read_should_also_read_vram_into_buffer() {
+        let ppu_internal_memory = memory!(
+            0x2f12 => 0x9A,
+            0x3F12 => 0x05
+        );
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+
+        {
+            let basic_memory = BasicMemory::new();
+            let mut memory = cpu_memory!(
+                box basic_memory,
+                0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
+                0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
+            );
+
+            memory.set(0x2006, 0x3F); //High byte of vram pointer
+            memory.set(0x2006, 0x12); //Low byte of vram pointer
+
+            assert_eq!(0x05, memory.get(0x2007));
+
+            memory.set(0x2006, 0x2F);
+            memory.set(0x2006, 0x12);
+            assert_eq!(0x9A, memory.get(0x2007));
+        }
+    }
 }

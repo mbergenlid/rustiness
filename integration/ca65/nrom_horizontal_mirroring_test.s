@@ -28,6 +28,7 @@ test:
     sta $2006
     lda #$00
     sta $2006
+    lda $2007 ;Dummy read
 
     ldx #$01
     lda $2007
