@@ -218,7 +218,7 @@ mod tests {
     }
 
     #[test]
-    fn vertical_increment_let_name_tables() {
+    fn vertical_increment_left_name_tables() {
         let mut registers = VRAMRegisters::with_current(0b000_0000_0000_0000);
         {
             let mut coarse_y_scroll = 0;
