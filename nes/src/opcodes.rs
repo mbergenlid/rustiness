@@ -655,6 +655,19 @@ mod tests {
         assert_eq!(0x30, memory.get(0x01ff));
     }
 
+    #[test]
+    fn brk_should_set_interrupt_disable_flag() {
+        let mut memory = &mut memory!(
+            0x8000 => opcodes::BRK
+        );
+        let mut cpu = cpu::CpuBuilder::new()
+            .program_counter(0x8000)
+            .flags(0)
+            .build();
+        execute_instruction(&mut cpu, memory);
+        assert_eq!(true, cpu.is_flag_set(cpu::INTERRUPT_DISABLE_FLAG));
+    }
+
     fn test_instruction(memory: &mut Memory, expected_cpu: cpu::CPU) {
         let mut cpu = cpu::CPU::new(0x8000);
         execute_instruction(&mut cpu, memory);

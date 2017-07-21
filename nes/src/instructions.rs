@@ -1,5 +1,6 @@
 use addressing::AddressingMode;
 use cpu::CPU;
+use cpu;
 use memory::Memory;
 
 pub fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
@@ -103,6 +104,7 @@ pub fn brk(cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let lsbs: u8 = memory.get(0xFFFE);
     let msbs: u8 = memory.get(0xFFFF);
     cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
+    cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG);
     return 7;
 }
 
@@ -115,6 +117,7 @@ pub fn nmi(cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let lsbs: u8 = memory.get(0xFFFA);
     let msbs: u8 = memory.get(0xFFFB);
     cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
+    cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG);
     return 7;
 }
 
