@@ -110,6 +110,8 @@ impl <'a> CPUMemory<'a>  {
             0x2000 => MutableRef::Box(box PPUCtrl(ppu.clone())),
             0x2001 => MutableRef::Box(box PPUMask(ppu.clone())),
             0x2002 => MutableRef::Box(box PPUStatus(ppu.clone())),
+            0x2003 => MutableRef::Box(box OAMAddress(ppu.clone())),
+            0x2004 => MutableRef::Box(box OAMData(ppu.clone())),
             0x2005 => MutableRef::Box(box PPUScroll(ppu.clone())),
             0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
             0x2007 => MutableRef::Box(box PPUData(ppu.clone())),
@@ -121,7 +123,7 @@ impl <'a> CPUMemory<'a>  {
             0x4006 => MutableRef::Box(box Register3(apu.square2())),
             0x4007 => MutableRef::Box(box Register4(apu.square2())),
 
-            0x4014 => MutableRef::Box(box OAMAddress(ppu.clone())),
+            0x4014 => MutableRef::Box(box OAMDMA(ppu.clone())),
             0x4016 => controller.unwrap_or_else(|| MutableRef::Box(box ()))
         )
     }

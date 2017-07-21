@@ -87,6 +87,7 @@ pub struct PPU {
     mirroring: ppumemory::Mirroring,
 
     sprites: [u8; 64*4],
+    oam_address: u8,
 }
 
 use std::fmt::{Formatter, Error, Display};
@@ -131,6 +132,7 @@ impl PPU {
             mirroring: mirroring,
 
             sprites: [0; 64*4],
+            oam_address: 0,
         }
     }
 
@@ -200,6 +202,24 @@ impl PPU {
 
     pub fn sprites(&mut self) -> &mut [u8] {
         &mut self.sprites
+    }
+
+    pub fn oam_address(&mut self, value: u8) {
+        self.oam_address = value;
+    }
+
+    pub fn get_oam_address(&mut self) -> u8 {
+        self.oam_address
+    }
+
+    pub fn oam_data(&mut self, value: u8) {
+        let oam_address = self.oam_address;
+        self.oam_address = self.oam_address.wrapping_add(1);
+        self.sprites[oam_address as usize] = value;
+    }
+
+    pub fn get_oam_data(&self) -> u8 {
+        self.sprites[self.oam_address as usize]
     }
 
     /**
