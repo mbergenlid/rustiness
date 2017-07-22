@@ -149,7 +149,7 @@ impl Screen for ScreenMock {
                 let row = row as usize;
                 let col = col as usize;
                 let screen_index = y*screen_pitch + x*3;
-                if screen_index >= 0 && screen_index+2 < self.screen_buffer.len() {
+                if screen_index+2 < self.screen_buffer.len() {
                     if self.temp_sprite_buffer[row*img_pitch + col*4 + 3] == 255 { //Only add the pixel if alpha is 255.
                         self.screen_buffer[screen_index + 0] = self.temp_sprite_buffer[row*img_pitch + col*4 + 2];
                         self.screen_buffer[screen_index + 1] = self.temp_sprite_buffer[row*img_pitch + col*4 + 1];

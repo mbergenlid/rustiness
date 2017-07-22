@@ -1,5 +1,6 @@
 extern crate nes;
 extern crate nes_sdl2;
+extern crate image;
 
 mod opcodes;
 mod fakecontroller;
@@ -20,6 +21,7 @@ use std::env;
 use std::string::String;
 use std::io;
 use std::io::Write;
+use std::path::Path;
 
 use self::command::Command;
 use nes::borrow::MutableRef;
@@ -201,16 +203,28 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 }
             },
             "screenshot" => {
-                use nes::ppu::screen::PixelBuffer;
-                let mut buffer = [0; 256*240*3];
-                nes.ppu.borrow_mut().draw_buffer(&mut PixelBuffer { buffer: &mut buffer, pitch: 256*3, scale: 1});
+                let mut ppu = nes.ppu.borrow_mut();
+                let mut screen = ScreenMock::new();
+                ppu.invalidate_tile_cache();
+                ppu.update_screen(&mut screen);
+                let now: DateTime<Local> = Local::now();
+                let file_name = format!("/tmp/rustiness.{:?}.png", now);
 
-                for y in 0..(240 as usize) {
-                    for x in 0..(256 as usize) {
-                        print!("({},{},{}), ", buffer[y*256*3 + x*3], buffer[y*256*3 + x*3+1], buffer[y*256*3 + x*3+2]);
-                    }
-                    println!("");
-                }
+                image::save_buffer(
+                    &Path::new(&file_name),
+                    screen.screen_buffer.as_ref(),
+                    256,
+                    240,
+                    image::RGB(8)
+                ).unwrap();
+                let background_file_name = format!("/tmp/rustiness.{:?}.bg.png", now);
+                image::save_buffer(
+                    &Path::new(&background_file_name),
+                    screen.temp_buffer.as_ref(),
+                    256*2,
+                    240*2,
+                    image::RGB(8)
+                ).unwrap();
             },
             "stack" => {
                 let mut entries: u8 = cmd.arg(1).and_then(|s| s.parse::<u8>().ok()).unwrap_or(5);

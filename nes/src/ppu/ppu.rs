@@ -362,6 +362,13 @@ impl PPU {
         };
     }
 
+    pub fn invalidate_tile_cache(&mut self) {
+        self.vram_changed = true;
+        for address in 0x2000..0x3000 {
+            self.tile_cache.update(address);
+        }
+    }
+
     fn update_tile_for_nametable(&mut self, pixel_buffer: &mut PixelBuffer, name_table_index: usize) {
         let name_table_base = (0x2000 + name_table_index*0x400) as u16;
         let mut name_table = name_table_base;
