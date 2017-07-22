@@ -10,6 +10,7 @@ use nes::NES;
 use nes::memory::Memory;
 use nes::ppu::attributetable;
 use nes::ppu::screen::{Screen, ScreenMock, COLOUR_PALETTE};
+use nes::ppu::Sprite;
 use nes::input::standard_controller::StandardController;
 use nes_sdl2::SDL2;
 use nes::sound::AudioDevice;
@@ -166,6 +167,21 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                             println!("");
                         }
                     }
+                }
+            },
+            "sprites" => {
+                let mut ppu = nes.ppu.borrow_mut();
+                let sprites = ppu.sprites();
+                for s in 0..64 {
+                    let sprite = &sprites[s*4..(s*4+4)];
+                    println!(
+                        "Sprite {}: {} (x), {} (y), 0x{:x} (pattern), 0x{:02x} (attributes)",
+                        s,
+                        sprite.position_x(),
+                        sprite.position_y(),
+                        sprite.pattern_index(),
+                        sprite[2]
+                    );
                 }
             },
             "name-table" => {

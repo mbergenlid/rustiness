@@ -1,4 +1,5 @@
 pub use self::ppu::PPU;
+pub use self::ppu::Sprite;
 
 mod ppu;
 pub mod screen;

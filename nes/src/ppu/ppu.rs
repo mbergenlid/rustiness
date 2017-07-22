@@ -51,7 +51,7 @@ impl PPUStatus for u8 {
     }
 }
 
-trait Sprite {
+pub trait Sprite {
     fn position_y(&self) -> u8;
     fn position_x(&self) -> u8;
     fn pattern_index(&self) -> u8;
