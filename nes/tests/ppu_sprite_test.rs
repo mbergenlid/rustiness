@@ -83,10 +83,17 @@ fn test_basic_sprite_rendering() {
 
         screen::assert_pixels(
             &[
-    /* tile 1 */ WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+    /* tile 1 */ GRAY, GRAY, GRAY, GRAY, GRAY, GRAY, GRAY, GRAY,
             ],
             pixel_buffer,
             0..8
+        );
+        screen::assert_pixels(
+            &[
+    /* tile 1 */ WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+            ],
+            pixel_buffer,
+            256..256+8
         );
     }
 
@@ -105,7 +112,7 @@ fn test_basic_sprite_rendering() {
     /* tile 2 */ WHITE,WHITE,WHITE,WHITE,WHITE,WHITE,WHITE,WHITE,
             ],
             pixel_buffer,
-            0..16
+            256..256+16
         );
     }
 
@@ -124,7 +131,7 @@ fn test_basic_sprite_rendering() {
             ],
             pixel_buffer,
             {
-                let start = 7*256 + 10;
+                let start = 8*256 + 10;
                 start..start+8
             }
         );
@@ -164,7 +171,7 @@ fn test_multiple_sprite_rendering() {
     /* tile 1 */ WHITE,WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
             ],
             pixel_buffer,
-            0..8
+            256..256+8
         );
         screen::assert_pixels(
             &[
@@ -172,7 +179,7 @@ fn test_multiple_sprite_rendering() {
             ],
             pixel_buffer,
             {
-                let start = 8*256 + 8;
+                let start = 9*256 + 8;
                 start..start+8
             }
         );
