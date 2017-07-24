@@ -59,6 +59,10 @@ pub trait Sprite {
     fn colour_palette(&self) -> u16;
     fn flip_horizontal(&self) -> bool;
     fn flip_vertical(&self) -> bool;
+    fn is_back(&self) -> bool;
+    fn is_front(&self) -> bool {
+        !self.is_back()
+    }
 }
 
 impl <'a> Sprite for &'a [u8] {
@@ -69,6 +73,7 @@ impl <'a> Sprite for &'a [u8] {
     fn colour_palette(&self) -> u16 { return (self[2] as u16 & 0x3)*4 + 0x3F10; }
     fn flip_horizontal(&self) -> bool { return self[2] & 0x40 > 0; }
     fn flip_vertical(&self) -> bool { return self[2] & 0x80 > 0; }
+    fn is_back(&self) -> bool { return self[2] & 0x20 != 0; }
 }
 
 pub struct PPU {
@@ -256,6 +261,7 @@ impl PPU {
             self.vram_changed = false;
             screen.update_buffer(|buffer| self.draw_buffer(buffer));
         }
+        screen.update_sprites(|buffer| self.update_sprites(buffer));
         self.vram_registers.copy_temporary_bits();
         let screen_width: usize = 256;
         let screen_height: usize = 240;
@@ -268,6 +274,7 @@ impl PPU {
         };
         use std::cmp::min;
         screen.set_backdrop_color(COLOUR_PALETTE[self.memory.get(0x3F00) as usize]);
+        self.render_back_sprites(screen);
         screen.render(
             Rectangle { x: left as i32, y: top as i32, width: min(screen_width, area_width-left) as u32, height: min(screen_height, area_height-top) as u32 },
             0, 0
@@ -295,52 +302,71 @@ impl PPU {
         }
 
         //Update sprites
-        self.draw_sprite(screen);
+        self.render_front_sprites(screen);
 
         screen.present();
     }
 
-    pub fn draw_sprite<T>(&mut self, screen: &mut T) where T: Screen + Sized {
-        screen.update_sprites(|buffer| {
-            for sprite_index in 0..64 {
-                let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
-                let pattern_table_base_address = self.control_register.sprite_pattern_table();
-                let colour_palette = sprite.colour_palette();
-                let mut pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
-                for pattern_row in 0..8 {
-                    let mut low_bits = self.memory.get(pattern_table_address);
-                    let mut high_bits = self.memory.get(pattern_table_address+8);
-                    for bit_index in 0..8 {
-                        let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
-                        let colour =
-                            if pixel == 0 { (0,0,0,0) }
-                            else {
-                                let colour_address = colour_palette + pixel as u16;
-                                let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
-                                (255, colour.0, colour.1, colour.2)
-                            };
-
-                        buffer.set_pixel(
-                            sprite_index*8 + (7-bit_index) as usize,
-                            pattern_row as usize,
-                            colour
-                        );
-                        low_bits >>= 1;
-                        high_bits >>= 1;
-                    }
-                    pattern_table_address += 1;
-                }
-            }
-        });
+    fn update_sprites(&mut self, buffer: &mut PixelBuffer) {
         for sprite_index in 0..64 {
             let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
-            screen.render_sprite(
-                Rectangle { x: (sprite_index*8) as i32, y: 0, width: 8, height: 8 },
-                sprite.position_x() as usize,
-                sprite.position_y() as usize,
-                sprite.flip_horizontal(),
-                sprite.flip_vertical(),
-            );
+            let pattern_table_base_address = self.control_register.sprite_pattern_table();
+            let colour_palette = sprite.colour_palette();
+            let mut pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
+            for pattern_row in 0..8 {
+                let mut low_bits = self.memory.get(pattern_table_address);
+                let mut high_bits = self.memory.get(pattern_table_address+8);
+                for bit_index in 0..8 {
+                    let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                    let colour =
+                        if pixel == 0 { (0,0,0,0) }
+                        else {
+                            let colour_address = colour_palette + pixel as u16;
+                            let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                            (255, colour.0, colour.1, colour.2)
+                        };
+
+                    buffer.set_pixel(
+                        sprite_index*8 + (7-bit_index) as usize,
+                        pattern_row as usize,
+                        colour
+                    );
+                    low_bits >>= 1;
+                    high_bits >>= 1;
+                }
+                pattern_table_address += 1;
+            }
+        }
+    }
+
+    pub fn render_back_sprites<T>(&mut self, screen: &mut T) where T: Screen + Sized {
+        for sprite_index in 0..64 {
+            let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
+            if sprite.is_back() {
+                screen.render_sprite(
+                    Rectangle { x: (sprite_index*8) as i32, y: 0, width: 8, height: 8 },
+                    sprite.position_x() as usize,
+                    sprite.position_y() as usize,
+                    sprite.flip_horizontal(),
+                    sprite.flip_vertical(),
+                );
+            }
+        }
+
+    }
+
+    pub fn render_front_sprites<T>(&mut self, screen: &mut T) where T: Screen + Sized {
+        for sprite_index in 0..64 {
+            let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
+            if sprite.is_front() {
+                screen.render_sprite(
+                    Rectangle { x: (sprite_index*8) as i32, y: 0, width: 8, height: 8 },
+                    sprite.position_x() as usize,
+                    sprite.position_y() as usize,
+                    sprite.flip_horizontal(),
+                    sprite.flip_vertical(),
+                );
+            }
         }
     }
 
