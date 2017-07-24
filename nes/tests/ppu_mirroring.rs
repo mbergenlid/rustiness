@@ -2,10 +2,13 @@
 #[macro_use]
 extern crate nes;
 
+mod screen;
 use nes::ppu::screen::ScreenMock;
 use nes::ppu::PPU;
 use nes::ppu::ppumemory::{Mirroring, PPUMemory};
 use nes::memory::SharedMemory;
+
+use screen::{BACK_DROP, WHITE, ORANGE, BROWN, GREEN, assert_pixels};
 
 fn create_ppu(mirroring: Mirroring) -> PPU {
     let memory = memory!(
@@ -50,6 +53,7 @@ fn create_ppu(mirroring: Mirroring) -> PPU {
     return ppu;
 }
 
+
 #[test]
 fn no_mirroring_no_scroll() {
     let mut ppu = create_ppu(Mirroring::NoMirroring);
@@ -63,16 +67,18 @@ fn no_mirroring_no_scroll() {
 
         assert_pixels(
             &[
-    /* tile 1 */ 0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0, 0,0,0,
+    /* tile 1 */ BACK_DROP, BACK_DROP, BACK_DROP, WHITE, WHITE, WHITE, BACK_DROP, BACK_DROP,
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
-        let last_row = 239*256*3;
+        let last_row = 239*256;
         assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 255,255,255
+                BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, WHITE,
             ],
-            &pixel_buffer[last_row..last_row+8*3] //last line
+            pixel_buffer,
+            last_row..last_row+8
         );
     }
 }
@@ -90,16 +96,18 @@ fn no_mirroring() {
 
         assert_pixels(
             &[
-    /* tile 1 */ 0,0,0, 0,0,0, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0,
+    /* tile 1 */ BACK_DROP, BACK_DROP, WHITE, BACK_DROP, BACK_DROP, WHITE, WHITE, BACK_DROP,
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
-        let last_row = 239*256*3;
+        let last_row = 239*256;
         assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0,0,0
+                BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, ORANGE, ORANGE, ORANGE, BACK_DROP
             ],
-            &pixel_buffer[last_row..last_row+8*3] //last line
+            pixel_buffer,
+            last_row..last_row+8
         );
     }
 
@@ -112,15 +120,17 @@ fn no_mirroring() {
 
         assert_pixels(
             &[
-    /* tile 1 */ 255,255,255, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0
+    /* tile 1 */ WHITE, BACK_DROP,BACK_DROP,BACK_DROP,BACK_DROP,BACK_DROP,BACK_DROP,BACK_DROP,
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
         assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17
+                BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BROWN, BROWN
             ],
-            &pixel_buffer[248*3..248*3+8*3]
+            pixel_buffer,
+            248..248+8
         );
     }
 }
@@ -138,16 +148,18 @@ fn horizontal_mirroring() {
 
         assert_pixels(
             &[
-    /* tile 1 */ 0,0,0, 0,0,0, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0,
+    /* tile 1 */ BACK_DROP, BACK_DROP, WHITE, BACK_DROP, BACK_DROP, WHITE, WHITE, BACK_DROP,
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
-        let last_row = 239*256*3;
+        let last_row = 239*256;
         assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0,0,0
+                BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, ORANGE, ORANGE, ORANGE, BACK_DROP
             ],
-            &pixel_buffer[last_row..last_row+8*3] //last line
+            pixel_buffer,
+            last_row..last_row+8
         );
     }
 
@@ -160,15 +172,17 @@ fn horizontal_mirroring() {
 
         assert_pixels(
             &[
-    /* tile 1 */ 255,255,255, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0
+    /* tile 1 */ WHITE, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
         assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255
+                BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, WHITE, WHITE
             ],
-            &pixel_buffer[248*3..248*3+8*3]
+            pixel_buffer,
+            248..248+8
         );
     }
 }
@@ -186,16 +200,18 @@ fn vertical_mirroring() {
 
         assert_pixels(
             &[
-    /* tile 1 */ 0,0,0, 0,0,0, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0,
+    /* tile 1 */ BACK_DROP, BACK_DROP, WHITE, BACK_DROP, BACK_DROP, WHITE, WHITE, BACK_DROP,
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
-        let last_row = 239*256*3;
+        let last_row = 239*256;
         assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0
+                BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, WHITE, WHITE, WHITE, BACK_DROP
             ],
-            &pixel_buffer[last_row..last_row+8*3] //last line
+            pixel_buffer,
+            last_row..last_row+8
         );
     }
 
@@ -208,15 +224,17 @@ fn vertical_mirroring() {
 
         assert_pixels(
             &[
-    /* tile 1 */ 255,255,255, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0
+    /* tile 1 */ WHITE, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
         assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17
+                BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BROWN, BROWN
             ],
-            &pixel_buffer[248*3..248*3+8*3]
+            pixel_buffer,
+            248..248+8
         );
     }
 }
@@ -236,58 +254,38 @@ fn horizontal_and_vertical_scroll() {
         //upper left corner
         assert_pixels(
             &[
-    /* tile 1 */ 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0,
+    /* tile 1 */ GREEN, GREEN, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP,
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
         //upper right corner
         assert_pixels(
             &[
-    /* tile 1 */ 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0,0,0, 0,0,0,
+    /* tile 1 */ BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, ORANGE, BACK_DROP, BACK_DROP,
             ],
-            &pixel_buffer[248*3..248*3+8*3]
+            pixel_buffer,
+            248..248+8
         );
         //lower left corner
-        let last_row = 239*256*3;
+        let last_row = 239*256;
         assert_pixels(
             &[
-                0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0
+                BROWN, BROWN, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP
             ],
-            &pixel_buffer[last_row..last_row+8*3] //last line
+            pixel_buffer,
+            last_row..last_row+8
         );
         //lower right corner
-        println!("{},{},{}", pixel_buffer[184_317], pixel_buffer[184_318], pixel_buffer[184_319]);
         assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 255,255,255,
+                BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, BACK_DROP, WHITE,
             ],
+            pixel_buffer,
             {
-                let start = (256*240-8)*3;
-                &pixel_buffer[start..start+8*3] //last line
+                let start = 256*240-8;
+                start..start+8
             }
         );
     }
-}
-
-use std::fmt::format;
-trait PixelDebug {
-    fn debug(&self) -> String;
-}
-impl <'a> PixelDebug for &'a [u8] {
-    fn debug(&self) -> String {
-        let mut i = 0;
-        let mut string = String::new();
-        while i < self.len() {
-            string = string + &format(format_args!("({},{},{})", self[i], self[i+1], self[i+2]));
-            i += 3;
-            if i % 24 == 0 {
-                string = string + "\n";
-            }
-        }
-        return string;
-    }
-}
-
-pub fn assert_pixels(expected: &[u8], actual: &[u8]) {
-    assert_eq!(expected == actual, true, "Expected\n{}\nbut was\n{}\n", expected.debug(), actual.debug());
 }

@@ -30,30 +30,6 @@ pub struct PixelBuffer<'a> {
 }
 
 impl <'a> PixelBuffer<'a> {
-    pub fn set_pixel(&mut self, x: usize, y: usize, colour: (u8, u8, u8)) {
-        let scale = self.scale as usize;
-        let mut offset = y*self.pitch*scale + x*3*scale;
-
-        for _ in 0..scale {
-            let mut i = 0;
-            for _ in 0..scale {
-                self.buffer[offset + i] = colour.0;
-                self.buffer[offset + i+1] = colour.1;
-                self.buffer[offset + i+2] = colour.2;
-                i += 3;
-            }
-            offset += self.pitch;
-        }
-    }
-}
-
-pub struct SpriteBuffer<'a> {
-    pub buffer: &'a mut [u8],
-    pub pitch: usize,
-    pub scale: u8,
-}
-
-impl <'a> SpriteBuffer<'a> {
     pub fn set_pixel(&mut self, x: usize, y: usize, colour: (u8, u8, u8, u8)) {
         let scale = self.scale as usize;
         let mut offset = y*self.pitch*scale + x*4*scale;
@@ -82,18 +58,20 @@ pub struct Rectangle {
 pub trait Screen {
     fn draw<T>(&mut self, func: T) where Self: Sized, T: FnOnce(&mut PixelBuffer);
 
+    fn set_backdrop_color(&mut self, color: Color);
+
     fn upload_buffer(&mut self, rect: Option<Rectangle>, buffer: &[u8], pitch: usize);
     fn update_buffer<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer);
     fn render(&mut self, src: Rectangle, dst_x: usize, dst_y: usize);
 
     fn render_sprite(&mut self, src: Rectangle, dst_x: usize, dst_y: usize, flip_horizontal: bool, flip_vertical: bool);
-    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut SpriteBuffer);
+    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer);
 
     fn present(&mut self);
 }
 
 pub struct ScreenMock {
-    pub temp_buffer: Box<[u8; 256*2*240*2*3]>,
+    pub temp_buffer: Box<[u8; 256*2*240*2*4]>,
     pub temp_sprite_buffer: Box<[u8; 64*8*4*8]>,
     pub screen_buffer: Box<[u8; 256*240*3]>,
 }
@@ -101,7 +79,7 @@ pub struct ScreenMock {
 impl ScreenMock {
     pub fn new() -> ScreenMock {
         ScreenMock {
-            temp_buffer: box [0; 256*2*240*2*3],
+            temp_buffer: box [0; 256*2*240*2*4],
             temp_sprite_buffer: box [0; 64*8*4*8],
             screen_buffer: box [0; 256*240*3],
         }
@@ -111,17 +89,26 @@ impl ScreenMock {
 impl Screen for ScreenMock {
     fn draw<T>(&mut self, _: T) where T: FnOnce(&mut PixelBuffer) {}
 
+    fn set_backdrop_color(&mut self, colour: Color) {
+        let mut index = 0;
+        while index < self.screen_buffer.len() {
+            self.screen_buffer[index + 0] = colour.2;
+            self.screen_buffer[index + 1] = colour.1;
+            self.screen_buffer[index + 2] = colour.0;
+            index += 3;
+        }
+    }
 
     fn upload_buffer(&mut self, _: Option<Rectangle>, _: &[u8], _: usize) {
         unimplemented!()
     }
 
     fn update_buffer<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer) {
-        func(&mut PixelBuffer { buffer: self.temp_buffer.as_mut(), pitch: 256*2*3, scale: 1 });
+        func(&mut PixelBuffer { buffer: self.temp_buffer.as_mut(), pitch: 256*2*4, scale: 1 });
     }
 
     fn render(&mut self, src: Rectangle, dst_x: usize, dst_y: usize) {
-        let img_pitch = 256*2*3;
+        let img_pitch = 256*2*4;
         let screen_pitch = 256*3;
         let mut y = dst_y;
         for row in src.y..src.y+(src.height as i32) {
@@ -130,9 +117,11 @@ impl Screen for ScreenMock {
                 let row = row as usize;
                 let col = col as usize;
                 let screen_index = y*screen_pitch + x*3;
-                self.screen_buffer[screen_index] = self.temp_buffer[row*img_pitch + col*3];
-                self.screen_buffer[screen_index + 1] = self.temp_buffer[row*img_pitch + col*3 + 1];
-                self.screen_buffer[screen_index + 2] = self.temp_buffer[row*img_pitch + col*3 + 2];
+                if self.temp_buffer[row*img_pitch + col*4 + 3] == 255 {
+                    self.screen_buffer[screen_index + 0] = self.temp_buffer[row*img_pitch + col*4 + 2];
+                    self.screen_buffer[screen_index + 1] = self.temp_buffer[row*img_pitch + col*4 + 1];
+                    self.screen_buffer[screen_index + 2] = self.temp_buffer[row*img_pitch + col*4 + 0];
+                }
                 x += 1;
             }
             y += 1;
@@ -162,8 +151,8 @@ impl Screen for ScreenMock {
         }
     }
 
-    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut SpriteBuffer) {
-        func(&mut SpriteBuffer { buffer: self.temp_sprite_buffer.as_mut(), pitch: 64*8*4, scale: 1 });
+    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer) {
+        func(&mut PixelBuffer { buffer: self.temp_sprite_buffer.as_mut(), pitch: 64*8*4, scale: 1 });
     }
 
     fn present(&mut self) {
@@ -176,18 +165,18 @@ mod tests {
 
     #[test]
     fn pixel_buffer_with_scale_1() {
-        let mut buffer = [0; 8*8*3];
+        let mut buffer = [0; 8*8*4];
         {
-            let mut pixel_buffer = PixelBuffer { buffer: &mut buffer, pitch: 8*3, scale: 1 };
+            let mut pixel_buffer = PixelBuffer { buffer: &mut buffer, pitch: 8*4, scale: 1 };
             for y in 0..8 {
                 for x in 0..8 {
                     let colour = (x+y*8) as u8;
-                    pixel_buffer.set_pixel(x, y, (colour, colour, colour));
+                    pixel_buffer.set_pixel(x, y, (255, colour, colour, colour));
                 }
             }
         }
 
-        let expected: Vec<u8> = (0..64).flat_map(|i| vec!(i, i, i)).collect();
+        let expected: Vec<u8> = (0..64).flat_map(|i| vec!(i, i, i, 255)).collect();
         let actual: Vec<u8> = buffer.iter().map(|&i| i).collect();
         assert_eq!(
             expected,
@@ -197,13 +186,13 @@ mod tests {
 
     #[test]
     fn pixel_buffer_with_scale_2() {
-        let mut buffer = [0; 16*16*3];
+        let mut buffer = [0; 16*16*4];
         {
-            let mut pixel_buffer = PixelBuffer { buffer: &mut buffer, pitch: 16*3, scale: 2 };
+            let mut pixel_buffer = PixelBuffer { buffer: &mut buffer, pitch: 16*4, scale: 2 };
             for y in 0..8 {
                 for x in 0..8 {
                     let colour = (x+y*8) as u8;
-                    pixel_buffer.set_pixel(x, y, (colour, colour, colour));
+                    pixel_buffer.set_pixel(x, y, (255, colour, colour, colour));
                 }
             }
         }
@@ -211,7 +200,7 @@ mod tests {
         let expected: Vec<u8> = (0..8)
             .flat_map(|i| vec!(i,i))
             .flat_map(|i: u8| -> Vec<u8> {
-                (i*8..i*8+8).flat_map(|i| vec!(i, i, i, i, i, i)).collect()
+                (i*8..i*8+8).flat_map(|i| vec!(i, i, i, 255, i, i, i, 255)).collect()
             }).collect();
         let actual: Vec<u8> = buffer.iter().map(|&i| i).collect();
         assert_eq!(expected, actual);

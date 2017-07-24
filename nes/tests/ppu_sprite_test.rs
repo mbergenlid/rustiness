@@ -2,6 +2,8 @@
 #[macro_use]
 extern crate nes;
 
+mod screen;
+
 use nes::ppu::screen::ScreenMock;
 use nes::ppu::PPU;
 use nes::ppu::ppumemory::{PPUMemory, Mirroring};
@@ -45,6 +47,8 @@ fn create_ppu() -> Rc<RefCell<PPU>> {
 use nes::memory::{CPUMemory, Memory};
 use nes::sound::APU;
 
+use screen::{WHITE, GRAY, ORANGE};
+
 #[test]
 fn test_basic_sprite_rendering() {
     let ppu = create_ppu();
@@ -67,11 +71,12 @@ fn test_basic_sprite_rendering() {
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
-        assert_pixels(
+        screen::assert_pixels(
             &[
-    /* tile 1 */ 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255,
+    /* tile 1 */ WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
     }
 
@@ -84,12 +89,13 @@ fn test_basic_sprite_rendering() {
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
-        assert_pixels(
+        screen::assert_pixels(
             &[
-    /* tile 1 */ 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75, 0x75,0x75,0x75,
-    /* tile 2 */ 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255,
+    /* tile 1 */ GRAY,GRAY,GRAY,GRAY,GRAY,GRAY,GRAY,GRAY,
+    /* tile 2 */ WHITE,WHITE,WHITE,WHITE,WHITE,WHITE,WHITE,WHITE,
             ],
-            &pixel_buffer[0..16*3]
+            pixel_buffer,
+            0..16
         );
     }
 
@@ -102,13 +108,14 @@ fn test_basic_sprite_rendering() {
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
-        assert_pixels(
+        screen::assert_pixels(
             &[
-                255,255,255, 255,255,255, 117,117,117, 117,117,117, 117,117,117, 117,117,117, 255,255,255, 255,255,255,
+                WHITE, WHITE, GRAY, GRAY, GRAY, GRAY, WHITE, WHITE
             ],
+            pixel_buffer,
             {
-                let start = 7*256*3 + 10*3;
-                &pixel_buffer[start..(start+8*3)]
+                let start = 7*256 + 10;
+                start..start+8
             }
         );
     }
@@ -142,43 +149,23 @@ fn test_multiple_sprite_rendering() {
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
-        assert_pixels(
+        screen::assert_pixels(
             &[
-    /* tile 1 */ 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255, 255,255,255,
+    /* tile 1 */ WHITE,WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
             ],
-            &pixel_buffer[0..8*3]
+            pixel_buffer,
+            0..8
         );
-        assert_pixels(
+        screen::assert_pixels(
             &[
-    /* tile 1 */ 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F,
+    /* tile 1 */ ORANGE, ORANGE,ORANGE,ORANGE,ORANGE,ORANGE,ORANGE,ORANGE,
             ],
+            pixel_buffer,
             {
-                let start = 8*256*3 + 8*3;
-                &pixel_buffer[start..(start + 8*3)]
+                let start = 8*256 + 8;
+                start..start+8
             }
         );
     }
 
-}
-use std::fmt::format;
-trait PixelDebug {
-    fn debug(&self) -> String;
-}
-impl <'a> PixelDebug for &'a [u8] {
-    fn debug(&self) -> String {
-        let mut i = 0;
-        let mut string = String::new();
-        while i < self.len() {
-            string = string + &format(format_args!("({},{},{})", self[i], self[i+1], self[i+2]));
-            i += 3;
-            if i % 24 == 0 {
-                string = string + "\n";
-            }
-        }
-        return string;
-    }
-}
-
-pub fn assert_pixels(expected: &[u8], actual: &[u8]) {
-    assert_eq!(expected == actual, true, "Expected\n{}\nbut was\n{}\n", expected.debug(), actual.debug());
 }

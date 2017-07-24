@@ -267,6 +267,7 @@ impl PPU {
             ppumemory::Mirroring::NoMirroring => (512, 480),
         };
         use std::cmp::min;
+        screen.set_backdrop_color(COLOUR_PALETTE[self.memory.get(0x3F00) as usize]);
         screen.render(
             Rectangle { x: left as i32, y: top as i32, width: min(screen_width, area_width-left) as u32, height: min(screen_height, area_height-top) as u32 },
             0, 0
@@ -415,9 +416,14 @@ impl PPU {
             let mut high_bits = self.memory.get(pattern_table_address+8);
             for bit_index in 0..8 {
                 let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
-                let colour_address: u16 = if pixel == 0 { 0x3F00 } else { colour_palette + pixel as u16 };
 
-                let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                let colour = if pixel == 0 {
+                    (0, 0, 0, 0)
+                } else {
+                    let colour_address = colour_palette + pixel as u16;
+                    let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
+                    (255, colour.0, colour.1, colour.2)
+                };
                 pixel_buffer.set_pixel(
                     x_offset + (col*8 + (7-bit_index)) as usize,
                     y_offset + (row*8 + pattern_row) as usize,

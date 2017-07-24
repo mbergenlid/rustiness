@@ -2,10 +2,13 @@
 #[macro_use]
 extern crate nes;
 
+mod screen;
 use nes::ppu::screen::ScreenMock;
 use nes::ppu::PPU;
 use nes::ppu::ppumemory::{PPUMemory, Mirroring};
 use nes::memory::SharedMemory;
+
+use screen::{BACK_DROP, BROWN, WHITE, ORANGE, GREEN};
 
 #[test]
 fn draw_buffer_from_name_table_1() {
@@ -30,34 +33,38 @@ fn draw_buffer_from_name_table_1() {
 
     let mut screen = ScreenMock::new();
     ppu.update_screen(&mut screen);
-    let pixel_buffer = &screen.screen_buffer;
+    let pixel_buffer = screen.screen_buffer.as_ref();
 
-    assert_pixels(
+    screen::assert_pixels(
         &[
-            0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0, 0,0,0,
+            BACK_DROP, BACK_DROP, BACK_DROP, WHITE, WHITE, WHITE, BACK_DROP, BACK_DROP,
         ],
-        &pixel_buffer[0..24]
+        pixel_buffer,
+        0..8
     );
 
-    assert_pixels(
+    screen::assert_pixels(
         &[
-            0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 0,0,0
+            BACK_DROP, BACK_DROP, WHITE, WHITE, BACK_DROP, BACK_DROP, WHITE, BACK_DROP,
         ],
-        &pixel_buffer[768..(768+24)]
+        pixel_buffer,
+        256..256+8
     );
 
-    assert_pixels(
+    screen::assert_pixels(
         &[
-            0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0
+            BACK_DROP, BACK_DROP, BACK_DROP, BROWN, BROWN, BROWN, BACK_DROP, BACK_DROP
         ],
-        &pixel_buffer[8*3..(8*3+24)]
+        pixel_buffer,
+        8..16
     );
 
-    assert_pixels(
+    screen::assert_pixels(
         &[
-            0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0
+            BACK_DROP, BACK_DROP, BACK_DROP, BROWN, BROWN, BROWN, BACK_DROP, BACK_DROP
         ],
-        &pixel_buffer[16*3..(16*3+24)]
+        pixel_buffer,
+        16..16+8
     );
 }
 
@@ -90,32 +97,36 @@ fn draw_buffer_from_name_table_2() {
     ppu.update_screen(&mut screen);
     let pixel_buffer = screen.screen_buffer.as_ref();
 
-    assert_pixels(
+    screen::assert_pixels(
         &[
-            0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0, 0,0,0,
+            BACK_DROP, BACK_DROP, BACK_DROP, WHITE, WHITE, WHITE, BACK_DROP, BACK_DROP
         ],
-        &pixel_buffer[0..24]
+        pixel_buffer,
+        0..8
     );
 
-    assert_pixels(
+    screen::assert_pixels(
         &[
-            0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 0,0,0
+            BACK_DROP, BACK_DROP, WHITE, WHITE, BACK_DROP, BACK_DROP, WHITE, BACK_DROP
         ],
-        &pixel_buffer[768..(768+24)]
+        pixel_buffer,
+        256..256+8
     );
 
-    assert_pixels(
+    screen::assert_pixels(
         &[
-            0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0
+            BACK_DROP, BACK_DROP, BACK_DROP, BROWN, BROWN, BROWN, BACK_DROP, BACK_DROP
         ],
-        &pixel_buffer[8*3..(8*3+24)]
+        pixel_buffer,
+        8..16
     );
 
-    assert_pixels(
+    screen::assert_pixels(
         &[
-            0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0
+            BACK_DROP, BACK_DROP, BACK_DROP, BROWN, BROWN, BROWN, BACK_DROP, BACK_DROP
         ],
-        &pixel_buffer[16*3..(16*3+24)]
+        pixel_buffer,
+        16..16+8
     );
 }
 
@@ -153,19 +164,21 @@ fn draw_buffer_from_name_table_1_with_scrolling_y() {
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
-        assert_pixels(
+        screen::assert_pixels(
             &[
-    /* tile 1 */ 0,0,0, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0,
-    /* tile 2 */ 0,0,0, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0,0,0, 0,0,0,
-    /* tile 3 */ 0,0,0, 0,0,0, 0,0,0, 255,255,255, 255,255,255, 255,255,255, 0,0,0, 0,0,0,
+    /* tile 1 */ BACK_DROP, BACK_DROP, BACK_DROP, GREEN, GREEN, GREEN, BACK_DROP, BACK_DROP,
+    /* tile 2 */ BACK_DROP, BACK_DROP, BACK_DROP, ORANGE, ORANGE, ORANGE, BACK_DROP, BACK_DROP,
+    /* tile 3 */ BACK_DROP, BACK_DROP, BACK_DROP, WHITE, WHITE, WHITE, BACK_DROP, BACK_DROP,
             ],
-            &pixel_buffer[0..(16*3+24)]
+            pixel_buffer,
+            0..8*3
         );
-        assert_pixels(
+        screen::assert_pixels(
             &[
-                0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0,0,0
+                BACK_DROP, BACK_DROP, GREEN, GREEN, BACK_DROP, BACK_DROP, GREEN, BACK_DROP
             ],
-            &pixel_buffer[768..(768+24)] //line 2
+            pixel_buffer,
+            256..256+8
         );
     }
     ppu.set_scroll(0);
@@ -174,13 +187,14 @@ fn draw_buffer_from_name_table_1_with_scrolling_y() {
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
-        assert_pixels(
+        screen::assert_pixels(
             &[
-    /* tile 1 */ 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0xB3,0xFF,0xCF, 0,0,0, 0,0,0, 0xB3,0xFF,0xCF, 0,0,0,
-    /* tile 2 */ 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0xCB,0x4F,0x0F, 0,0,0, 0,0,0, 0xCB,0x4F,0x0F, 0,0,0,
-    /* tile 3 */ 0,0,0, 0,0,0, 255,255,255, 255,255,255, 0,0,0, 0,0,0, 255,255,255, 0,0,0,
+    /* tile 1 */ BACK_DROP, BACK_DROP, GREEN, GREEN, BACK_DROP, BACK_DROP, GREEN, BACK_DROP,
+    /* tile 2 */ BACK_DROP, BACK_DROP, ORANGE, ORANGE, BACK_DROP, BACK_DROP, ORANGE, BACK_DROP,
+    /* tile 3 */ BACK_DROP, BACK_DROP, WHITE, WHITE, BACK_DROP, BACK_DROP, WHITE, BACK_DROP,
             ],
-            &pixel_buffer[0..(16*3+24)]
+            pixel_buffer,
+            0..8*3
         );
     }
 }
@@ -215,46 +229,17 @@ fn draw_buffer_from_name_table_1_with_scrolling_x() {
     {
         let pixel_buffer = screen.screen_buffer.as_ref();
 
-        assert_pixels(
+        screen::assert_pixels(
             &[
-                0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0,
-                0,0,0, 0,0,0, 0,0,0, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0x00,0x3F,0x17, 0,0,0, 0,0,0,
+                BACK_DROP, BACK_DROP, BACK_DROP, BROWN, BROWN, BROWN, BACK_DROP, BACK_DROP,
+                BACK_DROP, BACK_DROP, BACK_DROP, BROWN, BROWN, BROWN, BACK_DROP, BACK_DROP,
             ],
-            &pixel_buffer[0..8*3*2]
+            pixel_buffer,
+            0..8*2
         );
     }
 }
 
-//mod donkey_kong_title_screen;
-//mod donkey_kong_title_screen_result;
-//
-//#[test]
-//fn test_donkey_kong_title_screen() {
-//    use nes::memory::BasicMemory;
-//    let mut ppu = PPU::new(box BasicMemory::new());
-//    donkey_kong_title_screen::load_ppu(&mut ppu);
-//
-//    use nes::ppu::screen::PixelBuffer;
-//    let mut buffer = [0; 256*240*3];
-//    ppu.draw_buffer(&mut PixelBuffer { buffer: &mut buffer, pitch: 256*3, scale: 1});
-//
-//    for y in 0..240 {
-//        for x in 0..256 {
-//            let expected_colour = donkey_kong_title_screen_result::DONKEY_KONG_TITLE_SCREEN[y*256 + x];
-//            let actual_colour = (buffer[y*256*3 + x*3], buffer[y*256*3 + x*3+1], buffer[y*256*3 + x*3+2]);
-//
-//            assert_eq!(
-//                expected_colour,
-//                actual_colour,
-//                "Pixel {},{} is wrong\nExpected {:?}\nbut was {:?}\n",
-//                x,
-//                y,
-//                expected_colour,
-//                actual_colour
-//            );
-//        }
-//    }
-//}
 
 fn load_ppu_patterns(ppu: &mut PPU) {
     ppu.load(
@@ -273,27 +258,4 @@ fn load_ppu_patterns(ppu: &mut PPU) {
             0b00011100, 0b00110010, 0b00111000, 0b00011100, 0b00001110, 0b00100110, 0b00011100, 0b00000000,
         ]
     );
-}
-
-use std::fmt::format;
-trait PixelDebug {
-    fn debug(&self) -> String;
-}
-impl <'a> PixelDebug for &'a [u8] {
-    fn debug(&self) -> String {
-        let mut i = 0;
-        let mut string = String::new();
-        while i < self.len() {
-            string = string + &format(format_args!("({},{},{})", self[i], self[i+1], self[i+2]));
-            i += 3;
-            if i % 24 == 0 {
-                string = string + "\n";
-            }
-        }
-        return string;
-    }
-}
-
-fn assert_pixels(expected: &[u8], actual: &[u8]) {
-    assert_eq!(expected == actual, true, "Expected\n{}\nbut was\n{}\n", expected.debug(), actual.debug());
 }

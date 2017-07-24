@@ -1,10 +1,11 @@
 
 use sdl2::Sdl;
-use sdl2::pixels::PixelFormatEnum;
+use sdl2::pixels::{PixelFormatEnum, Color};
 use sdl2::rect::Rect;
 use sdl2::render::{Renderer, Texture, BlendMode};
 
-use nes::ppu::screen::{Screen, PixelBuffer, SpriteBuffer, Rectangle};
+use nes::ppu::screen::{Screen, PixelBuffer, Rectangle};
+use nes::ppu::screen;
 
 const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;
@@ -30,8 +31,9 @@ impl <'a> SDL2Screen<'a> {
             .unwrap();
 
         let renderer = window.renderer().build().unwrap();
-        let texture = renderer.create_texture_streaming(
-            PixelFormatEnum::RGB24, width*2, height*2+16*(scale as u32)).unwrap();
+        let mut texture = renderer.create_texture_streaming(
+            PixelFormatEnum::ARGB8888, width*2, height*2+16*(scale as u32)).unwrap();
+        texture.set_blend_mode(BlendMode::Blend);
 
         let mut sprite_texture = renderer.create_texture_streaming(
             PixelFormatEnum::ARGB8888, 64*8*(scale as u32), 8*(scale as u32)
@@ -48,9 +50,8 @@ impl <'a> SDL2Screen<'a> {
             sprite_texture: sprite_texture,
         }
     }
+
 }
-
-
 
 impl <'a> Screen for SDL2Screen<'a> {
     fn draw<T>(&mut self, func: T) where Self: Sized, T: FnOnce(&mut PixelBuffer) {
@@ -66,6 +67,11 @@ impl <'a> Screen for SDL2Screen<'a> {
         self.renderer.copy(&self.texture, None, Some(Rect::new(0, 0, width as u32, height as u32))).unwrap();
 
         self.renderer.present();
+    }
+
+    fn set_backdrop_color(&mut self, color: screen::Color) {
+       self.renderer.set_draw_color(Color::RGB(color.0, color.1, color.2));
+       self.renderer.clear();
     }
 
     fn upload_buffer(&mut self, rect: Option<Rectangle>, buffer: &[u8], pitch: usize) {
@@ -90,11 +96,11 @@ impl <'a> Screen for SDL2Screen<'a> {
         ).unwrap();
     }
 
-    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut SpriteBuffer) {
+    fn update_sprites<T>(&mut self, func: T) where T: FnOnce(&mut PixelBuffer) {
         let scale = self.scale as u8;
         self.sprite_texture.with_lock(
             None,
-            |buf, pitch| func(&mut SpriteBuffer { buffer: buf, pitch: pitch, scale: scale})
+            |buf, pitch| func(&mut PixelBuffer { buffer: buf, pitch: pitch, scale: scale})
         ).unwrap();
     }
 

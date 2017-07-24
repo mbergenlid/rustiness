@@ -167,7 +167,11 @@ pub fn start() {
                 for row in 0..8 {
                     for col in 0..8 {
                         let colour = pixels[row][col]*255;
-                        buffer.set_pixel(col+tile_x, row+(tile_y*8), (colour, colour, colour));
+                        if colour == 0 {
+                            buffer.set_pixel(col+tile_x, row+(tile_y*8), (0,0,0,0));
+                        } else {
+                            buffer.set_pixel(col+tile_x, row+(tile_y*8), (255, colour, colour, colour));
+                        }
                     }
                 }
                 tile_x += 8;
@@ -188,9 +192,15 @@ pub fn start() {
         }
     });
     use nes::ppu::screen::Rectangle;
+    screen.set_backdrop_color((0,0,0));
     screen.render(
-        Rectangle { x: 0, y: 0, width: 8*2, height: 240*2 },
-        512-16, 0
+        Rectangle { x: 0, y: 0, width: 256, height: 240 },
+        0, 0
+    );
+    screen.render_sprite(
+        Rectangle { x: 0, y: 0, width: 8, height: 8 },
+        16, 8,
+        false, false
     );
     screen.present();
 
@@ -205,11 +215,16 @@ pub fn start() {
                 for row in 0..8 {
                     for col in 0..8 {
                         let colour = pixels[row][col] * 255;
-                        buffer.set_pixel(col + (tile*8), row + (17 * 8), (colour, colour, colour));
+                        if colour == 0 {
+                            buffer.set_pixel(col + (tile*8), row + (17 * 8), (0,0,0,0));
+                        } else {
+                            buffer.set_pixel(col + (tile*8), row + (17 * 8), (255, colour, colour, colour));
+                        }
                     }
                 }
             }
         });
+        screen.set_backdrop_color((0,0,255));
         screen.render(
             Rectangle { x: i, y: 0, width: (256-u), height: 120 },
             0,0
