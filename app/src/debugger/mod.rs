@@ -10,7 +10,7 @@ use nes::NES;
 use nes::memory::Memory;
 use nes::ppu::attributetable;
 use nes::ppu::screen::{Screen, ScreenMock, COLOUR_PALETTE};
-use nes::ppu::Sprite;
+use nes::ppu::sprite::Sprite;
 use nes::input::standard_controller::StandardController;
 use nes_sdl2::SDL2;
 use nes::sound::AudioDevice;
