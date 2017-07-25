@@ -340,7 +340,7 @@ impl PPU {
     }
 
     pub fn render_back_sprites<T>(&mut self, screen: &mut T) where T: Screen + Sized {
-        for sprite_index in 0..64 {
+        for sprite_index in (0..64).rev() {
             let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
             if sprite.is_back() {
                 screen.render_sprite(
@@ -356,7 +356,7 @@ impl PPU {
     }
 
     pub fn render_front_sprites<T>(&mut self, screen: &mut T) where T: Screen + Sized {
-        for sprite_index in 0..64 {
+        for sprite_index in (0..64).rev() {
             let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
             if sprite.is_front() {
                 screen.render_sprite(
