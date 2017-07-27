@@ -1,5 +1,6 @@
 
 use memory::{Memory, Address, SharedMemory};
+use ppu::pattern::Pattern;
 
 #[derive(Copy, Clone)]
 pub enum Mirroring {
@@ -9,6 +10,7 @@ pub enum Mirroring {
 }
 
 pub struct PPUMemory {
+    patterns: Vec<Pattern>,
     basic_memory: SharedMemory,
     mirroring: Mirroring,
     name_table_mirror_mask: u16,
@@ -25,6 +27,7 @@ impl PPUMemory {
 
     pub fn wrap(shared: SharedMemory, mirroring: Mirroring) -> PPUMemory {
         PPUMemory {
+            patterns: vec!(Pattern::new(); 0x200),
             basic_memory: shared,
             mirroring: mirroring,
             name_table_mirror_mask: match mirroring {
@@ -37,6 +40,10 @@ impl PPUMemory {
     }
 
     pub fn mirroring(&self) -> Mirroring { return self.mirroring; }
+
+    pub fn patterns(&self) -> &[Pattern] {
+        &self.patterns
+    }
 }
 
 impl Memory for PPUMemory {
@@ -49,6 +56,8 @@ impl Memory for PPUMemory {
             self.get(address & 0xFFEF)
         } else if address >= 0x3F20 && address < 0x4000 {
             self.get(address & 0xFF1F)
+        } else if address < 0x2000 {
+            self.patterns[(address as usize) >> 4].get(address)
         } else {
             self.basic_memory.get(address)
         }
@@ -62,6 +71,8 @@ impl Memory for PPUMemory {
             self.basic_memory.set(address & 0xFFEF, value);
         } else if address >= 0x3F20 && address < 0x4000 {
             self.set(address & 0xFF1F, value);
+        } else if address < 0x2000 {
+            self.patterns[(address as usize) >> 4].set(address, value);
         } else {
             self.basic_memory.set(address, value);
         }

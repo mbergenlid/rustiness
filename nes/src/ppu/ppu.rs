@@ -288,12 +288,11 @@ impl PPU {
             let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
             let pattern_table_base_address = self.control_register.sprite_pattern_table();
             let colour_palette = sprite.colour_palette();
-            let mut pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
+            let pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
+            let pattern = self.memory.patterns()[(pattern_table_address as usize) >> 4];
             for pattern_row in 0..8 {
-                let mut low_bits = self.memory.get(pattern_table_address);
-                let mut high_bits = self.memory.get(pattern_table_address+8);
                 for bit_index in 0..8 {
-                    let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                    let pixel = pattern.pixel(bit_index, pattern_row);
                     let colour =
                         if pixel == 0 { (0,0,0,0) }
                         else {
@@ -303,14 +302,11 @@ impl PPU {
                         };
 
                     buffer.set_pixel(
-                        sprite_index*8 + (7-bit_index) as usize,
+                        sprite_index*8 + bit_index as usize,
                         pattern_row as usize,
                         colour
                     );
-                    low_bits >>= 1;
-                    high_bits >>= 1;
                 }
-                pattern_table_address += 1;
             }
         }
     }
@@ -412,12 +408,11 @@ impl PPU {
             };
             attribute_table.get_palette_address(row as u16, col as u16)
         };
-        let mut pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
+        let pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
+        let pattern = self.memory.patterns()[(pattern_table_address as usize) >> 4];
         for pattern_row in 0..8 {
-            let mut low_bits = self.memory.get(pattern_table_address);
-            let mut high_bits = self.memory.get(pattern_table_address+8);
             for bit_index in 0..8 {
-                let pixel = ((high_bits & 0x01) << 1) | (low_bits & 0x01);
+                let pixel = pattern.pixel(bit_index, pattern_row);
 
                 let colour = if pixel == 0 {
                     (0, 0, 0, 0)
@@ -427,14 +422,11 @@ impl PPU {
                     (255, colour.0, colour.1, colour.2)
                 };
                 pixel_buffer.set_pixel(
-                    x_offset + (col*8 + (7-bit_index)) as usize,
-                    y_offset + (row*8 + pattern_row) as usize,
+                    x_offset + col*8 + (bit_index as usize),
+                    y_offset + row*8 + (pattern_row as usize),
                     colour
                 );
-                low_bits >>= 1;
-                high_bits >>= 1;
             }
-            pattern_table_address += 1;
         }
     }
 
