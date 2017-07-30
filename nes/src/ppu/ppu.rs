@@ -6,6 +6,7 @@ use ppu::ppumemory;
 use ppu::ppumemory::PPUMemory;
 use ppu::tile_cache::TileCache;
 use ppu::sprite::Sprite;
+use ppu::pattern::Pattern;
 
 struct PPUCtrl {
     value: u8,
@@ -290,24 +291,13 @@ impl PPU {
             let colour_palette = sprite.colour_palette();
             let pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
             let pattern = self.memory.patterns()[(pattern_table_address as usize) >> 4];
-            for pattern_row in 0..8 {
-                for bit_index in 0..8 {
-                    let pixel = pattern.pixel(bit_index, pattern_row);
-                    let colour =
-                        if pixel == 0 { (0,0,0,0) }
-                        else {
-                            let colour_address = colour_palette + pixel as u16;
-                            let colour = COLOUR_PALETTE[self.memory.get(colour_address) as usize];
-                            (255, colour.0, colour.1, colour.2)
-                        };
-
-                    buffer.set_pixel(
-                        sprite_index*8 + bit_index as usize,
-                        pattern_row as usize,
-                        colour
-                    );
-                }
-            }
+            self.update_buffer_from_pattern(
+                buffer,
+                &pattern,
+                colour_palette,
+                sprite_index*8,
+                0
+            );
         }
     }
 
@@ -410,6 +400,23 @@ impl PPU {
         };
         let pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
         let pattern = self.memory.patterns()[(pattern_table_address as usize) >> 4];
+        self.update_buffer_from_pattern(
+            pixel_buffer,
+            &pattern,
+            colour_palette,
+            x_offset + col*8,
+            y_offset + row*8
+        );
+    }
+
+    fn update_buffer_from_pattern(
+        &self,
+        pixel_buffer: &mut PixelBuffer,
+        pattern: &Pattern,
+        colour_palette: u16,
+        x_offset: usize,
+        y_offset: usize
+    ) {
         for pattern_row in 0..8 {
             for bit_index in 0..8 {
                 let pixel = pattern.pixel(bit_index, pattern_row);
@@ -422,12 +429,13 @@ impl PPU {
                     (255, colour.0, colour.1, colour.2)
                 };
                 pixel_buffer.set_pixel(
-                    x_offset + col*8 + (bit_index as usize),
-                    y_offset + row*8 + (pattern_row as usize),
+                    x_offset + (bit_index as usize),
+                    y_offset + (pattern_row as usize),
                     colour
                 );
             }
         }
+
     }
 
     pub fn memory(&self) -> &Memory {
