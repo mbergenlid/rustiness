@@ -44,34 +44,34 @@ impl PPUMemory {
     pub fn patterns(&self) -> &[Pattern] {
         &self.patterns
     }
+
+    fn translate(&self, address: Address) -> Address {
+        if address >= 0x2000 && address < 0x3000 {
+            address & self.name_table_mirror_mask
+        } else if address >= 0x3000 && address < 0x3F00 {
+            self.translate(address & 0xEFFF)
+        } else if address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
+            address & 0xFFEF
+        } else if address >= 0x3F20 && address < 0x4000 {
+            self.translate(address & 0xFF1F)
+        } else {
+            address
+        }
+    }
 }
 
 impl Memory for PPUMemory {
     fn get(&self, address: Address) -> u8 {
-        if address >= 0x2000 && address < 0x3000 {
-            self.basic_memory.get(address & self.name_table_mirror_mask)
-        } else if address >= 0x3000 && address < 0x3F00 {
-            self.get(address & 0xEFFF)
-        } else if address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
-            self.get(address & 0xFFEF)
-        } else if address >= 0x3F20 && address < 0x4000 {
-            self.get(address & 0xFF1F)
-        } else if address < 0x2000 {
+        let address = self.translate(address);
+        if address < 0x2000 {
             self.patterns[(address as usize) >> 4].get(address)
         } else {
             self.basic_memory.get(address)
         }
     }
     fn set(&mut self, address: Address, value: u8) {
-        if address >= 0x2000 && address < 0x3000 {
-            self.basic_memory.set(address & self.name_table_mirror_mask, value);
-        } else if address >= 0x3000 && address < 0x3F00 {
-            self.set(address & 0xEFFF, value);
-        } else if address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
-            self.basic_memory.set(address & 0xFFEF, value);
-        } else if address >= 0x3F20 && address < 0x4000 {
-            self.set(address & 0xFF1F, value);
-        } else if address < 0x2000 {
+        let address = self.translate(address);
+        if address < 0x2000 {
             self.patterns[(address as usize) >> 4].set(address, value);
         } else {
             self.basic_memory.set(address, value);
