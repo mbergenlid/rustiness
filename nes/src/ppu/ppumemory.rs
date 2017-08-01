@@ -2,6 +2,8 @@
 use memory::{Memory, Address, SharedMemory};
 use ppu::pattern::Pattern;
 
+pub type Palette = [u8; 4];
+
 #[derive(Copy, Clone)]
 pub enum Mirroring {
     Horizontal,
@@ -57,6 +59,16 @@ impl PPUMemory {
 
     pub fn patterns(&self) -> &[Pattern] {
         &self.patterns
+    }
+
+    pub fn background_palette(&self, index: u8) -> &Palette {
+        assert!(index < 4);
+        &self.palettes[index as usize]
+    }
+
+    pub fn sprite_palette(&self, index: u8) -> &Palette {
+        assert!(index < 4);
+        &self.palettes[(index + 4) as usize]
     }
 
     fn translate(&self, address: Address) -> Address {

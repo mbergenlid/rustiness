@@ -1,3 +1,5 @@
+use ppu::screen::{COLOUR_PALETTE, PixelBuffer};
+use ppu::ppumemory::Palette;
 
 pub type Pixel = u8;
 
@@ -17,6 +19,33 @@ impl Pattern {
 
     pub fn pixel(&self, x: u8, y: u8) -> Pixel {
         self.data[y as usize][x as usize]
+    }
+
+    pub fn update_buffer(
+        &self,
+        pixel_buffer: &mut PixelBuffer,
+        palette: &Palette,
+        x_offset: usize,
+        y_offset: usize
+    ) {
+        for pattern_row in 0..8 {
+            for bit_index in 0..8 {
+                let pixel = self.pixel(bit_index, pattern_row) as usize;
+
+                let colour = if pixel == 0 {
+                    (0, 0, 0, 0)
+                } else {
+                    let colour = COLOUR_PALETTE[palette[pixel] as usize];
+                    (255, colour.0, colour.1, colour.2)
+                };
+                pixel_buffer.set_pixel(
+                    x_offset + (bit_index as usize),
+                    y_offset + (pattern_row as usize),
+                    colour
+                );
+            }
+        }
+
     }
 
 }
