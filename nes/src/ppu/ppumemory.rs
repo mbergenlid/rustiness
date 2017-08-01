@@ -11,6 +11,7 @@ pub enum Mirroring {
 
 pub struct PPUMemory {
     patterns: Vec<Pattern>,
+    palettes: Vec<[u8; 4]>,
     basic_memory: SharedMemory,
     mirroring: Mirroring,
     name_table_mirror_mask: u16,
@@ -26,8 +27,10 @@ impl PPUMemory {
     }
 
     pub fn wrap(shared: SharedMemory, mirroring: Mirroring) -> PPUMemory {
+        let palettes = PPUMemory::init_palettes(&shared);
         PPUMemory {
             patterns: vec!(Pattern::new(); 0x200),
+            palettes: palettes,
             basic_memory: shared,
             mirroring: mirroring,
             name_table_mirror_mask: match mirroring {
@@ -35,8 +38,19 @@ impl PPUMemory {
                 Mirroring::Vertical => !0x0800,
                 Mirroring::NoMirroring => 0xFFFF,
             }
-
         }
+    }
+
+    fn init_palettes(memory: &SharedMemory) -> Vec<[u8; 4]> {
+        (0..8).map(|palette| {
+            let address = (0x3F00 + 4*palette) as Address;
+            [
+                memory.get(address),
+                memory.get(address+1),
+                memory.get(address+2),
+                memory.get(address+3)
+            ]
+        }).collect()
     }
 
     pub fn mirroring(&self) -> Mirroring { return self.mirroring; }
@@ -65,6 +79,9 @@ impl Memory for PPUMemory {
         let address = self.translate(address);
         if address < 0x2000 {
             self.patterns[(address as usize) >> 4].get(address)
+        } else if address >= 0x3F00 && address < 0x3F20 {
+            let address = address as usize;
+            self.palettes[(address & 0xFC) >> 2][address & 0x3]
         } else {
             self.basic_memory.get(address)
         }
@@ -73,6 +90,9 @@ impl Memory for PPUMemory {
         let address = self.translate(address);
         if address < 0x2000 {
             self.patterns[(address as usize) >> 4].set(address, value);
+        } else if address >= 0x3F00 && address < 0x3F20 {
+            let address = address as usize;
+            self.palettes[(address & 0xFC) >> 2][address & 0x3] = value;
         } else {
             self.basic_memory.set(address, value);
         }
