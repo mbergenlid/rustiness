@@ -3,6 +3,7 @@
 #[allow(dead_code)]
 pub const BACK_DROP: (u8, u8, u8) = (0, 0, 0);
 pub const WHITE: (u8, u8, u8) = (255, 255, 255);
+#[allow(dead_code)]
 pub const ORANGE: (u8, u8, u8) = (0xCB,0x4F,0x0F);
 #[allow(dead_code)]
 pub const BROWN: (u8, u8, u8) = (0x00,0x3F,0x17);

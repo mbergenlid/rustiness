@@ -1,6 +1,7 @@
 
 use memory::{Memory, Address, SharedMemory};
 use ppu::pattern::Pattern;
+use ppu::name_tables::NameTable;
 
 pub type Palette = [u8; 4];
 
@@ -13,6 +14,7 @@ pub enum Mirroring {
 
 pub struct PPUMemory {
     patterns: Vec<Pattern>,
+    name_tables: NameTable,
     palettes: Vec<[u8; 4]>,
     basic_memory: SharedMemory,
     mirroring: Mirroring,
@@ -32,6 +34,7 @@ impl PPUMemory {
         let palettes = PPUMemory::init_palettes(&shared);
         PPUMemory {
             patterns: vec!(Pattern::new(); 0x200),
+            name_tables: NameTable::from_memory(&shared),
             palettes: palettes,
             basic_memory: shared,
             mirroring: mirroring,
@@ -61,14 +64,21 @@ impl PPUMemory {
         &self.patterns
     }
 
-    pub fn background_palette(&self, index: u8) -> &Palette {
-        assert!(index < 4);
-        &self.palettes[index as usize]
+    pub fn background_palette(&self) -> &[Palette] {
+        &self.palettes[0..4]
     }
 
     pub fn sprite_palette(&self, index: u8) -> &Palette {
         assert!(index < 4);
         &self.palettes[(index + 4) as usize]
+    }
+
+    pub fn name_table(&self) -> &NameTable {
+        &self.name_tables
+    }
+
+    pub fn name_table_mut(&mut self) -> &mut NameTable {
+        &mut self.name_tables
     }
 
     fn translate(&self, address: Address) -> Address {
@@ -91,6 +101,8 @@ impl Memory for PPUMemory {
         let address = self.translate(address);
         if address < 0x2000 {
             self.patterns[(address as usize) >> 4].get(address)
+        } else if address < 0x3000 {
+            self.name_tables.get(address)
         } else if address >= 0x3F00 && address < 0x3F20 {
             let address = address as usize;
             self.palettes[(address & 0xFC) >> 2][address & 0x3]
@@ -102,6 +114,8 @@ impl Memory for PPUMemory {
         let address = self.translate(address);
         if address < 0x2000 {
             self.patterns[(address as usize) >> 4].set(address, value);
+        } else if address < 0x3000 {
+            self.name_tables.set(address, value);
         } else if address >= 0x3F00 && address < 0x3F20 {
             let address = address as usize;
             self.palettes[(address & 0xFC) >> 2][address & 0x3] = value;

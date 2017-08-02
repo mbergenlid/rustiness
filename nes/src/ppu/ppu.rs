@@ -1,10 +1,8 @@
 use memory::Memory;
 use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer, Rectangle};
 use ppu::vram_registers::VRAMRegisters;
-use ppu::attributetable::AttributeTable;
 use ppu::ppumemory;
 use ppu::ppumemory::PPUMemory;
-use ppu::tile_cache::TileCache;
 use ppu::sprite::Sprite;
 
 struct PPUCtrl {
@@ -15,7 +13,7 @@ impl PPUCtrl {
     fn new() -> PPUCtrl { PPUCtrl {value: 0} }
 
     fn background_pattern_table(&self) -> u16 {
-        ((self.value & 0x10) as u16) << 8
+        ((self.value & 0x10) as u16) << 4
     }
 
     fn sprite_pattern_table(&self) -> u16 {
@@ -62,7 +60,6 @@ pub struct PPU {
     temp_vram_read_buffer: u8,
 
     vram_changed: bool,
-    tile_cache: TileCache,
 
     cycle_count: u32,
     mirroring: ppumemory::Mirroring,
@@ -107,7 +104,6 @@ impl PPU {
             temp_vram_read_buffer: 0,
 
             vram_changed: true,
-            tile_cache: TileCache::new(),
 
             cycle_count: 0,
             mirroring: mirroring,
@@ -150,7 +146,6 @@ impl PPU {
     }
 
     pub fn write_to_vram(&mut self, value: u8) {
-        self.tile_cache.update(self.vram_registers.current);
         self.vram_changed = true;
         self.memory.set(self.vram_registers.current, value);
         self.vram_registers.current += self.control_register.vram_pointer_increment();
@@ -330,79 +325,31 @@ impl PPU {
     }
 
     pub fn draw_buffer(&mut self, pixel_buffer: &mut PixelBuffer) {
+        let pattern_table = self.control_register.background_pattern_table() as usize;
+        let patterns = &self.memory.patterns()[pattern_table..(pattern_table+0x100)];
+        let palettes = self.memory.background_palette();
+        let name_table = self.memory.name_table();
         match self.mirroring {
             ppumemory::Mirroring::Horizontal => {
-                self.update_tile_for_nametable(pixel_buffer, 0);
-                self.update_tile_for_nametable(pixel_buffer, 2);
+                name_table.update_tile_for_nametable(pixel_buffer, 0, patterns, palettes);
+                name_table.update_tile_for_nametable(pixel_buffer, 2, patterns, palettes);
             },
             ppumemory::Mirroring::Vertical => {
-                self.update_tile_for_nametable(pixel_buffer, 0);
-                self.update_tile_for_nametable(pixel_buffer, 1);
+                name_table.update_tile_for_nametable(pixel_buffer, 0, patterns, palettes);
+                name_table.update_tile_for_nametable(pixel_buffer, 1, patterns, palettes);
             },
             ppumemory::Mirroring::NoMirroring => {
-                self.update_tile_for_nametable(pixel_buffer, 0);
-                self.update_tile_for_nametable(pixel_buffer, 1);
-                self.update_tile_for_nametable(pixel_buffer, 2);
-                self.update_tile_for_nametable(pixel_buffer, 3);
+                name_table.update_tile_for_nametable(pixel_buffer, 0, patterns, palettes);
+                name_table.update_tile_for_nametable(pixel_buffer, 1, patterns, palettes);
+                name_table.update_tile_for_nametable(pixel_buffer, 2, patterns, palettes);
+                name_table.update_tile_for_nametable(pixel_buffer, 3, patterns, palettes);
             },
         };
     }
 
     pub fn invalidate_tile_cache(&mut self) {
         self.vram_changed = true;
-        for address in 0x2000..0x3000 {
-            self.tile_cache.update(address);
-        }
-    }
-
-    fn update_tile_for_nametable(&mut self, pixel_buffer: &mut PixelBuffer, name_table_index: usize) {
-        let name_table_base = (0x2000 + name_table_index*0x400) as u16;
-        let mut name_table = name_table_base;
-        let x_offset_multiplier = name_table_index & 0x01;
-        let y_offset_multiplier = (name_table_index & 0x2) >> 1;
-        let x_offset: usize = (x_offset_multiplier*256) as usize;
-        let y_offset: usize = (y_offset_multiplier*240) as usize;
-        for row in 0..30 {
-            for col in 0..32 {
-                let absolute_row = y_offset_multiplier*30 + row;
-                let absolute_col = x_offset_multiplier*32 + col;
-                if self.tile_cache.is_modified(absolute_row, absolute_col) {
-                    self.update_tile(pixel_buffer, row, col, x_offset, y_offset, name_table_base, name_table);
-                    self.tile_cache.clear(absolute_row, absolute_col);
-                }
-
-                name_table += 1;
-            }
-        }
-    }
-
-    fn update_tile(
-        &self,
-        pixel_buffer: &mut PixelBuffer,
-        row: usize,
-        col: usize,
-        x_offset: usize,
-        y_offset: usize,
-        name_table_base: u16,
-        name_table: u16
-    ) {
-        let pattern_table_address = self.memory.get(name_table) as u16;
-        let pattern_table_base_address = self.control_register.background_pattern_table();
-        let colour_palette = {
-            let attribute_table = AttributeTable {
-                memory: &self.memory,
-                address: name_table_base + 0x3C0,
-            };
-            attribute_table.get_palette_index(row as u16, col as u16)
-        };
-        let pattern_table_address = pattern_table_base_address | (pattern_table_address << 4);
-        let pattern = self.memory.patterns()[(pattern_table_address as usize) >> 4];
-        pattern.update_buffer(
-            pixel_buffer,
-            self.memory.background_palette(colour_palette),
-            x_offset + col*8,
-            y_offset + row*8
-        );
+        self.memory.name_table_mut().invalidate_tile_cache();
     }
 
     pub fn memory(&self) -> &Memory {

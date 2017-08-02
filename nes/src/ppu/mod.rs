@@ -8,4 +8,4 @@ pub mod vram_registers;
 pub mod attributetable;
 pub mod ppuregisters;
 pub mod pattern;
-mod tile_cache;
+pub mod name_tables;
