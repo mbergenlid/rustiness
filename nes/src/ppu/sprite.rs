@@ -14,7 +14,7 @@ pub trait Sprite {
 }
 
 impl <'a> Sprite for &'a [u8] {
-    fn position_y(&self) -> u8 { return self[0] + 1; }
+    fn position_y(&self) -> u8 { return self[0]; }
     fn position_x(&self) -> u8 { return self[3]; }
     fn pattern_index(&self) -> u8 { return self[1]; }
 

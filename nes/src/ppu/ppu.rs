@@ -296,11 +296,12 @@ impl PPU {
     pub fn render_back_sprites<T>(&mut self, screen: &mut T) where T: Screen + Sized {
         for sprite_index in (0..64).rev() {
             let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
-            if sprite.is_back() {
+            let position_y = sprite.position_y();
+            if sprite.is_back() && position_y < 0xFE {
                 screen.render_sprite(
                     Rectangle { x: (sprite_index*8) as i32, y: 0, width: 8, height: 8 },
                     sprite.position_x() as usize,
-                    sprite.position_y() as usize,
+                    (position_y + 1) as usize,
                     sprite.flip_horizontal(),
                     sprite.flip_vertical(),
                 );
@@ -312,11 +313,12 @@ impl PPU {
     pub fn render_front_sprites<T>(&mut self, screen: &mut T) where T: Screen + Sized {
         for sprite_index in (0..64).rev() {
             let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
-            if sprite.is_front() {
+            let position_y = sprite.position_y();
+            if sprite.is_front() && position_y < 0xFE {
                 screen.render_sprite(
                     Rectangle { x: (sprite_index*8) as i32, y: 0, width: 8, height: 8 },
                     sprite.position_x() as usize,
-                    sprite.position_y() as usize,
+                    (position_y + 1) as usize,
                     sprite.flip_horizontal(),
                     sprite.flip_vertical(),
                 );

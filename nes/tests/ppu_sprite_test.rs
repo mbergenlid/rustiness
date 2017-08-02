@@ -245,3 +245,41 @@ fn test_background_sprite() {
         );
     }
 }
+
+#[test]
+#[allow(non_snake_case)]
+fn should_not_render_sprite_at_position_FE_or_FF() {
+    let ppu = create_ppu();
+    let mut screen = ScreenMock::new();
+    let basic_memory = memory!(
+        0x0200 => 0xFE,
+        0x0201 => 0x01,
+        0x0202 => 0x00,
+        0x0203 => 0x00,
+
+        0x0210 => 0xFF,
+        0x0211 => 0x01,
+        0x0212 => 0x01,
+        0x0213 => 0x08
+
+    );
+
+    {
+        let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), &APU::new(Rc::new(RefCell::new(Vec::new())), 1), None);
+        cpu_memory.set(0x4014, 0x02);
+    };
+
+    ppu.borrow_mut().update_screen(&mut screen);
+    {
+        let pixel_buffer = screen.screen_buffer.as_ref();
+
+
+        screen::assert_pixels(
+            &[
+    /* tile 1 */ GRAY,GRAY,GRAY,GRAY,GRAY,GRAY,GRAY,GRAY,
+            ],
+            pixel_buffer,
+            0..8
+        );
+    }
+}
