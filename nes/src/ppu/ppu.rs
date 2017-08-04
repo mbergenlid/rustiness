@@ -89,7 +89,10 @@ const PPU_CYCLES_PER_CPU_CYCLE: u32 = 3;
 const PPU_CYCLES_PER_SCANLINE: u32 = 341;
 const SCANLINES_PER_VBLANK: u32 = 20;
 const SCANLINES_PER_FRAME: u32 = 262;
-const PPU_CYCLES_PER_VISIBLE_FRAME: u32 = (SCANLINES_PER_FRAME-SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE;
+const VISIBLE_SCANLINES: u32 = 240;
+const POST_RENDER_LINES: u32 = 1;
+const VBLANK_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES)*PPU_CYCLES_PER_SCANLINE; //82 181
+const VBLANK_CLEAR_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE; //89 001
 
 impl PPU {
     pub fn new(memory: PPUMemory) -> PPU {
@@ -205,22 +208,23 @@ impl PPU {
         where T: Screen + Sized
     {
         self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
-        if !self.vblank_triggered && self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME {
+        if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
+            self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
+        }
+        if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
+            //VBLANK
             self.status_register = self.status_register | 0x80; //set vblank
             self.vblank_triggered = true;
-            return self.control_register.nmi_enabled();
-        } else if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
-            self.status_register = self.status_register & 0x7F;
-            self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
-            self.vblank_triggered = false;
             if cfg!(feature = "ppu") {
                 if self.mask_register.is_drawing_enabled() {
                     self.update_screen(screen);
                 }
             }
-            return false
-        } else if self.cycle_count >= PPU_CYCLES_PER_VISIBLE_FRAME+2270*PPU_CYCLES_PER_CPU_CYCLE {
-            self.status_register = self.status_register & 0x7F;
+            return self.control_register.nmi_enabled();
+        } else if self.vblank_triggered && self.cycle_count > VBLANK_CLEAR_CYCLE {
+            //VBLANK is over
+            self.status_register = self.status_register & 0x3F;
+            self.vblank_triggered = false;
             return false;
         } else {
             return false;
@@ -389,19 +393,19 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x80);
         assert_eq!(false, ppu.update(45, screen)); //cycle count = 135
-        assert_eq!(true, ppu.update(27_508-45, screen)); //cycle count = 82_524
+        assert_eq!(true, ppu.update(27_394-45, screen)); //cycle count = 82_182
 
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(50, screen)); //cycle count = 82 674
+        assert_eq!(false, ppu.update(50, screen)); //cycle count = 82 332
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(2_223, screen));  //cycle count = 89 343
+        assert_eq!(false, ppu.update(2_224, screen));  //cycle count = 89 004
         assert_eq!(false, ppu.status_register.is_vblank());
 
         //89 342 ppu cycles per frame
         //Total cpu cycles 29_781 = 89_343 ppu cycles
-        assert_eq!(false, ppu.update(45, screen)); // cycle count = 136
+        assert_eq!(false, ppu.update(113+45, screen)); // cycle count = 136
 
         assert_eq!(true, ppu.update(27_462, screen)); //cycle count = 82 522
         assert_eq!(true, ppu.status_register.is_vblank());
