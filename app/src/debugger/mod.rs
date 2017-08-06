@@ -6,6 +6,7 @@ mod opcodes;
 mod fakecontroller;
 mod breakpoint;
 mod command;
+mod screen;
 use nes::NES;
 use nes::memory::Memory;
 use nes::ppu::attributetable;
@@ -49,7 +50,7 @@ pub fn start() {
     let use_screen_mock = args.iter().find(|&a| a == "-g").map(|_| true).unwrap_or(false);
 
     if use_screen_mock {
-        let screen = box ScreenMock::new();
+        let screen = box screen::NoScreen(());
         let nes = nes::NES::from_file(file, MutableRef::Borrowed(&mut standard_controller), sdl.audio(), screen);
 
         run(nes, &source, &fake_controller);
