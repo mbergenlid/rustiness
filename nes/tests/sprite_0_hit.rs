@@ -12,6 +12,7 @@ use nes::memory::{CPUMemory, Memory};
 use nes::sound::APU;
 
 #[test]
+#[ignore]
 fn test_basic_sprite_rendering() {
     let ppu = create_ppu();
     let mut screen = ScreenMock::new();
