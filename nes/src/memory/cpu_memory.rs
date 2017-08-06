@@ -14,6 +14,13 @@ impl <'a> CPUMemory<'a> {
         }
     }
 
+    fn translate(&self, address: Address) -> Address {
+        if address >= 0x2008 && address < 0x4000 {
+            0x2000 + (address & 0x7)
+        } else {
+            address
+        }
+    }
 
 }
 use std::fmt::{Error, Debug, Formatter};
@@ -30,6 +37,7 @@ impl<'a, 'b> Debug for CPUMemoryReference<'a, 'b> {
 use std::borrow::BorrowMut;
 impl <'a> Memory for CPUMemory<'a> {
     fn get(&self, address: Address) -> u8 {
+        let address = self.translate(address);
         if address < 0x2000 {
             self.memory.get(address)
         } else {
@@ -41,6 +49,7 @@ impl <'a> Memory for CPUMemory<'a> {
     }
 
     fn set(&mut self, address: Address, value: u8) {
+        let address = self.translate(address);
         if address < 0x2000 {
             self.memory.set(address, value);
         } else {
@@ -120,5 +129,71 @@ mod test {
         assert_eq!(vec!(4,5), register1.borrow().writes);
         assert_eq!(vec!(6), register2.borrow().writes);
 
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn ppu_registers_should_be_mirrored_at_2008_to_3FFF() {
+        let register0  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register1  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register2  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register3  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register4  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register5  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register6  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register7  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+
+        let mut memory = cpu_memory!(
+            box BasicMemory::new(),
+            0x2000 => MutableRef::Box(Box::new(register0.clone())),
+            0x2001 => MutableRef::Box(Box::new(register1.clone())),
+            0x2002 => MutableRef::Box(Box::new(register2.clone())),
+            0x2003 => MutableRef::Box(Box::new(register3.clone())),
+            0x2004 => MutableRef::Box(Box::new(register4.clone())),
+            0x2005 => MutableRef::Box(Box::new(register5.clone())),
+            0x2006 => MutableRef::Box(Box::new(register6.clone())),
+            0x2007 => MutableRef::Box(Box::new(register7.clone()))
+        );
+
+        let mut address = 0x2008;
+        while address < 0x4000 {
+            memory.get(address);
+            memory.get(address + 1);
+            memory.get(address + 2);
+            memory.get(address + 3);
+            memory.get(address + 4);
+            memory.get(address + 5);
+            memory.get(address + 6);
+            memory.get(address + 7);
+
+            memory.set(address, 42);
+            memory.set(address + 1, 42);
+            memory.set(address + 2, 42);
+            memory.set(address + 3, 42);
+            memory.set(address + 4, 42);
+            memory.set(address + 5, 42);
+            memory.set(address + 6, 42);
+            memory.set(address + 7, 42);
+            address += 8;
+        }
+
+        assert_eq!(0x3FF, register0.borrow().reads.get());
+        assert_eq!(0x3FF, register1.borrow().reads.get());
+        assert_eq!(0x3FF, register2.borrow().reads.get());
+        assert_eq!(0x3FF, register3.borrow().reads.get());
+        assert_eq!(0x3FF, register4.borrow().reads.get());
+        assert_eq!(0x3FF, register5.borrow().reads.get());
+        assert_eq!(0x3FF, register6.borrow().reads.get());
+        assert_eq!(0x3FF, register7.borrow().reads.get());
+
+        let writes = vec!(42; 0x3FF);
+        assert_eq!(&writes, &register0.borrow().writes);
+        assert_eq!(&writes, &register1.borrow().writes);
+        assert_eq!(&writes, &register2.borrow().writes);
+        assert_eq!(&writes, &register3.borrow().writes);
+        assert_eq!(&writes, &register4.borrow().writes);
+        assert_eq!(&writes, &register5.borrow().writes);
+        assert_eq!(&writes, &register6.borrow().writes);
+        assert_eq!(&writes, &register7.borrow().writes);
     }
 }
