@@ -36,7 +36,7 @@ impl MemoryMappedIO for PPUStatus {
         self.0.borrow_mut().status()
     }
     fn write(&mut self, _: &mut Memory, _: u8) {
-        unimplemented!();
+        //Do nothing
     }
 }
 impl MemoryMappedIO for PPUScroll {
