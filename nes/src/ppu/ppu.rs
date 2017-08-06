@@ -210,6 +210,7 @@ impl PPU {
         self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
         if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
+            self.vblank_triggered = false;
         }
         if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
             //VBLANK
@@ -224,7 +225,6 @@ impl PPU {
         } else if self.vblank_triggered && self.cycle_count > VBLANK_CLEAR_CYCLE {
             //VBLANK is over
             self.status_register = self.status_register & 0x3F;
-            self.vblank_triggered = false;
             return false;
         } else {
             return false;
