@@ -55,6 +55,7 @@ pub struct PPU {
     mask_register: PPUMask,
     status_register: u8,
     vblank_triggered: bool,
+    vblank_cleared: bool,
     memory: PPUMemory,
     vram_registers: VRAMRegisters,
     temp_vram_read_buffer: u8,
@@ -102,6 +103,7 @@ impl PPU {
             mask_register: PPUMask { value: 0 },
             status_register: 0,
             vblank_triggered: false,
+            vblank_cleared: false,
             memory: memory,
             vram_registers: VRAMRegisters::new(),
             temp_vram_read_buffer: 0,
@@ -211,6 +213,7 @@ impl PPU {
         if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
             self.vblank_triggered = false;
+            self.vblank_cleared = false;
         }
         if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
             //VBLANK
@@ -222,9 +225,10 @@ impl PPU {
                 }
             }
             return self.control_register.nmi_enabled();
-        } else if self.vblank_triggered && self.cycle_count > VBLANK_CLEAR_CYCLE {
+        } else if !self.vblank_cleared && self.cycle_count > VBLANK_CLEAR_CYCLE {
             //VBLANK is over
             self.status_register = self.status_register & 0x3F;
+            self.vblank_cleared = true;
             return false;
         } else {
             return false;
