@@ -228,7 +228,7 @@ impl PPU {
                 }
             }
             return self.control_register.nmi_enabled();
-        } else if !self.vblank_cleared && self.cycle_count > VBLANK_CLEAR_CYCLE {
+        } else if !self.vblank_cleared && self.cycle_count >= VBLANK_CLEAR_CYCLE {
             //VBLANK is over
             self.status_register = self.status_register & 0x3F;
             self.vblank_cleared = true;
