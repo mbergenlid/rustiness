@@ -72,7 +72,7 @@ pub struct PPU {
 use std::fmt::{Formatter, Error, Display};
 impl Display for PPU {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
-        formatter.write_str("PPU:\n").unwrap();
+        formatter.write_fmt(format_args!("PPU: {}\n", self.cycle_count)).unwrap();
         formatter.write_fmt(
             format_args!("\tControl register: 0b{:08b}\n", self.ppu_ctrl())).unwrap();
         formatter.write_fmt(
@@ -135,6 +135,9 @@ impl PPU {
         let status_register = self.status_register;
         self.status_register &= 0x7F;
         self.vram_registers.reset_write_toggle();
+        if self.cycle_count == VBLANK_CYCLE-1 {
+            self.vblank_triggered = true;
+        }
         return status_register;
     }
 
@@ -433,5 +436,21 @@ pub mod tests {
         assert_eq!(false, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(5, screen));
+    }
+
+    #[test]
+    fn read_status_one_PPU_clock_before_vbl_is_set() {
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        ppu.update(27_393, screen); //82_179  VBL-2
+        assert_eq!(0x00, ppu.status() & 0x80);
+        ppu.update(4, screen); //82_191
+        assert_eq!(0x80, ppu.status() & 0x80);
+
+        ppu.update(29_781-4, screen); //82_180  VBL-1
+        assert_eq!(0x00, ppu.status() & 0x80); //Reads one PPU clock before vbl suppresses vbl for this frame
+        ppu.update(4, screen); //82_192
+        assert_eq!(0x00, ppu.status() & 0x80); //VBL has been suppressed by previous read
     }
 }
