@@ -10,18 +10,9 @@ pub struct OpCodes {
 
 impl OpCodes {
     pub fn new() -> OpCodes {
-        let mut codes: Vec<Option<Instruction>> = vec![];
-        for _ in 0..0x100 {
-            codes.push(None);
-        }
-
-        for op_code in OP_CODES.iter() {
-            let c = op_code.0;
-            codes[c as usize] = Some(op_code.1);
-        }
 
         OpCodes {
-            codes: codes,
+            codes: generate_instructions(),
         }
     }
 
@@ -36,169 +27,171 @@ impl OpCodes {
     }
 }
 
-type Instruction = &'static Fn(&mut CPU, &mut Memory) -> u8;
-struct OpCodeInstruction(OpCode, &'static Fn(&mut CPU, &mut Memory) -> u8);
+type Instruction = Box<Fn(&mut CPU, &mut Memory) -> u8>;
 
-const OP_CODES: [OpCodeInstruction; 156] = [
-    OpCodeInstruction(ADC_IMMEDIATE         , &|cpu, memory| instructions::adc(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(ADC_ZERO_PAGE         , &|cpu, memory| instructions::adc(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ADC_ZERO_PAGE_X       , &|cpu, memory| instructions::adc(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ADC_ABSOLUTE          , &|cpu, memory| instructions::adc(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ADC_ABSOLUTE_X        , &|cpu, memory| instructions::adc(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ADC_ABSOLUTE_Y        , &|cpu, memory| instructions::adc(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ADC_INDIRECT_X        , &|cpu, memory| instructions::adc(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ADC_INDIRECT_Y        , &|cpu, memory| instructions::adc(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(AND_IMMEDIATE         , &|cpu, memory| instructions::and(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(AND_ZERO_PAGE         , &|cpu, memory| instructions::and(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(AND_ZERO_PAGE_X       , &|cpu, memory| instructions::and(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(AND_ABSOLUTE          , &|cpu, memory| instructions::and(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(AND_ABSOLUTE_X        , &|cpu, memory| instructions::and(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(AND_ABSOLUTE_Y        , &|cpu, memory| instructions::and(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(AND_INDIRECT_X        , &|cpu, memory| instructions::and(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(AND_INDIRECT_Y        , &|cpu, memory| instructions::and(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ASL_ACCUMULATOR       , &|cpu,      _| instructions::asl_accumulator(cpu)),
-    OpCodeInstruction(ASL_ZERO_PAGE         , &|cpu, memory| instructions::asl(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ASL_ZERO_PAGE_X       , &|cpu, memory| instructions::asl(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ASL_ABSOLUTE          , &|cpu, memory| instructions::asl(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ASL_ABSOLUTE_X        , &|cpu, memory| {instructions::asl(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(BIT_ZERO_PAGE         , &|cpu, memory| instructions::bit(AddressingMode::zero_paged(cpu ,memory), cpu, memory)),
-    OpCodeInstruction(BIT_ABSOLUTE          , &|cpu, memory| instructions::bit(AddressingMode::absolute(cpu ,memory), cpu, memory)),
-    OpCodeInstruction(BRANCH_PLUS           , &|cpu, memory| instructions::branch(cpu, memory, cpu::NEGATIVE_FLAG, true)),
-    OpCodeInstruction(BRANCH_MINUS          , &|cpu, memory| instructions::branch(cpu, memory, cpu::NEGATIVE_FLAG, false)),
-    OpCodeInstruction(BRANCH_OVERFLOW_SET   , &|cpu, memory| instructions::branch(cpu, memory, cpu::OVERFLOW_FLAG, false)),
-    OpCodeInstruction(BRANCH_OVERFLOW_CLEAR , &|cpu, memory| instructions::branch(cpu, memory, cpu::OVERFLOW_FLAG, true)),
-    OpCodeInstruction(BRANCH_CARRY_SET      , &|cpu, memory| instructions::branch(cpu, memory, cpu::CARRY_FLAG, false)),
-    OpCodeInstruction(BRANCH_CARRY_CLEAR    , &|cpu, memory| instructions::branch(cpu, memory, cpu::CARRY_FLAG, true)),
-    OpCodeInstruction(BRANCH_NOT_EQUAL      , &|cpu, memory| instructions::branch(cpu, memory, cpu::ZERO_FLAG, true)),
-    OpCodeInstruction(BRANCH_EQUAL          , &|cpu, memory| instructions::branch(cpu, memory, cpu::ZERO_FLAG, false)),
-    OpCodeInstruction(BRK                   , &|cpu, memory| instructions::brk(cpu, memory)),
-    OpCodeInstruction(CMP_IMMEDIATE         , &|cpu, memory| instructions::cmp(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(CMP_ZERO_PAGE         , &|cpu, memory| instructions::cmp(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CMP_ZERO_PAGE_X       , &|cpu, memory| instructions::cmp(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CMP_ABSOLUTE          , &|cpu, memory| instructions::cmp(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CMP_ABSOLUTE_X        , &|cpu, memory| instructions::cmp(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CMP_ABSOLUTE_Y        , &|cpu, memory| instructions::cmp(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CMP_INDIRECT_X        , &|cpu, memory| instructions::cmp(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CMP_INDIRECT_Y        , &|cpu, memory| instructions::cmp(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CPX_IMMEDIATE         , &|cpu, memory| instructions::cpx(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(CPX_ZERO_PAGE         , &|cpu, memory| instructions::cpx(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CPX_ABSOLUTE          , &|cpu, memory| instructions::cpx(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CPY_IMMEDIATE         , &|cpu, memory| instructions::cpy(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(CPY_ZERO_PAGE         , &|cpu, memory| instructions::cpy(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CPY_ABSOLUTE          , &|cpu, memory| instructions::cpy(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(DEC_ZERO_PAGE         , &|cpu, memory| instructions::dec(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(DEC_ZERO_PAGE_X       , &|cpu, memory| instructions::dec(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(DEC_ABSOLUTE          , &|cpu, memory| instructions::dec(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(DEC_ABSOLUTE_X        , &|cpu, memory| {instructions::dec(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(EOR_IMMEDIATE         , &|cpu, memory| instructions::eor(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(EOR_ZERO_PAGE         , &|cpu, memory| instructions::eor(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(EOR_ZERO_PAGE_X       , &|cpu, memory| instructions::eor(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(EOR_ABSOLUTE          , &|cpu, memory| instructions::eor(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(EOR_ABSOLUTE_X        , &|cpu, memory| instructions::eor(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(EOR_ABSOLUTE_Y        , &|cpu, memory| instructions::eor(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(EOR_INDIRECT_X        , &|cpu, memory| instructions::eor(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(EOR_INDIRECT_Y        , &|cpu, memory| instructions::eor(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(CLC                   , &|cpu,      _| { cpu.clear_flags(cpu::CARRY_FLAG); 2}),
-    OpCodeInstruction(SEC                   , &|cpu,      _| { cpu.set_flags(cpu::CARRY_FLAG); 2}),
-    OpCodeInstruction(CLI                   , &|cpu,      _| {cpu.clear_flags(cpu::INTERRUPT_DISABLE_FLAG); 2}),
-    OpCodeInstruction(SEI                   , &|cpu,      _| { cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG); 2}),
-    OpCodeInstruction(CLV                   , &|cpu,      _| {cpu.clear_flags(cpu::OVERFLOW_FLAG); 2}),
-    OpCodeInstruction(CLD                   , &|cpu,      _| {cpu.clear_flags(cpu::DECIMAL_FLAG); 2}),
-    OpCodeInstruction(SED                   , &|cpu,      _| { cpu.set_flags(cpu::DECIMAL_FLAG); 2}),
-    OpCodeInstruction(INC_ZERO_PAGE         , &|cpu, memory| instructions::inc(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(INC_ZERO_PAGE_X       , &|cpu, memory| instructions::inc(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(INC_ABSOLUTE          , &|cpu, memory| instructions::inc(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(INC_ABSOLUTE_X        , &|cpu, memory| {instructions::inc(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(JMP_ABSOLUTE          , &|cpu, memory| {instructions::jmp(AddressingMode::absolute(cpu, memory), cpu); 3 }),
-    OpCodeInstruction(JMP_INDIRECT          , &|cpu, memory| {instructions::jmp(AddressingMode::indirect(cpu, memory), cpu); 5 }),
-    OpCodeInstruction(JSR_ABSOLUTE          , &|cpu, memory| instructions::jsr(cpu, memory)),
-    OpCodeInstruction(LDA_IMMEDIATE         , &|cpu, memory| instructions::lda(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(LDA_ZERO_PAGE         , &|cpu, memory| instructions::lda(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDA_ZERO_PAGE_X       , &|cpu, memory| instructions::lda(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDA_ABSOLUTE          , &|cpu, memory| instructions::lda(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDA_ABSOLUTE_X        , &|cpu, memory| instructions::lda(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDA_ABSOLUTE_Y        , &|cpu, memory| instructions::lda(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDA_INDIRECT_X        , &|cpu, memory| instructions::lda(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDA_INDIRECT_Y        , &|cpu, memory| instructions::lda(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDX_IMMEDIATE         , &|cpu, memory| instructions::ldx(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(LDX_ZERO_PAGE         , &|cpu, memory| instructions::ldx(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDX_ZERO_PAGE_Y       , &|cpu, memory| instructions::ldx(AddressingMode::zero_paged_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDX_ABSOLUTE          , &|cpu, memory| instructions::ldx(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDX_ABSOLUTE_Y        , &|cpu, memory| instructions::ldx(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDY_IMMEDIATE         , &|cpu, memory| instructions::ldy(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(LDY_ZERO_PAGE         , &|cpu, memory| instructions::ldy(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDY_ZERO_PAGE_X       , &|cpu, memory| instructions::ldy(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDY_ABSOLUTE          , &|cpu, memory| instructions::ldy(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LDY_ABSOLUTE_X        , &|cpu, memory| instructions::ldy(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LSR_ACCUMULATOR       , &|cpu,      _| {cpu.logical_shift_right_accumulator(); 2}),
-    OpCodeInstruction(LSR_ZERO_PAGE         , &|cpu, memory| instructions::lsr(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LSR_ZERO_PAGE_X       , &|cpu, memory| instructions::lsr(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LSR_ABSOLUTE          , &|cpu, memory| instructions::lsr(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(LSR_ABSOLUTE_X        , &|cpu, memory| {instructions::lsr(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(NOP_IMPLIED           , &|  _,      _| 2),
-    OpCodeInstruction(ORA_IMMEDIATE         , &|cpu, memory| instructions::or(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(ORA_ZERO_PAGE         , &|cpu, memory| instructions::or(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ORA_ZERO_PAGE_X       , &|cpu, memory| instructions::or(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ORA_ABSOLUTE          , &|cpu, memory| instructions::or(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ORA_ABSOLUTE_X        , &|cpu, memory| instructions::or(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ORA_ABSOLUTE_Y        , &|cpu, memory| instructions::or(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ORA_INDIRECT_X        , &|cpu, memory| instructions::or(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ORA_INDIRECT_Y        , &|cpu, memory| instructions::or(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(TAX                   , &|cpu,      _| { let acc = cpu.accumulator(); cpu.load_x(acc); 2}),
-    OpCodeInstruction(TXA                   , &|cpu,      _| { let temp = cpu.register_x(); cpu.load_accumulator(temp); 2}),
-    OpCodeInstruction(DEX                   , &|cpu,      _| { cpu.decrement_x(); 2 }),
-    OpCodeInstruction(INX                   , &|cpu,      _| { cpu.increment_x(); 2 }),
-    OpCodeInstruction(TAY                   , &|cpu,      _| { let temp = cpu.accumulator(); cpu.load_y(temp); 2}),
-    OpCodeInstruction(TYA                   , &|cpu,      _| { let temp = cpu.register_y(); cpu.load_accumulator(temp); 2}),
-    OpCodeInstruction(DEY                   , &|cpu,      _| { cpu.decrement_y(); 2 }),
-    OpCodeInstruction(INY                   , &|cpu,      _| { cpu.increment_y(); 2 }),
-    OpCodeInstruction(ROL_ACCUMULATOR       , &|cpu,      _| {cpu.rotate_accumulator_left(); 2}),
-    OpCodeInstruction(ROL_ZERO_PAGE         , &|cpu, memory| instructions::rol(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ROL_ZERO_PAGE_X       , &|cpu, memory| instructions::rol(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ROL_ABSOLUTE          , &|cpu, memory| instructions::rol(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ROL_ABSOLUTE_X        , &|cpu, memory| {instructions::rol(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(ROR_ACCUMULATOR       , &|cpu,      _| {cpu.rotate_accumulator_right(); 2}),
-    OpCodeInstruction(ROR_ZERO_PAGE         , &|cpu, memory| instructions::ror(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ROR_ZERO_PAGE_X       , &|cpu, memory| instructions::ror(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ROR_ABSOLUTE          , &|cpu, memory| instructions::ror(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(ROR_ABSOLUTE_X        , &|cpu, memory| {instructions::ror(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(RTI                   , &|cpu, memory| instructions::rti(cpu, memory)),
-    OpCodeInstruction(RTS                   , &|cpu, memory| instructions::rts(cpu, memory)),
-    OpCodeInstruction(SBC_IMMEDIATE         , &|cpu, memory| instructions::sbc(AddressingMode::immediate(cpu), cpu, memory)),
-    OpCodeInstruction(SBC_ZERO_PAGE         , &|cpu, memory| instructions::sbc(AddressingMode::zero_paged(cpu, memory), cpu, memory)),
-    OpCodeInstruction(SBC_ZERO_PAGE_X       , &|cpu, memory| instructions::sbc(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(SBC_ABSOLUTE          , &|cpu, memory| instructions::sbc(AddressingMode::absolute(cpu, memory), cpu, memory)),
-    OpCodeInstruction(SBC_ABSOLUTE_X        , &|cpu, memory| instructions::sbc(AddressingMode::absolute_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(SBC_ABSOLUTE_Y        , &|cpu, memory| instructions::sbc(AddressingMode::absolute_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(SBC_INDIRECT_X        , &|cpu, memory| instructions::sbc(AddressingMode::indirect_x(cpu, memory), cpu, memory)),
-    OpCodeInstruction(SBC_INDIRECT_Y        , &|cpu, memory| instructions::sbc(AddressingMode::indirect_y(cpu, memory), cpu, memory)),
-    OpCodeInstruction(STA_ZERO_PAGE         , &|cpu, memory| {instructions::sta(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}),
-    OpCodeInstruction(STA_ZERO_PAGE_X       , &|cpu, memory| {instructions::sta(AddressingMode::zero_paged_x(cpu, memory), cpu, memory); 4}),
-    OpCodeInstruction(STA_ABSOLUTE          , &|cpu, memory| {instructions::sta(AddressingMode::absolute(cpu, memory), cpu, memory); 4}),
-    OpCodeInstruction(STA_ABSOLUTE_X        , &|cpu, memory| {instructions::sta(AddressingMode::absolute_x(cpu, memory), cpu, memory); 5}),
-    OpCodeInstruction(STA_ABSOLUTE_Y        , &|cpu, memory| {instructions::sta(AddressingMode::absolute_y(cpu, memory), cpu, memory); 5}),
-    OpCodeInstruction(STA_INDIRECT_X        , &|cpu, memory| {instructions::sta(AddressingMode::indirect_x(cpu, memory), cpu, memory); 6}),
-    OpCodeInstruction(STA_INDIRECT_Y        , &|cpu, memory| {instructions::sta(AddressingMode::indirect_y(cpu, memory), cpu, memory); 6}),
-    OpCodeInstruction(TXS                   , &|cpu,      _| { let temp = cpu.register_x(); cpu.stack_pointer = temp; 2}),
-    OpCodeInstruction(TSX                   , &|cpu,      _| { let temp = cpu.stack_pointer; cpu.load_x(temp); 2}),
-    OpCodeInstruction(PHA                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.accumulator()); 3 }),
-    OpCodeInstruction(PLA                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.load_accumulator(temp); 4}),
-    OpCodeInstruction(PHP                   , &|cpu, memory| { memory.set(cpu.push_stack(), cpu.processor_status() | 0x30); 3 }),
-    OpCodeInstruction(PLP                   , &|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.set_processor_status(temp); 4}),
-    OpCodeInstruction(STX_ZERO_PAGE         , &|cpu, memory| {instructions::stx(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}),
-    OpCodeInstruction(STX_ZERO_PAGE_Y       , &|cpu, memory| {instructions::stx(AddressingMode::zero_paged_y(cpu, memory), cpu, memory); 4}),
-    OpCodeInstruction(STX_ABSOLUTE          , &|cpu, memory| {instructions::stx(AddressingMode::absolute(cpu, memory), cpu, memory); 4}),
-    OpCodeInstruction(STY_ZERO_PAGE         , &|cpu, memory| {instructions::sty(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}),
-    OpCodeInstruction(STY_ZERO_PAGE_X       , &|cpu, memory| {instructions::sty(AddressingMode::zero_paged_x(cpu, memory), cpu, memory); 4}),
-    OpCodeInstruction(STY_ABSOLUTE          , &|cpu, memory| {instructions::sty(AddressingMode::absolute(cpu, memory), cpu, memory); 4}),
-
-    OpCodeInstruction(ISC_INDIRECT_X        , &|cpu, memory| {instructions::isc(AddressingMode::indirect_x(cpu, memory), cpu, memory)}),
-    OpCodeInstruction(IGN_INDIRECT_X_1      , &|cpu, memory| {AddressingMode::indirect_x(cpu, memory); 4}),
-    OpCodeInstruction(IGN_INDIRECT_X_3      , &|cpu, memory| {AddressingMode::indirect_x(cpu, memory); 4}),
-    OpCodeInstruction(ISC_ABSOLUTE_X        , &|cpu, memory| {instructions::isc(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}),
-    OpCodeInstruction(SRE_INDIRECT_X        , &|cpu, memory| {instructions::sre(AddressingMode::indirect_x(cpu, memory), cpu, memory); 6}),
-];
-
+fn generate_instructions() -> Vec<Option<Instruction>> {
+    let mut codes: Vec<Option<Instruction>> = vec![];
+    for _ in 0..0x100 {
+        codes.push(None);
+    }
+    codes[ADC_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::adc(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[ADC_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::adc(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[ADC_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::adc(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[ADC_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::adc(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[ADC_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| instructions::adc(AddressingMode::absolute_x(cpu, memory), cpu, memory)));
+    codes[ADC_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| instructions::adc(AddressingMode::absolute_y(cpu, memory), cpu, memory)));
+    codes[ADC_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| instructions::adc(AddressingMode::indirect_x(cpu, memory), cpu, memory)));
+    codes[ADC_INDIRECT_Y        as usize] = Some(Box::new(|cpu, memory| instructions::adc(AddressingMode::indirect_y(cpu, memory), cpu, memory)));
+    codes[AND_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::and(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[AND_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::and(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[AND_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::and(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[AND_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::and(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[AND_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| instructions::and(AddressingMode::absolute_x(cpu, memory), cpu, memory)));
+    codes[AND_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| instructions::and(AddressingMode::absolute_y(cpu, memory), cpu, memory)));
+    codes[AND_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| instructions::and(AddressingMode::indirect_x(cpu, memory), cpu, memory)));
+    codes[AND_INDIRECT_Y        as usize] = Some(Box::new(|cpu, memory| instructions::and(AddressingMode::indirect_y(cpu, memory), cpu, memory)));
+    codes[ASL_ACCUMULATOR       as usize] = Some(Box::new(|cpu,      _| instructions::asl_accumulator(cpu)));
+    codes[ASL_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::asl(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[ASL_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::asl(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[ASL_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::asl(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[ASL_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| {instructions::asl(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}));
+    codes[BIT_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::bit(AddressingMode::zero_paged(cpu ,memory), cpu, memory)));
+    codes[BIT_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::bit(AddressingMode::absolute(cpu ,memory), cpu, memory)));
+    codes[BRANCH_PLUS           as usize] = Some(Box::new(|cpu, memory| instructions::branch(cpu, memory, cpu::NEGATIVE_FLAG, true)));
+    codes[BRANCH_MINUS          as usize] = Some(Box::new(|cpu, memory| instructions::branch(cpu, memory, cpu::NEGATIVE_FLAG, false)));
+    codes[BRANCH_OVERFLOW_SET   as usize] = Some(Box::new(|cpu, memory| instructions::branch(cpu, memory, cpu::OVERFLOW_FLAG, false)));
+    codes[BRANCH_OVERFLOW_CLEAR as usize] = Some(Box::new(|cpu, memory| instructions::branch(cpu, memory, cpu::OVERFLOW_FLAG, true)));
+    codes[BRANCH_CARRY_SET      as usize] = Some(Box::new(|cpu, memory| instructions::branch(cpu, memory, cpu::CARRY_FLAG, false)));
+    codes[BRANCH_CARRY_CLEAR    as usize] = Some(Box::new(|cpu, memory| instructions::branch(cpu, memory, cpu::CARRY_FLAG, true)));
+    codes[BRANCH_NOT_EQUAL      as usize] = Some(Box::new(|cpu, memory| instructions::branch(cpu, memory, cpu::ZERO_FLAG, true)));
+    codes[BRANCH_EQUAL          as usize] = Some(Box::new(|cpu, memory| instructions::branch(cpu, memory, cpu::ZERO_FLAG, false)));
+    codes[BRK                   as usize] = Some(Box::new(|cpu, memory| instructions::brk(cpu, memory)));
+    codes[CMP_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::cmp(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[CMP_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::cmp(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[CMP_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::cmp(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[CMP_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::cmp(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[CMP_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| instructions::cmp(AddressingMode::absolute_x(cpu, memory), cpu, memory)));
+    codes[CMP_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| instructions::cmp(AddressingMode::absolute_y(cpu, memory), cpu, memory)));
+    codes[CMP_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| instructions::cmp(AddressingMode::indirect_x(cpu, memory), cpu, memory)));
+    codes[CMP_INDIRECT_Y        as usize] = Some(Box::new(|cpu, memory| instructions::cmp(AddressingMode::indirect_y(cpu, memory), cpu, memory)));
+    codes[CPX_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::cpx(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[CPX_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::cpx(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[CPX_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::cpx(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[CPY_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::cpy(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[CPY_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::cpy(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[CPY_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::cpy(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[DEC_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::dec(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[DEC_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::dec(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[DEC_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::dec(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[DEC_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| {instructions::dec(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}));
+    codes[EOR_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::eor(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[EOR_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::eor(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[EOR_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::eor(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[EOR_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::eor(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[EOR_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| instructions::eor(AddressingMode::absolute_x(cpu, memory), cpu, memory)));
+    codes[EOR_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| instructions::eor(AddressingMode::absolute_y(cpu, memory), cpu, memory)));
+    codes[EOR_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| instructions::eor(AddressingMode::indirect_x(cpu, memory), cpu, memory)));
+    codes[EOR_INDIRECT_Y        as usize] = Some(Box::new(|cpu, memory| instructions::eor(AddressingMode::indirect_y(cpu, memory), cpu, memory)));
+    codes[CLC                   as usize] = Some(Box::new(|cpu,      _| { cpu.clear_flags(cpu::CARRY_FLAG); 2}));
+    codes[SEC                   as usize] = Some(Box::new(|cpu,      _| { cpu.set_flags(cpu::CARRY_FLAG); 2}));
+    codes[CLI                   as usize] = Some(Box::new(|cpu,      _| {cpu.clear_flags(cpu::INTERRUPT_DISABLE_FLAG); 2}));
+    codes[SEI                   as usize] = Some(Box::new(|cpu,      _| { cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG); 2}));
+    codes[CLV                   as usize] = Some(Box::new(|cpu,      _| {cpu.clear_flags(cpu::OVERFLOW_FLAG); 2}));
+    codes[CLD                   as usize] = Some(Box::new(|cpu,      _| {cpu.clear_flags(cpu::DECIMAL_FLAG); 2}));
+    codes[SED                   as usize] = Some(Box::new(|cpu,      _| { cpu.set_flags(cpu::DECIMAL_FLAG); 2}));
+    codes[INC_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::inc(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[INC_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::inc(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[INC_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::inc(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[INC_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| {instructions::inc(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}));
+    codes[JMP_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| {instructions::jmp(AddressingMode::absolute(cpu, memory), cpu); 3 }));
+    codes[JMP_INDIRECT          as usize] = Some(Box::new(|cpu, memory| {instructions::jmp(AddressingMode::indirect(cpu, memory), cpu); 5 }));
+    codes[JSR_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::jsr(cpu, memory)));
+    codes[LDA_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::lda(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[LDA_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::lda(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[LDA_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::lda(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[LDA_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::lda(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[LDA_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| instructions::lda(AddressingMode::absolute_x(cpu, memory), cpu, memory)));
+    codes[LDA_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| instructions::lda(AddressingMode::absolute_y(cpu, memory), cpu, memory)));
+    codes[LDA_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| instructions::lda(AddressingMode::indirect_x(cpu, memory), cpu, memory)));
+    codes[LDA_INDIRECT_Y        as usize] = Some(Box::new(|cpu, memory| instructions::lda(AddressingMode::indirect_y(cpu, memory), cpu, memory)));
+    codes[LDX_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::ldx(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[LDX_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::ldx(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[LDX_ZERO_PAGE_Y       as usize] = Some(Box::new(|cpu, memory| instructions::ldx(AddressingMode::zero_paged_y(cpu, memory), cpu, memory)));
+    codes[LDX_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::ldx(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[LDX_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| instructions::ldx(AddressingMode::absolute_y(cpu, memory), cpu, memory)));
+    codes[LDY_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::ldy(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[LDY_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::ldy(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[LDY_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::ldy(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[LDY_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::ldy(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[LDY_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| instructions::ldy(AddressingMode::absolute_x(cpu, memory), cpu, memory)));
+    codes[LSR_ACCUMULATOR       as usize] = Some(Box::new(|cpu,      _| {cpu.logical_shift_right_accumulator(); 2}));
+    codes[LSR_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::lsr(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[LSR_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::lsr(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[LSR_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::lsr(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[LSR_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| {instructions::lsr(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}));
+    codes[NOP_IMPLIED           as usize] = Some(Box::new(|  _,      _| 2));
+    codes[ORA_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::or(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[ORA_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::or(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[ORA_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::or(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[ORA_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::or(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[ORA_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| instructions::or(AddressingMode::absolute_x(cpu, memory), cpu, memory)));
+    codes[ORA_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| instructions::or(AddressingMode::absolute_y(cpu, memory), cpu, memory)));
+    codes[ORA_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| instructions::or(AddressingMode::indirect_x(cpu, memory), cpu, memory)));
+    codes[ORA_INDIRECT_Y        as usize] = Some(Box::new(|cpu, memory| instructions::or(AddressingMode::indirect_y(cpu, memory), cpu, memory)));
+    codes[TAX                   as usize] = Some(Box::new(|cpu,      _| { let acc = cpu.accumulator(); cpu.load_x(acc); 2}));
+    codes[TXA                   as usize] = Some(Box::new(|cpu,      _| { let temp = cpu.register_x(); cpu.load_accumulator(temp); 2}));
+    codes[DEX                   as usize] = Some(Box::new(|cpu,      _| { cpu.decrement_x(); 2 }));
+    codes[INX                   as usize] = Some(Box::new(|cpu,      _| { cpu.increment_x(); 2 }));
+    codes[TAY                   as usize] = Some(Box::new(|cpu,      _| { let temp = cpu.accumulator(); cpu.load_y(temp); 2}));
+    codes[TYA                   as usize] = Some(Box::new(|cpu,      _| { let temp = cpu.register_y(); cpu.load_accumulator(temp); 2}));
+    codes[DEY                   as usize] = Some(Box::new(|cpu,      _| { cpu.decrement_y(); 2 }));
+    codes[INY                   as usize] = Some(Box::new(|cpu,      _| { cpu.increment_y(); 2 }));
+    codes[ROL_ACCUMULATOR       as usize] = Some(Box::new(|cpu,      _| {cpu.rotate_accumulator_left(); 2}));
+    codes[ROL_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::rol(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[ROL_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::rol(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[ROL_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::rol(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[ROL_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| {instructions::rol(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}));
+    codes[ROR_ACCUMULATOR       as usize] = Some(Box::new(|cpu,      _| {cpu.rotate_accumulator_right(); 2}));
+    codes[ROR_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::ror(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[ROR_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::ror(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[ROR_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::ror(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[ROR_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| {instructions::ror(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}));
+    codes[RTI                   as usize] = Some(Box::new(|cpu, memory| instructions::rti(cpu, memory)));
+    codes[RTS                   as usize] = Some(Box::new(|cpu, memory| instructions::rts(cpu, memory)));
+    codes[SBC_IMMEDIATE         as usize] = Some(Box::new(|cpu, memory| instructions::sbc(AddressingMode::immediate(cpu), cpu, memory)));
+    codes[SBC_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| instructions::sbc(AddressingMode::zero_paged(cpu, memory), cpu, memory)));
+    codes[SBC_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| instructions::sbc(AddressingMode::zero_paged_x(cpu, memory), cpu, memory)));
+    codes[SBC_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| instructions::sbc(AddressingMode::absolute(cpu, memory), cpu, memory)));
+    codes[SBC_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| instructions::sbc(AddressingMode::absolute_x(cpu, memory), cpu, memory)));
+    codes[SBC_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| instructions::sbc(AddressingMode::absolute_y(cpu, memory), cpu, memory)));
+    codes[SBC_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| instructions::sbc(AddressingMode::indirect_x(cpu, memory), cpu, memory)));
+    codes[SBC_INDIRECT_Y        as usize] = Some(Box::new(|cpu, memory| instructions::sbc(AddressingMode::indirect_y(cpu, memory), cpu, memory)));
+    codes[STA_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| {instructions::sta(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}));
+    codes[STA_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| {instructions::sta(AddressingMode::zero_paged_x(cpu, memory), cpu, memory); 4}));
+    codes[STA_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| {instructions::sta(AddressingMode::absolute(cpu, memory), cpu, memory); 4}));
+    codes[STA_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| {instructions::sta(AddressingMode::absolute_x(cpu, memory), cpu, memory); 5}));
+    codes[STA_ABSOLUTE_Y        as usize] = Some(Box::new(|cpu, memory| {instructions::sta(AddressingMode::absolute_y(cpu, memory), cpu, memory); 5}));
+    codes[STA_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| {instructions::sta(AddressingMode::indirect_x(cpu, memory), cpu, memory); 6}));
+    codes[STA_INDIRECT_Y        as usize] = Some(Box::new(|cpu, memory| {instructions::sta(AddressingMode::indirect_y(cpu, memory), cpu, memory); 6}));
+    codes[TXS                   as usize] = Some(Box::new(|cpu,      _| { let temp = cpu.register_x(); cpu.stack_pointer = temp; 2}));
+    codes[TSX                   as usize] = Some(Box::new(|cpu,      _| { let temp = cpu.stack_pointer; cpu.load_x(temp); 2}));
+    codes[PHA                   as usize] = Some(Box::new(|cpu, memory| { memory.set(cpu.push_stack(), cpu.accumulator()); 3 }));
+    codes[PLA                   as usize] = Some(Box::new(|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.load_accumulator(temp); 4}));
+    codes[PHP                   as usize] = Some(Box::new(|cpu, memory| { memory.set(cpu.push_stack(), cpu.processor_status() | 0x30); 3 }));
+    codes[PLP                   as usize] = Some(Box::new(|cpu, memory| { let temp = memory.get(cpu.pop_stack()); cpu.set_processor_status(temp); 4}));
+    codes[STX_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| {instructions::stx(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}));
+    codes[STX_ZERO_PAGE_Y       as usize] = Some(Box::new(|cpu, memory| {instructions::stx(AddressingMode::zero_paged_y(cpu, memory), cpu, memory); 4}));
+    codes[STX_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| {instructions::stx(AddressingMode::absolute(cpu, memory), cpu, memory); 4}));
+    codes[STY_ZERO_PAGE         as usize] = Some(Box::new(|cpu, memory| {instructions::sty(AddressingMode::zero_paged(cpu, memory), cpu, memory); 3}));
+    codes[STY_ZERO_PAGE_X       as usize] = Some(Box::new(|cpu, memory| {instructions::sty(AddressingMode::zero_paged_x(cpu, memory), cpu, memory); 4}));
+    codes[STY_ABSOLUTE          as usize] = Some(Box::new(|cpu, memory| {instructions::sty(AddressingMode::absolute(cpu, memory), cpu, memory); 4}));
+    codes[ISC_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| {instructions::isc(AddressingMode::indirect_x(cpu, memory), cpu, memory)}));
+    codes[IGN_INDIRECT_X_1      as usize] = Some(Box::new(|cpu, memory| {AddressingMode::indirect_x(cpu, memory); 4}));
+    codes[IGN_INDIRECT_X_3      as usize] = Some(Box::new(|cpu, memory| {AddressingMode::indirect_x(cpu, memory); 4}));
+    codes[ISC_ABSOLUTE_X        as usize] = Some(Box::new(|cpu, memory| {instructions::isc(AddressingMode::absolute_x(cpu, memory), cpu, memory); 7}));
+    codes[SRE_INDIRECT_X        as usize] = Some(Box::new(|cpu, memory| {instructions::sre(AddressingMode::indirect_x(cpu, memory), cpu, memory); 6}));
+    return codes;
+}
 pub type OpCode = u8;
 
 pub const ADC_IMMEDIATE: OpCode = 0x69;
@@ -631,7 +624,7 @@ mod tests {
     #[test]
     fn test_incrememnt_memory() {
         let mut cpu = cpu::CPU::new(0x8000);
-        let mut memory = &mut memory!(
+        let memory = &mut memory!(
             0x0010 => 5,
             0x8000 => 0xE6, //inc $10
             0x8001 => 0x10
@@ -647,7 +640,7 @@ mod tests {
             .program_counter(0x8000)
             .flags(0)
             .build();
-        let mut memory = &mut memory!(
+        let memory = &mut memory!(
             0x8000 => super::PHP
         );
         execute_instruction(&mut cpu, memory);
@@ -657,7 +650,7 @@ mod tests {
 
     #[test]
     fn brk_should_set_interrupt_disable_flag() {
-        let mut memory = &mut memory!(
+        let memory = &mut memory!(
             0x8000 => opcodes::BRK
         );
         let mut cpu = cpu::CpuBuilder::new()

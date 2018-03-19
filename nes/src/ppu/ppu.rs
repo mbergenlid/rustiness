@@ -439,6 +439,7 @@ pub mod tests {
     }
 
     #[test]
+    #[allow(non_snake_case)]
     fn read_status_one_PPU_clock_before_vbl_is_set() {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());

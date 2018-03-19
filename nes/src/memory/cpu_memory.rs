@@ -53,7 +53,7 @@ impl <'a> Memory for CPUMemory<'a> {
         if address < 0x2000 {
             self.memory.set(address, value);
         } else {
-            if let Some(mut entry) = self.io_registers.iter_mut().find(|e| e.0 == address) {
+            if let Some(entry) = self.io_registers.iter_mut().find(|e| e.0 == address) {
                 let memory: &mut Memory = self.memory.borrow_mut();
                 entry.1.write(memory, value);
             } else {

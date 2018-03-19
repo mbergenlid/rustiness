@@ -75,11 +75,11 @@ impl MemoryMappedIO for OAMDMA {
         let mut ppu = self.0.borrow_mut();
         let oam_address = ppu.get_oam_address() as usize;
         if oam_address == 0 {
-            memory.dma((dma_address..(dma_address+256)), ppu.sprites());
+            memory.dma(dma_address..(dma_address+256), ppu.sprites());
         } else {
             let wrap_around_address: u16 = dma_address+(256-oam_address as u16);
-            memory.dma((dma_address..wrap_around_address), &mut ppu.sprites()[oam_address..(256-oam_address)+1]);
-            memory.dma((wrap_around_address..(dma_address+256)), &mut ppu.sprites()[0..]);
+            memory.dma(dma_address..wrap_around_address, &mut ppu.sprites()[oam_address..(256-oam_address)+1]);
+            memory.dma(wrap_around_address..(dma_address+256), &mut ppu.sprites()[0..]);
         }
     }
 }

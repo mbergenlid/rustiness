@@ -5,6 +5,7 @@ use nes::{cpu, memory};
 use nes::ppu::PPU;
 use debugger::opcodes;
 use std::result;
+use std::rc::Rc;
 
 type Result = result::Result<Box<BreakPoint>, Fail>;
 pub trait BreakPoint {
@@ -12,7 +13,7 @@ pub trait BreakPoint {
 }
 
 impl BreakPoint {
-    pub fn parse(command: &[String]) -> Result {
+    pub fn parse(command: &[String], opcodes: Rc<OpCodes>) -> Result {
         let mut opts = Options::new();
         opts.optopt("l", "", "Address to break at", "address");
         opts.optopt("a", "", "Memory location", "address");
@@ -31,7 +32,7 @@ impl BreakPoint {
             vector.push(box location_option.unwrap());
         }
         if address_access_option.is_some() {
-            vector.push(box MemoryAccess(address_access_option.unwrap()));
+            vector.push(box MemoryAccess(address_access_option.unwrap(), opcodes));
         }
         if vram_value.is_some() {
             vector.push(box VRAMValue(vram_value.unwrap()));
@@ -89,11 +90,12 @@ impl BreakPoint for u16 {
     }
 }
 
-pub struct MemoryAccess(u16);
+use self::opcodes::OpCodes;
+pub struct MemoryAccess(u16, Rc<OpCodes>);
 
 impl BreakPoint for MemoryAccess {
     fn breakpoint(&self, cpu: &cpu::CPU, _: &PPU, memory: &memory::Memory) -> bool {
-        let address = opcodes::addressing_mode(cpu, memory).operand_address;
+        let address = self.1.addressing_mode(cpu, memory).operand_address;
         address == self.0
     }
 }
