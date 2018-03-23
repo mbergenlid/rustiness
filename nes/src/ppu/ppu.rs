@@ -56,6 +56,7 @@ pub struct PPU {
     status_register: u8,
     vblank_triggered: bool,
     vblank_cleared: bool,
+    pending_nmi: u32,
     memory: PPUMemory,
     vram_registers: VRAMRegisters,
     temp_vram_read_buffer: u8,
@@ -75,6 +76,8 @@ impl Display for PPU {
         formatter.write_fmt(format_args!("PPU: {}\n", self.cycle_count)).unwrap();
         formatter.write_fmt(
             format_args!("\tControl register: 0b{:08b}\n", self.ppu_ctrl())).unwrap();
+        formatter.write_fmt(
+            format_args!("\tMask register: 0b{:08b}\n", self.mask_register.value)).unwrap();
         formatter.write_fmt(
             format_args!("\tVRAM Pointer:     0x{:08x}\t\n", self.vram())).unwrap();
         formatter.write_fmt(
@@ -104,6 +107,7 @@ impl PPU {
             status_register: 0,
             vblank_triggered: false,
             vblank_cleared: false,
+            pending_nmi: 0,
             memory: memory,
             vram_registers: VRAMRegisters::new(),
             temp_vram_read_buffer: 0,
@@ -119,6 +123,11 @@ impl PPU {
     }
 
     pub fn set_ppu_ctrl(&mut self, value: u8) {
+        if !self.control_register.nmi_enabled() 
+                && (value & 0x80 != 0) 
+                && self.status_register.is_vblank() {
+            self.pending_nmi = 2;
+        }
         self.control_register.value = value;
         self.vram_registers.write_name_table(value);
     }
@@ -233,6 +242,9 @@ impl PPU {
             self.status_register = self.status_register & 0x3F;
             self.vblank_cleared = true;
             return false;
+        } else if self.pending_nmi > 0 {
+            self.pending_nmi -= 1;
+            return self.pending_nmi == 0;
         } else {
             return false;
         }
@@ -257,28 +269,30 @@ impl PPU {
         use std::cmp::min;
         screen.set_backdrop_color(COLOUR_PALETTE[self.memory.get(0x3F00) as usize]);
         self.render_back_sprites(screen);
+        let area_width_minus_left = area_width.wrapping_sub(left);
+        let area_height_minus_top = area_height.wrapping_sub(top);
         screen.render(
-            Rectangle { x: left as i32, y: top as i32, width: min(screen_width, area_width-left) as u32, height: min(screen_height, area_height-top) as u32 },
+            Rectangle { x: left as i32, y: top as i32, width: min(screen_width, area_width_minus_left) as u32, height: min(screen_height, area_height_minus_top) as u32 },
             0, 0
         );
         //Do we need to patch to the right?
-        if area_width-left < screen_width {
+        if area_width_minus_left < screen_width {
             screen.render(
-                Rectangle { x: 0, y: top as i32, width: (screen_width-(area_width-left)) as u32, height: min(screen_height, area_height-top) as u32 },
+                Rectangle { x: 0, y: top as i32, width: (screen_width-area_width_minus_left) as u32, height: min(screen_height, area_height_minus_top) as u32 },
                 area_width-left, 0
             );
         }
         //Do we need to patch at the bottom?
-        if area_height-top < screen_height {
+        if area_height_minus_top < screen_height {
             screen.render(
-                Rectangle { x: left as i32, y: 0, width: min(screen_width, area_width-left) as u32, height: (screen_height-(area_height-top)) as u32 },
+                Rectangle { x: left as i32, y: 0, width: min(screen_width, area_width_minus_left) as u32, height: (screen_height-area_height_minus_top) as u32 },
                 0, area_height-top as usize
             );
         }
         //Do we need to patch at the bottom right?
-        if area_width-left < screen_width && area_height-top < screen_height {
+        if area_width_minus_left < screen_width && area_height_minus_top < screen_height {
             screen.render(
-                Rectangle { x: 0, y: 0, width: (screen_width-(area_width-left)) as u32, height: (screen_height-(area_height-top)) as u32 },
+                Rectangle { x: 0, y: 0, width: (screen_width-area_width_minus_left) as u32, height: (screen_height-area_height_minus_top) as u32 },
                 area_width-left as usize, area_height-top as usize
             );
         }
@@ -453,5 +467,19 @@ pub mod tests {
         assert_eq!(0x00, ppu.status() & 0x80); //Reads one PPU clock before vbl suppresses vbl for this frame
         ppu.update(4, screen); //82_192
         assert_eq!(0x00, ppu.status() & 0x80); //VBL has been suppressed by previous read
+    }
+
+    #[test]
+    fn nmi_should_occur_immediately_after_next_instruction_if_eabled_when_vbl_is_set() {
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        ppu.update(27_393, screen); //82_179  VBL-2
+        ppu.update(200, screen); //82_779 (in VBL)
+        assert_eq!(true, ppu.status_register.is_vblank());
+
+        ppu.set_ppu_ctrl(0x80); //Enable NMI
+        assert_eq!(false, ppu.update(1, screen));
+        assert_eq!(true, ppu.update(1, screen));
     }
 }
