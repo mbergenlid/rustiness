@@ -45,8 +45,11 @@ use borrow::MutableRef;
 impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
 
     pub fn from_file(file: &str, controller: MutableRef<'a, MemoryMappedIO>, audio: A, screen: Box<T>) -> NES<'a, T, A> {
-
         let mapper = mapper::from_file(file);
+        NES::new(mapper, controller, audio, screen)
+    }
+
+    pub fn new(mapper: mapper::Mapper, controller: MutableRef<'a, MemoryMappedIO>, audio: A, screen: Box<T>) -> NES<'a, T, A> {
         let memory = mapper.cpu_memory;
 
         let ppu = Rc::new(RefCell::new(PPU::new(mapper.ppu_memory)));
@@ -72,13 +75,19 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
     }
 
     pub fn execute(&mut self) {
-        let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut self.memory);
+        let instruction = self.op_codes.fetch_instruction(&mut self.cpu, &mut self.memory);
+        let fetch_cycles = instruction.fetch_cycles();
+
+        let mut nmi = self.ppu.borrow_mut().update(fetch_cycles as u32, self.screen.as_mut());
+        let cycles = instruction.execute(&mut self.cpu, &mut self.memory);
+
+        let total_cycles = fetch_cycles + cycles;
+        nmi = nmi || self.ppu.borrow_mut().update(fetch_cycles as u32, self.screen.as_mut());
         if cfg!(feature = "sound") {
-            self.apu.update(cycles);
+            self.apu.update(total_cycles);
         }
-        let nmi = self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
-        self.cycle_count += cycles as u64;
-        self.clock.tick(cycles as u32);
+        self.cycle_count += (total_cycles) as u64;
+        self.clock.tick(total_cycles as u32);
 
         if nmi {
             let cycles =

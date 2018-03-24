@@ -3,39 +3,39 @@ use cpu::CPU;
 use cpu;
 use memory::Memory;
 
-pub fn adc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn adc(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.add_accumulator(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn sbc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn sbc(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.sub_accumulator(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn inc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn inc(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let new_value = cpu.increment(memory.get(addressing_mode.operand_address));
     memory.set(addressing_mode.operand_address, new_value);
     3 + addressing_mode.cycles
 }
 
-pub fn dec(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn dec(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let new_value = cpu.decrement(memory.get(addressing_mode.operand_address));
     memory.set(addressing_mode.operand_address, new_value);
     3 + addressing_mode.cycles
 }
 
-pub fn and(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn and(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.and_accumulator(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn or(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn or(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.or_accumulator(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn eor(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn eor(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.xor_accumulator(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
@@ -45,31 +45,31 @@ pub fn asl_accumulator(cpu: &mut CPU) -> u8 {
     2
 }
 
-pub fn asl(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn asl(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let new_value = cpu.arithmetic_shift_left(memory.get(addressing_mode.operand_address));
     memory.set(addressing_mode.operand_address, new_value);
     3 + addressing_mode.cycles
 }
 
-pub fn lsr(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn lsr(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let new_value = cpu.logical_shift_right(memory.get(addressing_mode.operand_address));
     memory.set(addressing_mode.operand_address, new_value);
     3 + addressing_mode.cycles
 }
 
-pub fn rol(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn rol(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let new_value = cpu.rotate_left(memory.get(addressing_mode.operand_address));
     memory.set(addressing_mode.operand_address, new_value);
     3 + addressing_mode.cycles
 }
 
-pub fn ror(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn ror(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let new_value = cpu.rotate_right(memory.get(addressing_mode.operand_address));
     memory.set(addressing_mode.operand_address, new_value);
     3 + addressing_mode.cycles
 }
 
-pub fn bit(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn bit(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.bit_test(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
@@ -91,7 +91,7 @@ pub fn branch(cpu: &mut CPU, memory: &Memory, flag: u8, inverted: bool) -> u8 {
     }
 }
 
-pub fn jmp(addressing_mode: AddressingMode, cpu: &mut CPU) {
+pub fn jmp(addressing_mode: &AddressingMode, cpu: &mut CPU) {
     cpu.set_program_counter(addressing_mode.operand_address);
 }
 
@@ -145,50 +145,50 @@ pub fn rts(cpu: &mut CPU, memory: &mut Memory) -> u8 {
     return 6;
 }
 
-pub fn sta(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+pub fn sta(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
     memory.set(addressing_mode.operand_address, cpu.accumulator());
 }
 
-pub fn stx(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+pub fn stx(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
     memory.set(addressing_mode.operand_address, cpu.register_x());
 }
 
-pub fn sty(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
+pub fn sty(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) {
     memory.set(addressing_mode.operand_address, cpu.register_y());
 }
 
-pub fn ldx(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn ldx(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.load_x(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn ldy(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn ldy(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.load_y(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn lda(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn lda(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.load_accumulator(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn cmp(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn cmp(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.cmp_accumulator(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn cpx(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn cpx(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.cmp_register_x(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
-pub fn cpy(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn cpy(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     cpu.cmp_register_y(memory.get(addressing_mode.operand_address));
     1 + addressing_mode.cycles
 }
 
 //Unofficial
-pub fn isc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn isc(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let new_value = cpu.increment(memory.get(addressing_mode.operand_address));
     memory.set(addressing_mode.operand_address, new_value);
     cpu.sub_accumulator(new_value);
@@ -196,7 +196,7 @@ pub fn isc(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) 
 }
 
 const DO_NOT_KNOW: u8 = 0;
-pub fn sre(addressing_mode: AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+pub fn sre(addressing_mode: &AddressingMode, cpu: &mut CPU, memory: &mut Memory) -> u8 {
     let new_value = cpu.logical_shift_right(memory.get(addressing_mode.operand_address));
     memory.set(addressing_mode.operand_address, new_value);
     cpu.xor_accumulator(memory.get(addressing_mode.operand_address));
