@@ -116,9 +116,12 @@ mod test {
     use nes::ppu::PPU;
     use nes::ppu::ppumemory::PPUMemory;
 
+    use std::rc::Rc;
+    use debugger::opcodes::OpCodes;
+
     #[test]
     fn address_breakpoint() {
-        let break_point = BreakPoint::parse(&[String::from("-l"), String::from("C013")]).unwrap();
+        let break_point = BreakPoint::parse(&[String::from("-l"), String::from("C013")], Rc::new(OpCodes::new())).unwrap();
         let cpu = CpuBuilder::new().program_counter(0xC013).build();
         let ppu = PPU::new(PPUMemory::no_mirroring());
         assert_eq!(break_point.breakpoint(&cpu, &ppu, &BasicMemory::new()), true);
@@ -126,7 +129,7 @@ mod test {
 
     #[test]
     fn operand_address_breakpoint() {
-        let break_point = BreakPoint::parse(&[String::from("-a"), String::from("2")]).unwrap();
+        let break_point = BreakPoint::parse(&[String::from("-a"), String::from("2")], Rc::new(OpCodes::new())).unwrap();
         let cpu = CpuBuilder::new().program_counter(0x8000).build();
         let memory = memory!(
             0x8000 => opcodes::ADC_ZERO_PAGE,
@@ -139,7 +142,7 @@ mod test {
     #[test]
     fn multiple_breakpoints() {
         let args: Vec<String> = ["-a", "2", "-l", "8002"].iter().map(|&s| String::from(s)).collect();
-        let break_point = BreakPoint::parse(args.as_slice()).unwrap();
+        let break_point = BreakPoint::parse(args.as_slice(), Rc::new(OpCodes::new())).unwrap();
         let cpu = CpuBuilder::new().program_counter(0x8002).build();
         let memory = memory!(
             0x8002 => opcodes::ADC_ZERO_PAGE,
