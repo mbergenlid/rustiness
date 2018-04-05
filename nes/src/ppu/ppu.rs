@@ -64,6 +64,8 @@ pub struct PPU {
     vram_changed: bool,
 
     cycle_count: u32,
+    cycles_already_executed: u32,
+    should_update_screen: bool,
     mirroring: ppumemory::Mirroring,
 
     sprites: [u8; 64*4],
@@ -115,6 +117,8 @@ impl PPU {
             vram_changed: true,
 
             cycle_count: 0,
+            cycles_already_executed: 0,
+            should_update_screen: false,
             mirroring: mirroring,
 
             sprites: [0; 64*4],
@@ -140,7 +144,10 @@ impl PPU {
         self.mask_register.value = value;
     }
 
-    pub fn status(&mut self) -> u8 {
+    pub fn status(&mut self, sub_cycle: u8) -> u8 {
+        let ppu_cycles = (sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+2;
+        self.sync(ppu_cycles);
+        self.cycles_already_executed = ppu_cycles;
         let status_register = self.status_register;
         self.status_register &= 0x7F;
         self.vram_registers.reset_write_toggle();
@@ -215,6 +222,28 @@ impl PPU {
         self.sprites[self.oam_address as usize]
     }
 
+    fn sync(&mut self, ppu_cycle_count: u32) {
+        self.cycle_count += ppu_cycle_count;
+        if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
+            self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
+            self.vblank_triggered = false;
+            self.vblank_cleared = false;
+        }
+        if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
+            //VBLANK
+            self.status_register = self.status_register | 0x80; //set vblank
+            self.vblank_triggered = true;
+            if self.control_register.nmi_enabled() {
+                self.pending_nmi = 1;
+            }
+            self.should_update_screen = true;
+        } else if !self.vblank_cleared && self.cycle_count >= VBLANK_CLEAR_CYCLE {
+            //VBLANK is over
+            self.status_register = self.status_register & 0x3F;
+            self.vblank_cleared = true;
+        }
+    }
+
     pub fn update<T>(&mut self, cpu_cycle_count: u32, screen: &mut T) -> bool
         where T: Screen + Sized
     {
@@ -227,28 +256,18 @@ impl PPU {
     pub fn update_ppu_cycles<T>(&mut self, ppu_cycle_count: u32, screen: &mut T) -> bool
         where T: Screen + Sized
     {
-        self.cycle_count += ppu_cycle_count;
-        if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
-            self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
-            self.vblank_triggered = false;
-            self.vblank_cleared = false;
-        }
-        if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
-            //VBLANK
-            self.status_register = self.status_register | 0x80; //set vblank
-            self.vblank_triggered = true;
+        let remaining_cycles = ppu_cycle_count - self.cycles_already_executed;
+        self.cycles_already_executed = 0;
+        self.sync(remaining_cycles);
+        if self.should_update_screen {
             if cfg!(feature = "ppu") {
                 if self.mask_register.is_drawing_enabled() {
                     self.update_screen(screen);
                 }
             }
-            return self.control_register.nmi_enabled();
-        } else if !self.vblank_cleared && self.cycle_count >= VBLANK_CLEAR_CYCLE {
-            //VBLANK is over
-            self.status_register = self.status_register & 0x3F;
-            self.vblank_cleared = true;
-            return false;
-        } else if self.pending_nmi > 0 {
+            self.should_update_screen = false;
+        }
+        if self.pending_nmi > 0 {
             self.pending_nmi -= 1;
             return self.pending_nmi == 0;
         } else {
@@ -401,9 +420,9 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.status_register = 0b1100_0000;
 
-        assert_eq!(true, ppu.status().is_vblank());
+        assert_eq!(true, ppu.status(0).is_vblank());
         assert_eq!(0b0100_0000, ppu.status_register);
-        assert_eq!(false, ppu.status().is_vblank());
+        assert_eq!(false, ppu.status(0).is_vblank());
     }
 
     #[test]
@@ -452,7 +471,7 @@ pub mod tests {
         assert_eq!(true, ppu.update(27_508, screen)); //cycle count = 82_524
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        ppu.status(); //To clear vblank
+        ppu.status(0); //To clear vblank
         assert_eq!(false, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(5, screen));
@@ -464,15 +483,11 @@ pub mod tests {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
-        ppu.update(27_393, screen); //82_179  VBL-2
-        assert_eq!(0x00, ppu.status() & 0x80);
-        ppu.update(4, screen); //82_191
-        assert_eq!(0x80, ppu.status() & 0x80);
-
-        ppu.update(29_781-4, screen); //82_180  VBL-1
-        assert_eq!(0x00, ppu.status() & 0x80); //Reads one PPU clock before vbl suppresses vbl for this frame
-        ppu.update(4, screen); //82_192
-        assert_eq!(0x00, ppu.status() & 0x80); //VBL has been suppressed by previous read
+        update_ppu(27392+29781*2, &mut ppu); //82_178 = VBL-3
+        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_180)
+        assert_eq!(0x00, ppu.status(0) & 0x80); //Reads one PPU clock before vbl suppresses vbl for this frame
+        ppu.update(4, screen); //82_190
+        assert_eq!(0x00, ppu.status(0) & 0x80); //VBL has been suppressed by previous read
     }
 
     #[test]
@@ -487,5 +502,46 @@ pub mod tests {
         ppu.set_ppu_ctrl(0x80); //Enable NMI
         assert_eq!(false, ppu.update(1, screen));
         assert_eq!(true, ppu.update(1, screen));
+    }
+
+    #[test]
+    fn read_status_occuring_mid_instruction() {
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        update_ppu(27_393, &mut ppu); //82_179
+        assert_eq!(0x80, ppu.status(0) & 0x80); //82_182
+    }
+
+    fn update_ppu(cycles: u32, ppu: &mut PPU) {
+        let screen = &mut ScreenMock::new();
+        for _ in 0..cycles {
+            ppu.update(1, screen);
+        }
+    }
+
+    #[test]
+    fn the_update_after_a_status_read_should_subtract_the_cycles_already_consumed_by_the_status_read() {
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        ppu.update(27_390, screen); //82_170
+        assert_eq!(0x00, ppu.status(2) & 0x80); //82_178
+        ppu.update(3, screen); //82_179
+        assert_eq!(false, ppu.status_register.is_vblank());
+    }
+
+    #[test]
+    fn cycles_already_executed_must_be_cleared() {
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        ppu.update(27_389, screen); //82_167
+        assert_eq!(0x00, ppu.status(2) & 0x80); //82_175
+        println!("{}", ppu);
+        ppu.update(3, screen); //82_176
+        println!("{}", ppu);
+        ppu.update(2, screen); //82_182
+        println!("{}", ppu);
+        assert_eq!(true, ppu.status_register.is_vblank());
     }
 }

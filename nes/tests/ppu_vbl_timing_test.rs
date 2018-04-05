@@ -89,7 +89,7 @@ fn vbl_timing() {
     delay(&mut nes.ppu.borrow_mut(), 29_775);
 
     println!("{}", nes.ppu.borrow());
-    assert!(nes.ppu.borrow_mut().status() & 0x80 == 0);
+    assert!(nes.ppu.borrow_mut().status(0) & 0x80 == 0);
 
     nes.execute();
     //delay(&mut nes.ppu.borrow_mut(), 1);
@@ -108,12 +108,13 @@ fn delay(ppu: &mut PPU, cycles: u32) {
 }
 
 #[test]
-#[ignore]
-fn vbl_timing2() {
+fn nmi_timing() {
     let memory = memory!(
-            0x8000 => opcodes::BIT_ABSOLUTE,
-            0x8001 => 0x02,
-            0x8002 => 0x20,
+            0x8000 => opcodes::NOP_IMPLIED,
+
+            0x8001 => opcodes::JMP_ABSOLUTE,
+            0x8002 => 0x00,
+            0x8003 => 0x80,
 
             0xFFFC => 0x00,
             0xFFFD => 0x80
@@ -130,9 +131,13 @@ fn vbl_timing2() {
         screen
     );
 
-    nes.ppu.borrow_mut().update(57_171, &mut ScreenMock::new());
+    nes.ppu.borrow_mut().set_ppu_ctrl(0x80); //Enable nmi
+    delay(&mut nes.ppu.borrow_mut(), 27_389);
     println!("{}", nes.ppu.borrow());
     nes.execute();
+    nes.execute();
 
-    assert!(nes.cpu.processor_status() & 0x80 != 0);
+    assert_eq!(0x8000, nes.cpu.program_counter());
+    nes.execute();
+    assert_eq!(0x0000, nes.cpu.program_counter());
 }

@@ -33,7 +33,7 @@ impl MemoryMappedIO for PPUMask {
 }
 impl MemoryMappedIO for PPUStatus {
     fn read(&self, _: &Memory) -> u8 {
-        self.0.borrow_mut().status()
+        self.0.borrow_mut().status(0)
     }
     fn write(&mut self, _: &mut Memory, _: u8) {
         //Do nothing
