@@ -30,9 +30,9 @@ fn test_basic_sprite_rendering() {
 
     //Sprite 0 should hit on pixel 4
     //i.e first scanline dot 2+4=6 => 6 PPU_CYCLES = 6/3 = 2 CPU_CYCLES
-    ppu.borrow_mut().update(1, &mut screen);
+    ppu.borrow_mut().sync(1, &mut screen);
     assert_eq!(0x0, ppu.borrow_mut().status(0) & 0x40);
-    ppu.borrow_mut().update(2, &mut screen);
+    ppu.borrow_mut().sync(2, &mut screen);
     assert_eq!(0x40, ppu.borrow_mut().status(0) & 0x40);
 }
 

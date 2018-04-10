@@ -100,7 +100,7 @@ use nes::ppu::PPU;
 fn delay(ppu: &mut PPU, cycles: u32) {
     let mut screen = ScreenMock::new();
     for _ in 0..cycles {
-        ppu.update(1, &mut screen);
+        ppu.sync(1, &mut screen);
     }
 }
 

@@ -80,7 +80,7 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
         let cycles = (*instruction).estimated_cycles();
 
         instruction.execute(&mut self.cpu, &mut self.memory);
-        let nmi = self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
+        let nmi = self.ppu.borrow_mut().sync(cycles as u32, self.screen.as_mut());
 
         if cfg!(feature = "sound") {
             self.apu.update(cycles);
@@ -92,7 +92,7 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
             let nmi_instruction = instructions::NMI::new();
             let cycles = nmi_instruction.estimated_cycles();
             nmi_instruction.execute(&mut self.cpu, &mut self.memory);
-            self.ppu.borrow_mut().update_ppu_cycles((cycles*3) as u32, self.screen.as_mut());
+            self.ppu.borrow_mut().sync(cycles as u32, self.screen.as_mut());
             self.cycle_count += cycles as u64;
         }
     }

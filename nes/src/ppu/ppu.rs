@@ -149,7 +149,7 @@ impl PPU {
 
     pub fn status(&mut self, sub_cycle: u8) -> u8 {
         let ppu_cycles = (sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+2;
-        self.sync(ppu_cycles);
+        self.update(ppu_cycles);
         self.cycles_already_executed = ppu_cycles;
         let status_register = self.status_register;
         self.status_register &= 0x7F;
@@ -225,7 +225,7 @@ impl PPU {
         self.sprites[self.oam_address as usize]
     }
 
-    fn sync(&mut self, ppu_cycle_count: u32) {
+    fn update(&mut self, ppu_cycle_count: u32) {
         self.cycle_count += ppu_cycle_count;
         if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
@@ -245,21 +245,15 @@ impl PPU {
         }
     }
 
-    pub fn update<T>(&mut self, cpu_cycle_count: u32, screen: &mut T) -> bool
-        where T: Screen + Sized
-    {
-        self.update_ppu_cycles(cpu_cycle_count*PPU_CYCLES_PER_CPU_CYCLE, screen)
-    }
-
     /**
      * Returns true if a VBLANK should be generated.
      */
-    pub fn update_ppu_cycles<T>(&mut self, ppu_cycle_count: u32, screen: &mut T) -> bool
+    pub fn sync<T>(&mut self, cpu_cycle_count: u32, screen: &mut T) -> bool
         where T: Screen + Sized
     {
-        let remaining_cycles = ppu_cycle_count - self.cycles_already_executed;
+        let remaining_cycles = cpu_cycle_count*PPU_CYCLES_PER_CPU_CYCLE - self.cycles_already_executed;
         self.cycles_already_executed = 0;
-        self.sync(remaining_cycles);
+        self.update(remaining_cycles);
         if self.should_update_screen {
             if cfg!(feature = "ppu") {
                 if self.mask_register.is_drawing_enabled() {
@@ -435,7 +429,7 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x00); //Disable NMI
 
-        assert_eq!(false, ppu.update(29_000, &mut ScreenMock::new()));
+        assert_eq!(false, ppu.sync(29_000, &mut ScreenMock::new()));
     }
 
     #[test]
@@ -443,29 +437,29 @@ pub mod tests {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x80);
-        assert_eq!(false, ppu.update(45, screen)); //cycle count = 135
-        assert_eq!(false, ppu.update(27_394-45, screen)); //cycle count = 82_182
+        assert_eq!(false, ppu.sync(45, screen)); //cycle count = 135
+        assert_eq!(false, ppu.sync(27_394-45, screen)); //cycle count = 82_182
 
         assert_eq!(true, ppu.status_register.is_vblank());
-        assert_eq!(true, ppu.update(1, screen)); //cycle count = 82_185
+        assert_eq!(true, ppu.sync(1, screen)); //cycle count = 82_185
 
-        assert_eq!(false, ppu.update(49, screen)); //cycle count = 82 332
+        assert_eq!(false, ppu.sync(49, screen)); //cycle count = 82 332
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(2_224, screen));  //cycle count = 89 004
+        assert_eq!(false, ppu.sync(2_224, screen));  //cycle count = 89 004
         assert_eq!(false, ppu.status_register.is_vblank());
 
         //89 342 ppu cycles per frame
         //Total cpu cycles 29_781 = 89_343 ppu cycles
-        assert_eq!(false, ppu.update(113+45, screen)); // cycle count = 136
+        assert_eq!(false, ppu.sync(113+45, screen)); // cycle count = 136
 
-        assert_eq!(true, ppu.update(27_462, screen)); //cycle count = 82 522
+        assert_eq!(true, ppu.sync(27_462, screen)); //cycle count = 82 522
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(50, screen)); //cycle count = 82 672
+        assert_eq!(false, ppu.sync(50, screen)); //cycle count = 82 672
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(2_223, screen)); //cycle count = 89 341
+        assert_eq!(false, ppu.sync(2_223, screen)); //cycle count = 89 341
         assert_eq!(false, ppu.status_register.is_vblank());
     }
 
@@ -474,13 +468,13 @@ pub mod tests {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x80);
-        assert_eq!(true, ppu.update(27_508, screen)); //cycle count = 82_524
+        assert_eq!(true, ppu.sync(27_508, screen)); //cycle count = 82_524
         assert_eq!(true, ppu.status_register.is_vblank());
 
         ppu.status(0); //To clear vblank
         assert_eq!(false, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.update(5, screen));
+        assert_eq!(false, ppu.sync(5, screen));
     }
 
     #[test]
@@ -492,7 +486,7 @@ pub mod tests {
         update_ppu(27392+29781*2, &mut ppu); //82_178 = VBL-3
         //The following 'status' read will happen 2 ppu cycles later (i.e at 82_180)
         assert_eq!(0x00, ppu.status(0) & 0x80); //Reads one PPU clock before vbl suppresses vbl for this frame
-        ppu.update(4, screen); //82_190
+        ppu.sync(4, screen); //82_190
         assert_eq!(0x00, ppu.status(0) & 0x80); //VBL has been suppressed by previous read
     }
 
@@ -501,13 +495,13 @@ pub mod tests {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
-        ppu.update(27_393, screen); //82_179  VBL-2
-        ppu.update(200, screen); //82_779 (in VBL)
+        ppu.sync(27_393, screen); //82_179  VBL-2
+        ppu.sync(200, screen); //82_779 (in VBL)
         assert_eq!(true, ppu.status_register.is_vblank());
 
         ppu.set_ppu_ctrl(0x80); //Enable NMI
-        assert_eq!(false, ppu.update(1, screen));
-        assert_eq!(true, ppu.update(1, screen));
+        assert_eq!(false, ppu.sync(1, screen));
+        assert_eq!(true, ppu.sync(1, screen));
     }
 
     #[test]
@@ -521,7 +515,7 @@ pub mod tests {
     fn update_ppu(cycles: u32, ppu: &mut PPU) {
         let screen = &mut ScreenMock::new();
         for _ in 0..cycles {
-            ppu.update(1, screen);
+            ppu.sync(1, screen);
         }
     }
 
@@ -530,9 +524,9 @@ pub mod tests {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
-        ppu.update(27_390, screen); //82_170
+        ppu.sync(27_390, screen); //82_170
         assert_eq!(0x00, ppu.status(2) & 0x80); //82_178
-        ppu.update(3, screen); //82_179
+        ppu.sync(3, screen); //82_179
         assert_eq!(false, ppu.status_register.is_vblank());
     }
 
@@ -541,12 +535,12 @@ pub mod tests {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
-        ppu.update(27_389, screen); //82_167
+        ppu.sync(27_389, screen); //82_167
         assert_eq!(0x00, ppu.status(2) & 0x80); //82_175
         println!("{}", ppu);
-        ppu.update(3, screen); //82_176
+        ppu.sync(3, screen); //82_176
         println!("{}", ppu);
-        ppu.update(2, screen); //82_182
+        ppu.sync(2, screen); //82_182
         println!("{}", ppu);
         assert_eq!(true, ppu.status_register.is_vblank());
     }
