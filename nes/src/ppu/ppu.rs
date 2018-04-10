@@ -215,13 +215,19 @@ impl PPU {
         self.sprites[self.oam_address as usize]
     }
 
-    /**
-     * Returns true if a VBLANK should be generated.
-     */
     pub fn update<T>(&mut self, cpu_cycle_count: u32, screen: &mut T) -> bool
         where T: Screen + Sized
     {
-        self.cycle_count += cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE;
+        self.update_ppu_cycles(cpu_cycle_count*PPU_CYCLES_PER_CPU_CYCLE, screen)
+    }
+
+    /**
+     * Returns true if a VBLANK should be generated.
+     */
+    pub fn update_ppu_cycles<T>(&mut self, ppu_cycle_count: u32, screen: &mut T) -> bool
+        where T: Screen + Sized
+    {
+        self.cycle_count += ppu_cycle_count;
         if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
             self.vblank_triggered = false;

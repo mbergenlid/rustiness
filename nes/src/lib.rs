@@ -35,6 +35,7 @@ pub struct NES<'a, T, A>
     pub op_codes: opcodes::OpCodes,
     pub screen: Box<T>,
     pub memory: CPUMemory<'a>,
+    nmi_active: bool,
 
     pub clock: Clock,
 }
@@ -72,6 +73,7 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
             screen: screen,
             memory: cpu_memory,
             clock: Clock::start(),
+            nmi_active: false,
         }
     }
 
@@ -79,8 +81,10 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
         let instruction = self.op_codes.fetch_instruction(&mut self.cpu, &mut self.memory);
         let cycles = (*instruction).estimated_cycles();
 
-        let mut nmi = self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
+        let nmi = self.nmi_active || self.ppu.borrow_mut().update((cycles-1) as u32, self.screen.as_mut());
+        self.nmi_active = self.ppu.borrow_mut().update_ppu_cycles(2, self.screen.as_mut());
         instruction.execute(&mut self.cpu, &mut self.memory);
+        self.nmi_active = self.nmi_active || self.ppu.borrow_mut().update_ppu_cycles(1, self.screen.as_mut());
 
         if cfg!(feature = "sound") {
             self.apu.update(cycles);
@@ -92,7 +96,7 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
             let nmi_instruction = instructions::NMI::new();
             let cycles = nmi_instruction.estimated_cycles();
             nmi_instruction.execute(&mut self.cpu, &mut self.memory);
-            self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
+            self.ppu.borrow_mut().update_ppu_cycles((cycles*3) as u32, self.screen.as_mut());
             self.cycle_count += cycles as u64;
         }
     }
