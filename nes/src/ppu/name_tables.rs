@@ -47,7 +47,7 @@ impl NameTable {
                 for col in 0..32 {
                     let absolute_row = y_offset_multiplier*30 + row;
                     let absolute_col = x_offset_multiplier*32 + col;
-                    let pattern_table_address = memory.get(name_table);
+                    let pattern_table_address = memory.get(name_table, 0);
                     let colour_palette = {
                         let attribute_table = AttributeTable {
                             memory: memory,
@@ -112,7 +112,7 @@ impl NameTable {
 }
 
 impl Memory for NameTable {
-    fn get(&self, address: Address) -> u8 {
+    fn get(&self, address: Address, _: u8) -> u8 {
         self.raw_data[(address as usize) - 0x2000]
     }
 
@@ -196,11 +196,11 @@ mod test {
             name_table.set(a, value);
             assert_eq!(
                 value,
-                name_table.get(a), 
+                name_table.get(a, 0),
                 "Failed for address {:x}, Expected: {}, Was: {}",
                 a,
                 value,
-                name_table.get(a)
+                name_table.get(a, 0)
             );
         }
     }

@@ -4,12 +4,12 @@ use std::iter::Iterator;
 use std::ops::{Range, Index};
 
 pub trait Memory {
-    fn get(&self, address: Address) -> u8;
+    fn get(&self, address: Address, u8) -> u8;
     fn set(&mut self, address: Address, value: u8);
 
     fn dma(&self, range: Range<Address>, destination: &mut [u8]) {
         for (i, address) in range.enumerate() {
-            destination[i] = self.get(address);
+            destination[i] = self.get(address, 0);
         }
     }
 
@@ -33,7 +33,7 @@ impl BasicMemory {
 }
 
 impl Memory for BasicMemory {
-    fn get(&self, address: Address) -> u8 {
+    fn get(&self, address: Address, _: u8) -> u8 {
         return self.data[address as usize];
     }
 
@@ -53,6 +53,10 @@ impl Index<Range<usize>> for BasicMemory {
 pub trait MemoryMappedIO {
     fn read(&self, &Memory) -> u8;
     fn write(&mut self, &mut Memory, value: u8);
+
+    fn read_at_cycle(&self, memory: &Memory, _: u8) -> u8 {
+        self.read(memory)
+    }
 }
 
 

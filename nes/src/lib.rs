@@ -35,7 +35,6 @@ pub struct NES<'a, T, A>
     pub op_codes: opcodes::OpCodes,
     pub screen: Box<T>,
     pub memory: CPUMemory<'a>,
-    nmi_active: bool,
 
     pub clock: Clock,
 }
@@ -59,8 +58,8 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
         let apu = APU::new(audio, 500);
 
         let cpu_start = {
-            let lsbs: u8 = memory.get(0xFFFC);
-            let msbs: u8 = memory.get(0xFFFD);
+            let lsbs: u8 = memory.get(0xFFFC, 0);
+            let msbs: u8 = memory.get(0xFFFD, 0);
             (msbs as u16) << 8 | lsbs as u16
         };
         let cpu_memory = CPUMemory::default(memory, ppu.clone(), &apu, Some(controller));
@@ -73,7 +72,6 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
             screen: screen,
             memory: cpu_memory,
             clock: Clock::start(),
-            nmi_active: false,
         }
     }
 
@@ -81,9 +79,8 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
         let instruction = self.op_codes.fetch_instruction(&mut self.cpu, &mut self.memory);
         let cycles = (*instruction).estimated_cycles();
 
-        let nmi = self.nmi_active || self.ppu.borrow_mut().update((cycles-1) as u32, self.screen.as_mut());
         instruction.execute(&mut self.cpu, &mut self.memory);
-        self.nmi_active = self.ppu.borrow_mut().update(1, self.screen.as_mut());
+        let nmi = self.ppu.borrow_mut().update(cycles as u32, self.screen.as_mut());
 
         if cfg!(feature = "sound") {
             self.apu.update(cycles);

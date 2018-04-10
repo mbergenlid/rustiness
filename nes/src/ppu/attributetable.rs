@@ -21,7 +21,7 @@ impl<'a> AttributeTable<'a> {
         let quadrant = (row_inside_attribute << 1) | col_inside_attribute;
         let attribute_address = self.address + (attribute_row*8 + attribute_col);
 
-        let value = self.memory.get(attribute_address);
+        let value = self.memory.get(attribute_address, 0);
         value >> (quadrant << 1) & 0x03
     }
 }

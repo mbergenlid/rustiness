@@ -57,6 +57,7 @@ pub struct PPU {
     vblank_triggered: bool,
     vblank_cleared: bool,
     pending_nmi: u32,
+    nmi_triggered: bool,
     memory: PPUMemory,
     vram_registers: VRAMRegisters,
     temp_vram_read_buffer: u8,
@@ -98,6 +99,7 @@ const SCANLINES_PER_FRAME: u32 = 262;
 const VISIBLE_SCANLINES: u32 = 240;
 const POST_RENDER_LINES: u32 = 1;
 const VBLANK_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES)*PPU_CYCLES_PER_SCANLINE; //82 181
+const NMI_CYCLE: u32 = VBLANK_CYCLE+3; //82 184
 const VBLANK_CLEAR_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE; //89 001
 
 impl PPU {
@@ -110,6 +112,7 @@ impl PPU {
             vblank_triggered: false,
             vblank_cleared: false,
             pending_nmi: 0,
+            nmi_triggered: false,
             memory: memory,
             vram_registers: VRAMRegisters::new(),
             temp_vram_read_buffer: 0,
@@ -178,11 +181,11 @@ impl PPU {
     pub fn read_from_vram(&mut self) -> u8 {
         let current_vram = self.vram_registers.current;
         let value = if current_vram >= 0x3F00 {
-            self.temp_vram_read_buffer = self.memory.get(current_vram - 0x1000);
-            self.memory.get(current_vram)
+            self.temp_vram_read_buffer = self.memory.get(current_vram - 0x1000, 0);
+            self.memory.get(current_vram, 0)
         } else {
             let value = self.temp_vram_read_buffer;
-            self.temp_vram_read_buffer = self.memory.get(current_vram);
+            self.temp_vram_read_buffer = self.memory.get(current_vram, 0);
             value
         };
         self.vram_registers.current += self.control_register.vram_pointer_increment();
@@ -228,14 +231,12 @@ impl PPU {
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
             self.vblank_triggered = false;
             self.vblank_cleared = false;
+            self.nmi_triggered = false;
         }
         if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
             //VBLANK
             self.status_register = self.status_register | 0x80; //set vblank
             self.vblank_triggered = true;
-            if self.control_register.nmi_enabled() {
-                self.pending_nmi = 1;
-            }
             self.should_update_screen = true;
         } else if !self.vblank_cleared && self.cycle_count >= VBLANK_CLEAR_CYCLE {
             //VBLANK is over
@@ -267,6 +268,10 @@ impl PPU {
             }
             self.should_update_screen = false;
         }
+        if !self.nmi_triggered && self.cycle_count >= NMI_CYCLE {
+            self.nmi_triggered = true;
+            return self.control_register.nmi_enabled();
+        }
         if self.pending_nmi > 0 {
             self.pending_nmi -= 1;
             return self.pending_nmi == 0;
@@ -292,7 +297,7 @@ impl PPU {
             ppumemory::Mirroring::NoMirroring => (512, 480),
         };
         use std::cmp::min;
-        screen.set_backdrop_color(COLOUR_PALETTE[self.memory.get(0x3F00) as usize]);
+        screen.set_backdrop_color(COLOUR_PALETTE[self.memory.get(0x3F00, 0) as usize]);
         self.render_back_sprites(screen);
         let area_width_minus_left = area_width.wrapping_sub(left);
         let area_height_minus_top = area_height.wrapping_sub(top);
@@ -439,11 +444,12 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x80);
         assert_eq!(false, ppu.update(45, screen)); //cycle count = 135
-        assert_eq!(true, ppu.update(27_394-45, screen)); //cycle count = 82_182
+        assert_eq!(false, ppu.update(27_394-45, screen)); //cycle count = 82_182
 
         assert_eq!(true, ppu.status_register.is_vblank());
+        assert_eq!(true, ppu.update(1, screen)); //cycle count = 82_185
 
-        assert_eq!(false, ppu.update(50, screen)); //cycle count = 82 332
+        assert_eq!(false, ppu.update(49, screen)); //cycle count = 82 332
         assert_eq!(true, ppu.status_register.is_vblank());
 
         assert_eq!(false, ppu.update(2_224, screen));  //cycle count = 89 004

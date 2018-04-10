@@ -154,8 +154,8 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                     Some(pattern) => {
                         println!("Layer1:\t\tLayer2:\t\tResult:");
                         for address in pattern..(pattern+8) {
-                            let layer1 = nes.ppu.borrow().memory().get(address);
-                            let layer2 = nes.ppu.borrow().memory().get(address+8);
+                            let layer1 = nes.ppu.borrow().memory().get(address, 0);
+                            let layer2 = nes.ppu.borrow().memory().get(address+8, 0);
                             println!(
                                 "{:08b}\t{:08b}\tNOT IMPLEMENTED",
                                 layer1,
@@ -166,7 +166,7 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                     None => {
                         for byte in 0x000..0x200 {
                             for b in 0..0x10 {
-                                print!("0b{:08b},", nes.ppu.borrow().memory().get((byte << 1) | b));
+                                print!("0b{:08b},", nes.ppu.borrow().memory().get((byte << 1) | b, 0));
                             }
                             println!("");
                         }
@@ -194,7 +194,7 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 println!("Name Table:");
                 for row in 0..30 {
                     for col in 0..32 {
-                        let tile = nes.ppu.borrow().memory().get(base_address + row*32 + col);
+                        let tile = nes.ppu.borrow().memory().get(base_address + row*32 + col, 0);
                         print!("{:02x} ", tile);
                     }
                     println!("");
@@ -218,7 +218,7 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
             "palette" => {
                 let palette: u16 = cmd.arg(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
                 for i in 0..4 {
-                    let palette_value = nes.ppu.borrow().memory().get(0x3F00 + 4*palette + i) as usize;
+                    let palette_value = nes.ppu.borrow().memory().get(0x3F00 + 4*palette + i, 0) as usize;
                     println!("Palette value: {:x}: Colour {:?}", palette_value, COLOUR_PALETTE[palette_value]);
                 }
             },
@@ -251,14 +251,15 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 let mut stack = nes.cpu.stack_pointer.wrapping_add(1);
                 while entries > 0 && stack != 0xFF {
                     let pointer = stack as u16 + 0x100;
-                    println!("Stack pointer 0x{:04x} -> 0x{:02x}", pointer, nes.memory.get(pointer));
+                    println!("Stack pointer 0x{:04x} -> 0x{:02x}", pointer, nes.memory.get(pointer, 0));
                     stack = stack.wrapping_add(1);
                     entries -= 1;
                 }
             },
             "mem" => {
                 let address = cmd.hex_arg(1).unwrap_or(0);
-                println!("Memory 0x{:04x} -> 0x{:02x}", address, nes.memory.get(address));
+                let cycle = cmd.hex_arg(2).unwrap_or(0);
+                println!("Memory 0x{:04x} -> 0x{:02x}", address, nes.memory.get(address, cycle as u8));
             },
             "press" => {
                 match *fake_controller {
@@ -307,7 +308,7 @@ fn print_cpu_and_ppu<S, A>(nes: &nes::NES<S, A>) where S: Screen + Sized, A: Aud
 }
 
 fn next_instruction_as_string<S, A>(nes: &nes::NES<S, A>, opcodes: Rc<OpCodes>) -> String where S: Screen + Sized, A: AudioDevice + Sized {
-    let op_code = nes.memory.get(nes.cpu.program_counter());
+    let op_code = nes.memory.get(nes.cpu.program_counter(), 0);
     opcodes.debug_instruction(op_code, &nes.cpu, &nes.memory)
 }
 

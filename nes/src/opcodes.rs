@@ -19,7 +19,7 @@ impl OpCodes {
 
     pub fn fetch_instruction(&self, cpu: &mut CPU, memory: &mut Memory) -> Box<Instruction> {
         let pc = cpu.get_and_increment_pc();
-        let op_code: u8 = memory.get(pc);
+        let op_code: u8 = memory.get(pc, 0);
 
         match self.codes[op_code as usize] {
             Some(ref factory) => (factory)(cpu, memory),
@@ -638,7 +638,7 @@ mod tests {
         );
         execute_instruction(&mut cpu, memory);
 
-        assert_eq!(6, memory.get(0x0010));
+        assert_eq!(6, memory.get(0x0010, 0));
     }
 
     #[test]
@@ -652,7 +652,7 @@ mod tests {
         );
         execute_instruction(&mut cpu, memory);
 
-        assert_eq!(0x30, memory.get(0x01ff));
+        assert_eq!(0x30, memory.get(0x01ff, 0));
     }
 
     #[test]

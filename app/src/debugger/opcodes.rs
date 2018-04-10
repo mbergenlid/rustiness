@@ -19,7 +19,7 @@ impl OpCodes {
 
     pub fn addressing_mode(&self, cpu: &CPU, memory: &Memory) -> AddressingMode {
         let mut cloned_cpu = cpu.clone();
-        let op_code = memory.get(cloned_cpu.get_and_increment_pc());
+        let op_code = memory.get(cloned_cpu.get_and_increment_pc(), 0);
         match self.codes.iter().find(|opd| opd.0 == op_code) {
             Some(&OpCodeDebug(_, _, ref addr, _)) => addr(&mut cloned_cpu, memory),
             None => no_addressing(),
@@ -66,9 +66,9 @@ fn debug_indirect(cpu: &mut CPU, memory: &CPUMemory) -> String {
 }
 
 fn debug_indirect_y(cpu: &mut CPU, memory: &CPUMemory) -> String {
-    let ial = memory.get(cpu.program_counter());
-    let bal = memory.get(ial as u16);
-    let bah = memory.get(ial.wrapping_add(1) as u16);
+    let ial = memory.get(cpu.program_counter(), 0);
+    let bal = memory.get(ial as u16, 0);
+    let bah = memory.get(ial.wrapping_add(1) as u16, 0);
 
     let base_address = ((bah as u16) << 8) | bal as u16;
     let operand_address = base_address.wrapping_add(cpu.register_y() as u16);
@@ -80,10 +80,10 @@ fn debug_indirect_y(cpu: &mut CPU, memory: &CPUMemory) -> String {
     );
 }
 fn debug_indirect_x(cpu: &mut CPU, memory: &CPUMemory) -> String {
-    let index = memory.get(cpu.program_counter());
+    let index = memory.get(cpu.program_counter(), 0);
     let base_address = index.wrapping_add(cpu.register_x());
-    let lsb: u16 = memory.get(base_address as u16) as u16;
-    let msb: u16 = memory.get(base_address.wrapping_add(1) as u16) as u16;
+    let lsb: u16 = memory.get(base_address as u16, 0) as u16;
+    let msb: u16 = memory.get(base_address.wrapping_add(1) as u16, 0) as u16;
     let operand_address = (msb << 8) | lsb;
 
     return format!(
@@ -139,7 +139,7 @@ fn generate_opcode_debug() -> Vec<OpCodeDebug> {
         OpCodeDebug(nes::opcodes::BRANCH_CARRY_CLEAR    , "BRANCH_CARRY_CLEAR", Box::new(|_, _| no_addressing()), Box::new(|_, _| String::new())),
         OpCodeDebug(nes::opcodes::BRANCH_NOT_EQUAL      , "BRANCH_NOT_EQUAL", Box::new(|_, _| no_addressing()), Box::new(|_, _| String::new())),
         OpCodeDebug(nes::opcodes::BRANCH_EQUAL          , "BRANCH_EQUAL", Box::new(|_, _| no_addressing()), Box::new(|_, _| String::new())),
-        OpCodeDebug(nes::opcodes::BRK                   , "BRK_IMPLIED", Box::new(|_, _| no_addressing()), Box::new(|_,      memory| format!("0x{:x}{:x}", memory.get(0xFFFF), memory.get(0xFFFE)))),
+        OpCodeDebug(nes::opcodes::BRK                   , "BRK_IMPLIED", Box::new(|_, _| no_addressing()), Box::new(|_,      memory| format!("0x{:x}{:x}", memory.get(0xFFFF, 0), memory.get(0xFFFE, 0)))),
         OpCodeDebug(nes::opcodes::CMP_IMMEDIATE         , "CMP_IMMEDIATE", Box::new(|cpu, _| AddressingMode::immediate(cpu)), Box::new(debug_immediate)),
         OpCodeDebug(nes::opcodes::CMP_ZERO_PAGE         , "CMP_ZERO_PAGE", Box::new(AddressingMode::zero_paged), Box::new(debug_zero_paged)),
         OpCodeDebug(nes::opcodes::CMP_ZERO_PAGE_X       , "CMP_ZERO_PAGE_X", Box::new(AddressingMode::zero_paged_x), Box::new(debug_zero_paged_x)),

@@ -29,22 +29,22 @@ pub struct CPUMemoryReference<'a, 'b>(pub u16, pub &'a CPUMemory<'b>) where 'b: 
 impl<'a, 'b> Debug for CPUMemoryReference<'a, 'b> {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
         formatter.write_fmt(
-            format_args!("0x{:04x} -> 0x{:x}", self.0, self.1.memory.get(self.0))
+            format_args!("0x{:04x} -> 0x{:x}", self.0, self.1.memory.get(self.0, 0))
         )
     }
 }
 
 use std::borrow::BorrowMut;
 impl <'a> Memory for CPUMemory<'a> {
-    fn get(&self, address: Address) -> u8 {
+    fn get(&self, address: Address, sub_cycle: u8) -> u8 {
         let address = self.translate(address);
         if address < 0x2000 {
-            self.memory.get(address)
+            self.memory.get(address, sub_cycle)
         } else {
             self.io_registers.iter()
                 .find(|e| e.0 == address)
-                .map(|e| e.1.read(self.memory.as_ref()))
-                .unwrap_or_else(|| self.memory.get(address))
+                .map(|e| e.1.read_at_cycle(self.memory.as_ref(), sub_cycle))
+                .unwrap_or_else(|| self.memory.get(address, sub_cycle))
         }
     }
 
@@ -112,16 +112,16 @@ mod test {
                 0x4016 => MutableRef::Box(Box::new(register2.clone()))
             );
 
-            io_registers.get(0x2000);
-            io_registers.get(0x4016);
-            io_registers.get(0x4016);
+            io_registers.get(0x2000, 0);
+            io_registers.get(0x4016, 0);
+            io_registers.get(0x4016, 0);
 
             io_registers.set(0x2000, 4);
             io_registers.set(0x2000, 5);
             io_registers.set(0x4016, 6);
 
             io_registers.set(0x2001, 17);
-            assert_eq!(17, io_registers.get(0x2001));
+            assert_eq!(17, io_registers.get(0x2001, 0));
         }
 
         assert_eq!(1, register1.borrow().reads.get());
@@ -157,14 +157,14 @@ mod test {
 
         let mut address = 0x2008;
         while address < 0x4000 {
-            memory.get(address);
-            memory.get(address + 1);
-            memory.get(address + 2);
-            memory.get(address + 3);
-            memory.get(address + 4);
-            memory.get(address + 5);
-            memory.get(address + 6);
-            memory.get(address + 7);
+            memory.get(address, 0);
+            memory.get(address + 1, 0);
+            memory.get(address + 2, 0);
+            memory.get(address + 3, 0);
+            memory.get(address + 4, 0);
+            memory.get(address + 5, 0);
+            memory.get(address + 6, 0);
+            memory.get(address + 7, 0);
 
             memory.set(address, 42);
             memory.set(address + 1, 42);

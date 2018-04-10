@@ -90,11 +90,11 @@ mod test {
 
         let mut memory = memory::BasicMemory::new();
         ines.load(&mut memory);
-        assert_eq!(ines.buffer[0x10], memory.get(0x8000));
+        assert_eq!(ines.buffer[0x10], memory.get(0x8000, 0));
 
         //should mirror 0xC0000 - 0xFFFF onto 0x8000-0xBFFF
         for i in 0x8000..0xC000 {
-            assert_eq!(memory.get(i), memory.get(i + 0x4000));
+            assert_eq!(memory.get(i, 0), memory.get(i + 0x4000, 0));
         }
     }
 }

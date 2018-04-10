@@ -16,8 +16,8 @@ impl SharedMemory {
 }
 
 impl Memory for SharedMemory {
-    fn get(&self, address: Address) -> u8 {
-        self.0.borrow().get(address)
+    fn get(&self, address: Address, sub_cycle: u8) -> u8 {
+        self.0.borrow().get(address, sub_cycle)
     }
 
     fn set(&mut self, address: Address, value: u8) {

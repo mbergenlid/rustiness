@@ -38,6 +38,9 @@ impl MemoryMappedIO for PPUStatus {
     fn write(&mut self, _: &mut Memory, _: u8) {
         //Do nothing
     }
+    fn read_at_cycle(&self, _: &Memory, sub_cycle: u8) -> u8 {
+        self.0.borrow_mut().status(sub_cycle)
+    }
 }
 impl MemoryMappedIO for PPUScroll {
     fn read(&self, _: &Memory) -> u8 {
@@ -130,7 +133,7 @@ mod test {
 
             memory.set(0x2007, 0xA5); //write 0xA5 to PPU-MEM 0xFF01
         }
-        assert_eq!(0xA5, ppu.borrow().memory().get(0x3F01));
+        assert_eq!(0xA5, ppu.borrow().memory().get(0x3F01, 0));
 
         {
             let basic_memory = BasicMemory::new();
@@ -141,7 +144,7 @@ mod test {
             );
             memory.set(0x2007, 0x3B); //vram pointer should have been increased
         }
-        assert_eq!(0x3B, ppu.borrow().memory().get(0x3F02));
+        assert_eq!(0x3B, ppu.borrow().memory().get(0x3F02, 0));
     }
 
     use memory::SharedMemory;
@@ -165,9 +168,9 @@ mod test {
             memory.set(0x2006, 0x20); //High byte of vram pointer
             memory.set(0x2006, 0x00); //Low byte of vram pointer
 
-            memory.get(0x2007); //Dummy read
-            assert_eq!(0x05, memory.get(0x2007));
-            assert_eq!(0x10, memory.get(0x2007));
+            memory.get(0x2007, 0); //Dummy read
+            assert_eq!(0x05, memory.get(0x2007, 0));
+            assert_eq!(0x10, memory.get(0x2007, 0));
         }
     }
 
@@ -191,8 +194,8 @@ mod test {
             memory.set(0x2006, 0x3F); //High byte of vram pointer
             memory.set(0x2006, 0x00); //Low byte of vram pointer
 
-            assert_eq!(0x05, memory.get(0x2007));
-            assert_eq!(0x10, memory.get(0x2007));
+            assert_eq!(0x05, memory.get(0x2007, 0));
+            assert_eq!(0x10, memory.get(0x2007, 0));
         }
     }
 
@@ -215,11 +218,11 @@ mod test {
             memory.set(0x2006, 0x3F); //High byte of vram pointer
             memory.set(0x2006, 0x12); //Low byte of vram pointer
 
-            assert_eq!(0x05, memory.get(0x2007));
+            assert_eq!(0x05, memory.get(0x2007, 0));
 
             memory.set(0x2006, 0x2F);
             memory.set(0x2006, 0x12);
-            assert_eq!(0x9A, memory.get(0x2007));
+            assert_eq!(0x9A, memory.get(0x2007, 0));
         }
     }
 
@@ -238,9 +241,9 @@ mod test {
         memory.set(0x2004, 0x34);
 
         memory.set(0x2003, 0x0);
-        assert_eq!(0x12, memory.get(0x2004));
+        assert_eq!(0x12, memory.get(0x2004, 0));
         memory.set(0x2003, 0x1);
-        assert_eq!(0x34, memory.get(0x2004));
+        assert_eq!(0x34, memory.get(0x2004, 0));
     }
 
     #[test]
@@ -258,8 +261,8 @@ mod test {
         memory.set(0x2004, 0x34);
 
         memory.set(0x2003, 0x0);
-        assert_eq!(0x12, memory.get(0x2004));
-        assert_eq!(0x12, memory.get(0x2004));
+        assert_eq!(0x12, memory.get(0x2004, 0));
+        assert_eq!(0x12, memory.get(0x2004, 0));
     }
 
     #[test]
@@ -281,6 +284,6 @@ mod test {
         memory.set(0x2003, 0x1);
         memory.set(0x4014, 0x02);
         memory.set(0x2003, 0x1);
-        assert_eq!(1, memory.get(0x2004));
+        assert_eq!(1, memory.get(0x2004, 0));
     }
 }

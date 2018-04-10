@@ -52,7 +52,7 @@ impl Pattern {
 
 use memory::{Memory, Address};
 impl Memory for Pattern {
-    fn get(&self, address: Address) -> u8 {
+    fn get(&self, address: Address, _: u8) -> u8 {
         return self.raw_data[(address as usize) & 0xF];
     }
     fn set(&mut self, address: Address, value: u8) {
@@ -87,7 +87,7 @@ mod test {
         assert_eq!(0, pattern.pixel(6,0));
         assert_eq!(1, pattern.pixel(7,0));
 
-        assert_eq!(0b01010101, pattern.get(0x0));
+        assert_eq!(0b01010101, pattern.get(0x0, 0));
     }
 
     #[test]
@@ -104,7 +104,7 @@ mod test {
         assert_eq!(0, pattern.pixel(6,0));
         assert_eq!(2, pattern.pixel(7,0));
 
-        assert_eq!(0b01010101, pattern.get(0x8));
+        assert_eq!(0b01010101, pattern.get(0x8, 0));
     }
 
     #[test]
@@ -122,13 +122,13 @@ mod test {
         assert_eq!(2, pattern.pixel(6,0));
         assert_eq!(3, pattern.pixel(7,0));
 
-        assert_eq!(0b01010101, pattern.get(0x0));
-        assert_eq!(0b00110011, pattern.get(0x8));
+        assert_eq!(0b01010101, pattern.get(0x0, 0));
+        assert_eq!(0b00110011, pattern.get(0x8, 0));
     }
 
     #[test]
     fn getting_uninitialized_memory() {
         let pattern = Pattern::new();
-        assert_eq!(0, pattern.get(0x40));
+        assert_eq!(0, pattern.get(0x40, 0));
     }
 }

@@ -16,7 +16,7 @@ impl ADC {
 }
 impl Instruction for ADC {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.add_accumulator(memory.get(self.0.operand_address));
+        cpu.add_accumulator(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -31,7 +31,7 @@ impl SBC {
 }
 impl Instruction for SBC {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.sub_accumulator(memory.get(self.0.operand_address));
+        cpu.sub_accumulator(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -46,7 +46,7 @@ impl INC {
 }
 impl Instruction for INC {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let new_value = cpu.increment(memory.get(self.0.operand_address));
+        let new_value = cpu.increment(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
@@ -76,7 +76,7 @@ impl DEC {
 }
 impl Instruction for DEC {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let new_value = cpu.decrement(memory.get(self.0.operand_address));
+        let new_value = cpu.decrement(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
@@ -107,7 +107,7 @@ impl AND {
 }
 impl Instruction for AND {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.and_accumulator(memory.get(self.0.operand_address));
+        cpu.and_accumulator(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -122,7 +122,7 @@ impl OR {
 }
 impl Instruction for OR {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.or_accumulator(memory.get(self.0.operand_address));
+        cpu.or_accumulator(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -137,7 +137,7 @@ impl EOR {
 }
 impl Instruction for EOR {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.xor_accumulator(memory.get(self.0.operand_address));
+        cpu.xor_accumulator(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -162,7 +162,7 @@ impl ASL {
 }
 impl Instruction for ASL {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let new_value = cpu.arithmetic_shift_left(memory.get(self.0.operand_address));
+        let new_value = cpu.arithmetic_shift_left(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
@@ -174,7 +174,7 @@ pub struct ASLAbsoluteX;
 impl Instruction for ASLAbsoluteX {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
         let addressing_mode = AddressingMode::absolute_x(cpu, memory);
-        let new_value = cpu.arithmetic_shift_left(memory.get(addressing_mode.operand_address));
+        let new_value = cpu.arithmetic_shift_left(memory.get(addressing_mode.operand_address, 4));
         memory.set(addressing_mode.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
@@ -199,22 +199,23 @@ impl LSR {
 }
 impl Instruction for LSR {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let new_value = cpu.logical_shift_right(memory.get(self.0.operand_address));
+        let new_value = cpu.logical_shift_right(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
     }
 }
-pub struct LSRAbsoluteX(LSR);
+pub struct LSRAbsoluteX(AddressingMode);
 impl LSRAbsoluteX {
     pub fn new(cpu: &mut CPU, memory: &mut Memory) -> LSRAbsoluteX {
-        LSRAbsoluteX(LSR::new(AddressingMode::absolute_x(cpu, memory)))
+        LSRAbsoluteX(AddressingMode::absolute_x(cpu, memory))
     }
 }
 impl Instruction for LSRAbsoluteX {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        self.0.execute(cpu, memory);
+        let new_value = cpu.logical_shift_right(memory.get(self.0.operand_address, 4));
+        memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -238,22 +239,23 @@ impl ROL {
 }
 impl Instruction for ROL {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let new_value = cpu.rotate_left(memory.get(self.0.operand_address));
+        let new_value = cpu.rotate_left(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
     }
 }
-pub struct ROLAbsoluteX(ROL);
+pub struct ROLAbsoluteX(AddressingMode);
 impl ROLAbsoluteX {
     pub fn new(cpu: &mut CPU, memory: &mut Memory) -> ROLAbsoluteX {
-        ROLAbsoluteX(ROL::new(AddressingMode::absolute_x(cpu, memory)))
+        ROLAbsoluteX(AddressingMode::absolute_x(cpu, memory))
     }
 }
 impl Instruction for ROLAbsoluteX {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        self.0.execute(cpu, memory);
+        let new_value = cpu.rotate_left(memory.get(self.0.operand_address, 4));
+        memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -277,22 +279,23 @@ impl ROR {
 }
 impl Instruction for ROR {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let new_value = cpu.rotate_right(memory.get(self.0.operand_address));
+        let new_value = cpu.rotate_right(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
     }
 }
-pub struct RORAbsoluteX(ROR);
+pub struct RORAbsoluteX(AddressingMode);
 impl RORAbsoluteX {
     pub fn new(cpu: &mut CPU, memory: &mut Memory) -> RORAbsoluteX {
-        RORAbsoluteX(ROR::new(AddressingMode::absolute_x(cpu, memory)))
+        RORAbsoluteX(AddressingMode::absolute_x(cpu, memory))
     }
 }
 impl Instruction for RORAbsoluteX {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        self.0.execute(cpu, memory);
+        let new_value = cpu.rotate_right(memory.get(self.0.operand_address, 4));
+        memory.set(self.0.operand_address, new_value);
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -307,7 +310,7 @@ impl BIT {
 }
 impl Instruction for BIT {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.bit_test(memory.get(self.0.operand_address));
+        cpu.bit_test(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -329,7 +332,7 @@ impl Branch {
 }
 impl Instruction for Branch {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let branch_distance: i8 = memory.get(cpu.get_and_increment_pc()) as i8;
+        let branch_distance: i8 = memory.get(cpu.get_and_increment_pc(), 1) as i8;
         if self.0 {
             cpu.add_program_counter(branch_distance as u16);
         }
@@ -366,8 +369,8 @@ impl Instruction for BRK {
         memory.set(cpu.push_stack(), current_pc as u8);
         memory.set(cpu.push_stack(), cpu.processor_status() | 0x30);
 
-        let lsbs: u8 = memory.get(0xFFFE);
-        let msbs: u8 = memory.get(0xFFFF);
+        let lsbs: u8 = memory.get(0xFFFE, 5);
+        let msbs: u8 = memory.get(0xFFFF, 6);
         cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
         cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG);
     }
@@ -389,8 +392,8 @@ impl Instruction for NMI {
         memory.set(cpu.push_stack(), current_pc as u8);
         memory.set(cpu.push_stack(), cpu.processor_status() | 0x20);
 
-        let lsbs: u8 = memory.get(0xFFFA);
-        let msbs: u8 = memory.get(0xFFFB);
+        let lsbs: u8 = memory.get(0xFFFA, 5);
+        let msbs: u8 = memory.get(0xFFFB, 6);
         cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
         cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG);
     }
@@ -402,9 +405,9 @@ impl Instruction for NMI {
 pub struct RTI;
 impl Instruction for RTI {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let processor_status = memory.get(cpu.pop_stack());
+        let processor_status = memory.get(cpu.pop_stack(), 3);
         cpu.set_processor_status(processor_status);
-        let return_address = memory.get(cpu.pop_stack()) as u16 | (memory.get(cpu.pop_stack()) as u16) << 8;
+        let return_address = memory.get(cpu.pop_stack(), 4) as u16 | (memory.get(cpu.pop_stack(), 5) as u16) << 8;
         cpu.set_program_counter(return_address);
     }
     fn estimated_cycles(&self) -> u8 {
@@ -430,7 +433,7 @@ impl Instruction for JSR {
 pub struct RTS;
 impl Instruction for RTS {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let return_address = memory.get(cpu.pop_stack()) as u16 | (memory.get(cpu.pop_stack()) as u16) << 8;
+        let return_address = memory.get(cpu.pop_stack(), 3) as u16 | (memory.get(cpu.pop_stack(), 4) as u16) << 8;
         cpu.set_program_counter(return_address + 1);
     }
     fn estimated_cycles(&self) -> u8 {
@@ -491,7 +494,7 @@ impl LDX {
 }
 impl Instruction for LDX {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.load_x(memory.get(self.0.operand_address));
+        cpu.load_x(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -506,7 +509,7 @@ impl LDY {
 }
 impl Instruction for LDY {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.load_y(memory.get(self.0.operand_address));
+        cpu.load_y(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -521,7 +524,7 @@ impl LDA {
 }
 impl Instruction for LDA {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.load_accumulator(memory.get(self.0.operand_address));
+        cpu.load_accumulator(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -536,7 +539,7 @@ impl CMP {
 }
 impl Instruction for CMP {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.cmp_accumulator(memory.get(self.0.operand_address));
+        cpu.cmp_accumulator(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -551,7 +554,7 @@ impl CPX {
 }
 impl Instruction for CPX {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.cmp_register_x(memory.get(self.0.operand_address));
+        cpu.cmp_register_x(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -566,7 +569,7 @@ impl CPY {
 }
 impl Instruction for CPY {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        cpu.cmp_register_y(memory.get(self.0.operand_address));
+        cpu.cmp_register_y(memory.get(self.0.operand_address, self.0.cycles));
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -781,7 +784,7 @@ impl Instruction for PHA {
 pub struct PLA;
 impl Instruction for PLA {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let temp = memory.get(cpu.pop_stack());
+        let temp = memory.get(cpu.pop_stack(), 4);
         cpu.load_accumulator(temp);
     }
     fn estimated_cycles(&self) -> u8 {
@@ -800,7 +803,7 @@ impl Instruction for PHP {
 pub struct PLP;
 impl Instruction for PLP {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        let temp = memory.get(cpu.pop_stack());
+        let temp = memory.get(cpu.pop_stack(), 3);
         cpu.set_processor_status(temp);
     }
     fn estimated_cycles(&self) -> u8 {
