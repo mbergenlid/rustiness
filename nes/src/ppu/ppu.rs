@@ -156,6 +156,9 @@ impl PPU {
         self.vram_registers.reset_write_toggle();
         if self.cycle_count == VBLANK_CYCLE-1 {
             self.vblank_triggered = true;
+            self.nmi_triggered = true;
+        } else if self.cycle_count == VBLANK_CYCLE || self.cycle_count == VBLANK_CYCLE+1 {
+            self.nmi_triggered = true;
         }
         return status_register;
     }
@@ -483,11 +486,38 @@ pub mod tests {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
+        ppu.set_ppu_ctrl(0x80);
         update_ppu(27392+29781*2, &mut ppu); //82_178 = VBL-3
         //The following 'status' read will happen 2 ppu cycles later (i.e at 82_180)
         assert_eq!(0x00, ppu.status(0) & 0x80); //Reads one PPU clock before vbl suppresses vbl for this frame
-        ppu.sync(4, screen); //82_190
+        assert_eq!(false, ppu.sync(4, screen)); //82_190
         assert_eq!(0x00, ppu.status(0) & 0x80); //VBL has been suppressed by previous read
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn read_status_on_the_same_PPU_clock_as_vbl_is_set() {
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        ppu.set_ppu_ctrl(0x80);
+        update_ppu(27393, &mut ppu); //82_179 = VBL-2
+        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_180)
+        assert_eq!(0x80, ppu.status(0) & 0x80); //Reads status exactly on vbl suppresses nmi
+        assert_eq!(false, ppu.sync(2, screen));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn read_status_one_PPU_clock_after_vbl_is_set() {
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        ppu.set_ppu_ctrl(0x80);
+        update_ppu(27392+29781*4, &mut ppu); //82_180 = VBL-1
+        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_182)
+        assert_eq!(0x80, ppu.status(0) & 0x80); //Reads status exactly on vbl suppresses nmi
+        assert_eq!(false, ppu.sync(2, screen));
     }
 
     #[test]
