@@ -35,9 +35,10 @@ struct PPUMask {
 }
 
 impl PPUMask {
-    fn is_drawing_enabled(&self) -> bool {
-        self.value & 0x08 > 0
+    fn is_rendering_enabled(&self) -> bool {
+        self.value & 0x18 > 0
     }
+
 }
 
 trait PPUStatus {
@@ -72,6 +73,8 @@ pub struct PPU {
 
     sprites: [u8; 64*4],
     oam_address: u8,
+
+    odd_flag: bool,
 }
 
 use std::fmt::{Formatter, Error, Display};
@@ -128,6 +131,8 @@ impl PPU {
 
             sprites: [0; 64*4],
             oam_address: 0,
+
+            odd_flag: false,
         }
     }
 
@@ -246,6 +251,10 @@ impl PPU {
             self.vblank_triggered = false;
             self.vblank_cleared = false;
             self.nmi_triggered = false;
+            self.odd_flag = !self.odd_flag;
+            if self.mask_register.is_rendering_enabled() && self.odd_flag {
+                self.cycle_count += 1;
+            }
         }
         if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
             //VBLANK
@@ -277,7 +286,7 @@ impl PPU {
         self.update(remaining_cycles);
         if self.should_update_screen {
             if cfg!(feature = "ppu") {
-                if self.mask_register.is_drawing_enabled() {
+                if self.mask_register.is_rendering_enabled() {
                     self.update_screen(screen);
                 }
             }
@@ -603,5 +612,29 @@ pub mod tests {
         ppu.sync(2, screen); //82_182
         println!("{}", ppu);
         assert_eq!(true, ppu.status_register.is_vblank());
+    }
+
+    #[test]
+    fn even_odd_frames() {
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        ppu.set_ppu_mask(0x18);
+        update_ppu(27394, &mut ppu); //82_182
+        assert_eq!(true, ppu.status_register.is_vblank());
+
+        update_ppu(29780, &mut ppu); //82_181 (82_180 but odd frame should skip 1 cycle)
+        assert_eq!(true, ppu.status_register.is_vblank());
+    }
+
+    #[test]
+    fn odd_frames_should_not_skip_one_cycle_if_rendering_is_disabled() {
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        ppu.set_ppu_mask(0x00);
+        update_ppu(27394, &mut ppu); //82_182
+        assert_eq!(true, ppu.status_register.is_vblank());
+
+        update_ppu(29780, &mut ppu); //82_180
+        assert_eq!(false, ppu.status_register.is_vblank());
     }
 }
