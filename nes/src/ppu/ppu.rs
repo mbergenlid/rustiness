@@ -58,6 +58,7 @@ pub struct PPU {
     vblank_cleared: bool,
     pending_nmi: u32,
     nmi_triggered: bool,
+    nmi_active: bool,
     memory: PPUMemory,
     vram_registers: VRAMRegisters,
     temp_vram_read_buffer: u8,
@@ -113,6 +114,7 @@ impl PPU {
             vblank_cleared: false,
             pending_nmi: 0,
             nmi_triggered: false,
+            nmi_active: false,
             memory: memory,
             vram_registers: VRAMRegisters::new(),
             temp_vram_read_buffer: 0,
@@ -129,14 +131,20 @@ impl PPU {
         }
     }
 
-    pub fn set_ppu_ctrl(&mut self, value: u8) {
-        if !self.control_register.nmi_enabled() 
-                && (value & 0x80 != 0) 
+    pub fn set_ppu_ctrl_at_cycle(&mut self, value: u8, sub_cycle: u8) {
+        self.partially_update((sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+3);
+
+        if !self.control_register.nmi_enabled()
+                && (value & 0x80 != 0)
                 && self.status_register.is_vblank() {
             self.pending_nmi = 2;
         }
         self.control_register.value = value;
         self.vram_registers.write_name_table(value);
+    }
+
+    pub fn set_ppu_ctrl(&mut self, value: u8) {
+        self.set_ppu_ctrl_at_cycle(value, 0)
     }
 
     pub fn ppu_ctrl(&self) -> u8 {
@@ -148,9 +156,7 @@ impl PPU {
     }
 
     pub fn status(&mut self, sub_cycle: u8) -> u8 {
-        let ppu_cycles = (sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+2;
-        self.update(ppu_cycles);
-        self.cycles_already_executed = ppu_cycles;
+        self.partially_update((sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+2);
         let status_register = self.status_register;
         self.status_register &= 0x7F;
         self.vram_registers.reset_write_toggle();
@@ -177,7 +183,7 @@ impl PPU {
 
     pub fn write_to_vram(&mut self, value: u8) {
         self.vram_changed = true;
-        self.memory.set(self.vram_registers.current, value);
+        self.memory.set(self.vram_registers.current, value, 0);
         self.vram_registers.current += self.control_register.vram_pointer_increment();
     }
 
@@ -228,6 +234,11 @@ impl PPU {
         self.sprites[self.oam_address as usize]
     }
 
+    fn partially_update(&mut self, ppu_cycles: u32) {
+        self.update(ppu_cycles);
+        self.cycles_already_executed = ppu_cycles;
+    }
+
     fn update(&mut self, ppu_cycle_count: u32) {
         self.cycle_count += ppu_cycle_count;
         if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
@@ -241,6 +252,13 @@ impl PPU {
             self.status_register = self.status_register | 0x80; //set vblank
             self.vblank_triggered = true;
             self.should_update_screen = true;
+            if !self.nmi_triggered && self.cycle_count >= NMI_CYCLE {
+                self.nmi_triggered = true;
+                self.nmi_active = self.control_register.nmi_enabled();
+            }
+        } else if !self.nmi_triggered && self.cycle_count >= NMI_CYCLE {
+            self.nmi_triggered = true;
+            self.nmi_active = self.control_register.nmi_enabled();
         } else if !self.vblank_cleared && self.cycle_count >= VBLANK_CLEAR_CYCLE {
             //VBLANK is over
             self.status_register = self.status_register & 0x3F;
@@ -265,11 +283,10 @@ impl PPU {
             }
             self.should_update_screen = false;
         }
-        if !self.nmi_triggered && self.cycle_count >= NMI_CYCLE {
-            self.nmi_triggered = true;
-            return self.control_register.nmi_enabled();
-        }
-        if self.pending_nmi > 0 {
+        if self.nmi_active {
+            self.nmi_active = false;
+            return true;
+        } else if self.pending_nmi > 0 {
             self.pending_nmi -= 1;
             return self.pending_nmi == 0;
         } else {
@@ -521,7 +538,7 @@ pub mod tests {
     }
 
     #[test]
-    fn nmi_should_occur_immediately_after_next_instruction_if_eabled_when_vbl_is_set() {
+    fn nmi_should_occur_immediately_after_next_instruction_if_enabled_when_vbl_is_set() {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
@@ -532,6 +549,19 @@ pub mod tests {
         ppu.set_ppu_ctrl(0x80); //Enable NMI
         assert_eq!(false, ppu.sync(1, screen));
         assert_eq!(true, ppu.sync(1, screen));
+    }
+
+    #[test]
+    fn nmi_should_not_occur_immediately_after_next_instruction_if_enabled_outside_of_vbl() {
+        let screen = &mut ScreenMock::new();
+        let mut ppu = PPU::new(PPUMemory::no_mirroring());
+
+        update_ppu(29_665, &mut ppu); //88_995 (in VBL)
+        assert_eq!(true, ppu.status_register.is_vblank());
+
+        ppu.set_ppu_ctrl_at_cycle(0x80, 1); //Enable NMI
+        assert_eq!(false, ppu.sync(2, screen));
+        assert_eq!(false, ppu.sync(1, screen));
     }
 
     #[test]

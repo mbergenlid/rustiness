@@ -74,7 +74,7 @@ fn test_basic_sprite_rendering() {
 
     let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), &APU::new(Rc::new(RefCell::new(Vec::new())), 1), None);
     {
-        cpu_memory.set(0x4014, 0x02);
+        cpu_memory.set(0x4014, 0x02, 0);
     };
 
     ppu.borrow_mut().update_screen(&mut screen);
@@ -98,9 +98,9 @@ fn test_basic_sprite_rendering() {
     }
 
     {
-        cpu_memory.set(0x0200, 0);
-        cpu_memory.set(0x0203, 8);
-        cpu_memory.set(0x4014, 0x02);
+        cpu_memory.set(0x0200, 0, 0);
+        cpu_memory.set(0x0203, 8, 0);
+        cpu_memory.set(0x4014, 0x02, 0);
     }
     ppu.borrow_mut().update_screen(&mut screen);
     {
@@ -117,9 +117,9 @@ fn test_basic_sprite_rendering() {
     }
 
     {
-        cpu_memory.set(0x0200, 5);
-        cpu_memory.set(0x0203, 10);
-        cpu_memory.set(0x4014, 0x02);
+        cpu_memory.set(0x0200, 5, 0);
+        cpu_memory.set(0x0203, 10, 0);
+        cpu_memory.set(0x4014, 0x02, 0);
     }
     ppu.borrow_mut().update_screen(&mut screen);
     {
@@ -159,7 +159,7 @@ fn test_multiple_sprite_rendering() {
 
     {
         let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), &APU::new(Rc::new(RefCell::new(Vec::new())), 1), None);
-        cpu_memory.set(0x4014, 0x02);
+        cpu_memory.set(0x4014, 0x02, 0);
     };
 
     ppu.borrow_mut().update_screen(&mut screen);
@@ -209,7 +209,7 @@ fn test_background_sprite() {
 
     {
         let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), &APU::new(Rc::new(RefCell::new(Vec::new())), 1), None);
-        cpu_memory.set(0x4014, 0x02);
+        cpu_memory.set(0x4014, 0x02, 0);
     };
 
     ppu.borrow_mut().update_screen(&mut screen);
@@ -266,7 +266,7 @@ fn should_not_render_sprite_at_position_FE_or_FF() {
 
     {
         let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), &APU::new(Rc::new(RefCell::new(Vec::new())), 1), None);
-        cpu_memory.set(0x4014, 0x02);
+        cpu_memory.set(0x4014, 0x02, 0);
     };
 
     ppu.borrow_mut().update_screen(&mut screen);

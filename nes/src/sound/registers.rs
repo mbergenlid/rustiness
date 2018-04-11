@@ -55,9 +55,9 @@ mod test {
     fn simple_constant_square_wave() {
         let generator = Rc::new(RefCell::new(PulseGenerator::new()));
         let mut cpu_memory = cpu_memory(generator.clone());
-        cpu_memory.set(0x4000, 0x1A);
-        cpu_memory.set(0x4002, 0xAA);
-        cpu_memory.set(0x4003, 0b0100_1001);
+        cpu_memory.set(0x4000, 0x1A, 0);
+        cpu_memory.set(0x4002, 0xAA, 0);
+        cpu_memory.set(0x4003, 0b0100_1001, 0);
 
         assert_eq!(generator.borrow().pulse_value(), 0);
         let mut clock = ClockTester::new(generator, 426*2);
@@ -81,9 +81,9 @@ mod test {
     fn simple_decaying_square_wave() {
         let generator = Rc::new(RefCell::new(PulseGenerator::new()));
         let mut cpu_memory = cpu_memory(generator.clone());
-        cpu_memory.set(0x4000, 4);
-        cpu_memory.set(0x4002, 0xAA);
-        cpu_memory.set(0x4003, 0b0000_1001);
+        cpu_memory.set(0x4000, 4, 0);
+        cpu_memory.set(0x4002, 0xAA, 0);
+        cpu_memory.set(0x4003, 0b0000_1001, 0);
         let decaying_period = 14913*5;
         let mut clock = ClockTester::new(generator, 426*2);
         {

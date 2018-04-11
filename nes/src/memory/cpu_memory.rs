@@ -48,16 +48,16 @@ impl <'a> Memory for CPUMemory<'a> {
         }
     }
 
-    fn set(&mut self, address: Address, value: u8) {
+    fn set(&mut self, address: Address, value: u8, sub_cycles: u8) {
         let address = self.translate(address);
         if address < 0x2000 {
-            self.memory.set(address, value);
+            self.memory.set(address, value, sub_cycles);
         } else {
             if let Some(entry) = self.io_registers.iter_mut().find(|e| e.0 == address) {
                 let memory: &mut Memory = self.memory.borrow_mut();
-                entry.1.write(memory, value);
+                entry.1.write_at_cycle(memory, value, sub_cycles);
             } else {
-                self.memory.set(address, value);
+                self.memory.set(address, value, sub_cycles);
             }
         }
     }
@@ -116,11 +116,11 @@ mod test {
             io_registers.get(0x4016, 0);
             io_registers.get(0x4016, 0);
 
-            io_registers.set(0x2000, 4);
-            io_registers.set(0x2000, 5);
-            io_registers.set(0x4016, 6);
+            io_registers.set(0x2000, 4, 0);
+            io_registers.set(0x2000, 5, 0);
+            io_registers.set(0x4016, 6, 0);
 
-            io_registers.set(0x2001, 17);
+            io_registers.set(0x2001, 17, 0);
             assert_eq!(17, io_registers.get(0x2001, 0));
         }
 
@@ -166,14 +166,14 @@ mod test {
             memory.get(address + 6, 0);
             memory.get(address + 7, 0);
 
-            memory.set(address, 42);
-            memory.set(address + 1, 42);
-            memory.set(address + 2, 42);
-            memory.set(address + 3, 42);
-            memory.set(address + 4, 42);
-            memory.set(address + 5, 42);
-            memory.set(address + 6, 42);
-            memory.set(address + 7, 42);
+            memory.set(address, 42, 0);
+            memory.set(address + 1, 42, 0);
+            memory.set(address + 2, 42, 0);
+            memory.set(address + 3, 42, 0);
+            memory.set(address + 4, 42, 0);
+            memory.set(address + 5, 42, 0);
+            memory.set(address + 6, 42, 0);
+            memory.set(address + 7, 42, 0);
             address += 8;
         }
 

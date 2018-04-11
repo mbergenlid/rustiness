@@ -55,7 +55,7 @@ impl Memory for Pattern {
     fn get(&self, address: Address, _: u8) -> u8 {
         return self.raw_data[(address as usize) & 0xF];
     }
-    fn set(&mut self, address: Address, value: u8) {
+    fn set(&mut self, address: Address, value: u8, _: u8) {
         let address: usize = address as usize;
         self.raw_data[address & 0xF] = value;
         let row = address & 0x7;
@@ -76,7 +76,7 @@ mod test {
     #[test]
     fn setting_low_bits() {
         let mut pattern = Pattern::new();
-        pattern.set(0x0, 0b01010101);
+        pattern.set(0x0, 0b01010101, 0);
 
         assert_eq!(0, pattern.pixel(0,0));
         assert_eq!(1, pattern.pixel(1,0));
@@ -93,7 +93,7 @@ mod test {
     #[test]
     fn setting_high_bits() {
         let mut pattern = Pattern::new();
-        pattern.set(0x8, 0b01010101);
+        pattern.set(0x8, 0b01010101, 0);
 
         assert_eq!(0, pattern.pixel(0,0));
         assert_eq!(2, pattern.pixel(1,0));
@@ -110,8 +110,8 @@ mod test {
     #[test]
     fn setting_both_high_and_low_bits() {
         let mut pattern = Pattern::new();
-        pattern.set(0x0, 0b01010101);
-        pattern.set(0x8, 0b00110011);
+        pattern.set(0x0, 0b01010101, 0);
+        pattern.set(0x8, 0b00110011, 0);
 
         assert_eq!(0, pattern.pixel(0,0));
         assert_eq!(1, pattern.pixel(1,0));

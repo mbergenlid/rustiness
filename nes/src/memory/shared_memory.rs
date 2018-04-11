@@ -20,7 +20,7 @@ impl Memory for SharedMemory {
         self.0.borrow().get(address, sub_cycle)
     }
 
-    fn set(&mut self, address: Address, value: u8) {
-        self.0.borrow_mut().set(address, value);
+    fn set(&mut self, address: Address, value: u8, sub_cycles: u8) {
+        self.0.borrow_mut().set(address, value, sub_cycles);
     }
 }

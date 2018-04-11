@@ -19,7 +19,11 @@ impl MemoryMappedIO for PPUCtrl {
         self.0.borrow().ppu_ctrl()
     }
     fn write(&mut self, _: &mut Memory, value: u8) {
-        self.0.borrow_mut().set_ppu_ctrl(value);
+        self.0.borrow_mut().set_ppu_ctrl_at_cycle(value, 0);
+    }
+
+    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: u8) {
+        self.0.borrow_mut().set_ppu_ctrl_at_cycle(value, sub_cycle);
     }
 }
 
@@ -128,10 +132,10 @@ mod test {
                 0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
             );
 
-            memory.set(0x2006, 0xFF); //High byte of vram pointer
-            memory.set(0x2006, 0x01); //Low byte of vram pointer
+            memory.set(0x2006, 0xFF, 0); //High byte of vram pointer
+            memory.set(0x2006, 0x01, 0); //Low byte of vram pointer
 
-            memory.set(0x2007, 0xA5); //write 0xA5 to PPU-MEM 0xFF01
+            memory.set(0x2007, 0xA5, 0); //write 0xA5 to PPU-MEM 0xFF01
         }
         assert_eq!(0xA5, ppu.borrow().memory().get(0x3F01, 0));
 
@@ -142,7 +146,7 @@ mod test {
                 0x2006 => MutableRef::Box(box PPUAddress(ppu.clone())),
                 0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
             );
-            memory.set(0x2007, 0x3B); //vram pointer should have been increased
+            memory.set(0x2007, 0x3B, 0); //vram pointer should have been increased
         }
         assert_eq!(0x3B, ppu.borrow().memory().get(0x3F02, 0));
     }
@@ -165,8 +169,8 @@ mod test {
                 0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
             );
 
-            memory.set(0x2006, 0x20); //High byte of vram pointer
-            memory.set(0x2006, 0x00); //Low byte of vram pointer
+            memory.set(0x2006, 0x20, 0); //High byte of vram pointer
+            memory.set(0x2006, 0x00, 0); //Low byte of vram pointer
 
             memory.get(0x2007, 0); //Dummy read
             assert_eq!(0x05, memory.get(0x2007, 0));
@@ -191,8 +195,8 @@ mod test {
                 0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
             );
 
-            memory.set(0x2006, 0x3F); //High byte of vram pointer
-            memory.set(0x2006, 0x00); //Low byte of vram pointer
+            memory.set(0x2006, 0x3F, 0); //High byte of vram pointer
+            memory.set(0x2006, 0x00, 0); //Low byte of vram pointer
 
             assert_eq!(0x05, memory.get(0x2007, 0));
             assert_eq!(0x10, memory.get(0x2007, 0));
@@ -215,13 +219,13 @@ mod test {
                 0x2007 => MutableRef::Box(box PPUData(ppu.clone()))
             );
 
-            memory.set(0x2006, 0x3F); //High byte of vram pointer
-            memory.set(0x2006, 0x12); //Low byte of vram pointer
+            memory.set(0x2006, 0x3F, 0); //High byte of vram pointer
+            memory.set(0x2006, 0x12, 0); //Low byte of vram pointer
 
             assert_eq!(0x05, memory.get(0x2007, 0));
 
-            memory.set(0x2006, 0x2F);
-            memory.set(0x2006, 0x12);
+            memory.set(0x2006, 0x2F, 0);
+            memory.set(0x2006, 0x12, 0);
             assert_eq!(0x9A, memory.get(0x2007, 0));
         }
     }
@@ -236,13 +240,13 @@ mod test {
             0x2004 => MutableRef::Box(box OAMData(ppu.clone()))
         );
 
-        memory.set(0x2003, 0x0);
-        memory.set(0x2004, 0x12);
-        memory.set(0x2004, 0x34);
+        memory.set(0x2003, 0x0, 0);
+        memory.set(0x2004, 0x12, 0);
+        memory.set(0x2004, 0x34, 0);
 
-        memory.set(0x2003, 0x0);
+        memory.set(0x2003, 0x0, 0);
         assert_eq!(0x12, memory.get(0x2004, 0));
-        memory.set(0x2003, 0x1);
+        memory.set(0x2003, 0x1, 0);
         assert_eq!(0x34, memory.get(0x2004, 0));
     }
 
@@ -256,11 +260,11 @@ mod test {
             0x2004 => MutableRef::Box(box OAMData(ppu.clone()))
         );
 
-        memory.set(0x2003, 0x0);
-        memory.set(0x2004, 0x12);
-        memory.set(0x2004, 0x34);
+        memory.set(0x2003, 0x0, 0);
+        memory.set(0x2004, 0x12, 0);
+        memory.set(0x2004, 0x34, 0);
 
-        memory.set(0x2003, 0x0);
+        memory.set(0x2003, 0x0, 0);
         assert_eq!(0x12, memory.get(0x2004, 0));
         assert_eq!(0x12, memory.get(0x2004, 0));
     }
@@ -281,9 +285,9 @@ mod test {
             0x4014 => MutableRef::Box(box OAMDMA(ppu.clone()))
         );
 
-        memory.set(0x2003, 0x1);
-        memory.set(0x4014, 0x02);
-        memory.set(0x2003, 0x1);
+        memory.set(0x2003, 0x1, 0);
+        memory.set(0x4014, 0x02, 0);
+        memory.set(0x2003, 0x1, 0);
         assert_eq!(1, memory.get(0x2004, 0));
     }
 }

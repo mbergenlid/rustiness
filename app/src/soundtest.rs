@@ -19,9 +19,9 @@ pub fn start() {
     );
 
     {
-        cpu_memory.set(0x4000, 0x84);
-        cpu_memory.set(0x4002, 0xAA);
-        cpu_memory.set(0x4003, 0b0000_1001);
+        cpu_memory.set(0x4000, 0x84, 0);
+        cpu_memory.set(0x4002, 0xAA, 0);
+        cpu_memory.set(0x4003, 0b0000_1001, 0);
     }
 
     let mut clock = Clock::start();

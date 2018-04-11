@@ -4,8 +4,8 @@ use std::iter::Iterator;
 use std::ops::{Range, Index};
 
 pub trait Memory {
-    fn get(&self, address: Address, u8) -> u8;
-    fn set(&mut self, address: Address, value: u8);
+    fn get(&self, address: Address, sub_cycle: u8) -> u8;
+    fn set(&mut self, address: Address, value: u8, sub_cycle: u8);
 
     fn dma(&self, range: Range<Address>, destination: &mut [u8]) {
         for (i, address) in range.enumerate() {
@@ -16,7 +16,7 @@ pub trait Memory {
     fn set_slice(&mut self, start: Address, data: &[u8]) {
         let mut address = start;
         for &d in data {
-            self.set(address, d);
+            self.set(address, d, 0);
             address = address.wrapping_add(1);
         }
     }
@@ -37,7 +37,7 @@ impl Memory for BasicMemory {
         return self.data[address as usize];
     }
 
-    fn set(&mut self, address: Address, value: u8) {
+    fn set(&mut self, address: Address, value: u8, _: u8) {
         self.data[address as usize] = value;
     }
 }
@@ -57,6 +57,10 @@ pub trait MemoryMappedIO {
     fn read_at_cycle(&self, memory: &Memory, _: u8) -> u8 {
         self.read(memory)
     }
+
+    fn write_at_cycle(&mut self, memory: &mut Memory, value: u8, _: u8) {
+        self.write(memory, value)
+    }
 }
 
 
@@ -67,7 +71,7 @@ macro_rules! memory {
             use $crate::memory::{Memory, BasicMemory};
             let mut temp_memory = BasicMemory::new();
             $(
-                temp_memory.set($x, $y);
+                temp_memory.set($x, $y, 0);
             )*
             temp_memory
         }

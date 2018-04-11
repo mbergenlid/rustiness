@@ -116,7 +116,7 @@ impl Memory for NameTable {
         self.raw_data[(address as usize) - 0x2000]
     }
 
-    fn set(&mut self, address: Address, value: u8) {
+    fn set(&mut self, address: Address, value: u8, _: u8) {
         let row_offset: usize = if address & 0x800 == 0 { 0 } else { 30 };
         let col_offset: usize = if address & 0x400 == 0 { 0 } else { 32 };
         if address & 0x3C0 == 0x3C0 {
@@ -193,7 +193,7 @@ mod test {
         let mut name_table = NameTable::from_memory(&BasicMemory::new());
         for a in 0x2000..0x3000 {
             let value = rand::random::<u8>();
-            name_table.set(a, value);
+            name_table.set(a, value, 0);
             assert_eq!(
                 value,
                 name_table.get(a, 0),
@@ -222,33 +222,33 @@ mod test {
     }
 
     fn populate(memory: &mut Memory) {
-        memory.set(0x23C0, 0b11_10_01_00);
-        memory.set(0x23C1, 0b00_01_10_11);
-        memory.set(0x23C9, 0b11_10_01_00);
+        memory.set(0x23C0, 0b11_10_01_00, 0);
+        memory.set(0x23C1, 0b00_01_10_11, 0);
+        memory.set(0x23C9, 0b11_10_01_00, 0);
 
-        memory.set(0x27C0, 0b11_10_01_00);
-        memory.set(0x27C1, 0b00_01_10_11);
-        memory.set(0x27C9, 0b11_10_01_00);
+        memory.set(0x27C0, 0b11_10_01_00, 0);
+        memory.set(0x27C1, 0b00_01_10_11, 0);
+        memory.set(0x27C9, 0b11_10_01_00, 0);
 
-        memory.set(0x2BC0, 0b11_10_01_00);
-        memory.set(0x2BC1, 0b00_01_10_11);
-        memory.set(0x2BC9, 0b11_10_01_00);
+        memory.set(0x2BC0, 0b11_10_01_00, 0);
+        memory.set(0x2BC1, 0b00_01_10_11, 0);
+        memory.set(0x2BC9, 0b11_10_01_00, 0);
 
-        memory.set(0x2FC0, 0b11_10_01_00);
-        memory.set(0x2FC1, 0b00_01_10_11);
-        memory.set(0x2FC9, 0b11_10_01_00);
+        memory.set(0x2FC0, 0b11_10_01_00, 0);
+        memory.set(0x2FC1, 0b00_01_10_11, 0);
+        memory.set(0x2FC9, 0b11_10_01_00, 0);
 
         for a in 0x2000..0x23C0 {
-            memory.set(a, (a & 0xFF) as u8);
+            memory.set(a, (a & 0xFF) as u8, 0);
         }
         for a in 0x2400..0x27C0 {
-            memory.set(a, (a & 0xFF) as u8);
+            memory.set(a, (a & 0xFF) as u8, 0);
         }
         for a in 0x2800..0x2BC0 {
-            memory.set(a, (a & 0xFF) as u8);
+            memory.set(a, (a & 0xFF) as u8, 0);
         }
         for a in 0x2C00..0x2FC0 {
-            memory.set(a, (a & 0xFF) as u8);
+            memory.set(a, (a & 0xFF) as u8, 0);
         }
     }
 

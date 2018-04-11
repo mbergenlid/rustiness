@@ -110,17 +110,17 @@ impl Memory for PPUMemory {
             self.basic_memory.get(address, sub_cycles)
         }
     }
-    fn set(&mut self, address: Address, value: u8) {
+    fn set(&mut self, address: Address, value: u8, sub_cycle: u8) {
         let address = self.translate(address);
         if address < 0x2000 {
-            self.patterns[(address as usize) >> 4].set(address, value);
+            self.patterns[(address as usize) >> 4].set(address, value, sub_cycle);
         } else if address < 0x3000 {
-            self.name_tables.set(address, value);
+            self.name_tables.set(address, value, sub_cycle);
         } else if address >= 0x3F00 && address < 0x3F20 {
             let address = address as usize;
             self.palettes[(address & 0xFC) >> 2][address & 0x3] = value;
         } else {
-            self.basic_memory.set(address, value);
+            self.basic_memory.set(address, value, sub_cycle);
         }
     }
 }
@@ -136,7 +136,7 @@ pub mod tests {
         let mut ppu_mem = PPUMemory::new(Mirroring::NoMirroring);
         for address in 0x2000..0x2400 {
             let value = rand::random::<u8>() & (!0x80);
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly");
             assert_eq!(0, ppu_mem.get(address + 0x400, 0), "Address {} changed unexpectedly", address + 0x400);
             assert_eq!(0, ppu_mem.get(address + 0x800, 0), "Address {} changed unexpectedly", address + 0x800);
@@ -150,14 +150,14 @@ pub mod tests {
 
         for address in 0x2000..0x2400 {
             let value = rand::random::<u8>() & (!0x80);
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly");
             assert_eq!(value, ppu_mem.get(address + 0x400, 0), "Mirrored address is not written properly");
         }
 
         for address in 0x2800..0x2C00 {
             let value = rand::random::<u8>() | 0x80;
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly");
             assert_eq!(value, ppu_mem.get(address + 0x400, 0), "Mirrored address is not written properly");
         }
@@ -180,7 +180,7 @@ pub mod tests {
         //Fill second (i.e. first) name table
         for address in 0x2400..0x2800 {
             let value = rand::random::<u8>() & (!0x80);
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly");
             assert_eq!(value, ppu_mem.get(address - 0x400, 0), "Mirrored address is not written properly");
         }
@@ -188,7 +188,7 @@ pub mod tests {
         //Fill fourth (i.e. third) name table
         for address in 0x2C00..0x3000 {
             let value = rand::random::<u8>() | 0x80;
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly for address {:02x}", address);
             assert_eq!(value, ppu_mem.get(address - 0x400, 0), "Mirrored address is not written properly for address {:02x}", address);
         }
@@ -211,7 +211,7 @@ pub mod tests {
         //Fill first (and third) name table
         for address in 0x2000..0x2400 {
             let value = rand::random::<u8>() & (!0x80);
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly");
             assert_eq!(value, ppu_mem.get(address + 0x800, 0), "Mirrored address is not written properly");
         }
@@ -219,7 +219,7 @@ pub mod tests {
         //Fill second (and fourth) name table
         for address in 0x2400..0x2800 {
             let value = rand::random::<u8>() | 0x80;
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly");
             assert_eq!(value, ppu_mem.get(address + 0x800, 0), "Mirrored address is not written properly");
         }
@@ -242,7 +242,7 @@ pub mod tests {
         //Fill third (and first) name table
         for address in 0x2800..0x2C00 {
             let value = rand::random::<u8>() & (!0x80);
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly");
             assert_eq!(value, ppu_mem.get(address - 0x800, 0), "Mirrored address is not written properly");
         }
@@ -250,7 +250,7 @@ pub mod tests {
         //Fill fourth (and second) name table
         for address in 0x2C00..0x3000 {
             let value = rand::random::<u8>() | 0x80;
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
             assert_eq!(value, ppu_mem.get(address, 0), "Original address is not written properly");
             assert_eq!(value, ppu_mem.get(address - 0x800, 0), "Mirrored address is not written properly");
         }
@@ -276,7 +276,7 @@ pub mod tests {
             //Random value in range [0x2000,0x2EFF]
             let address = (rand::random::<u16>() % 0x0F00) + 0x2000;
             let value = rand::random::<u8>();
-            ppu_mem.set(address, value);
+            ppu_mem.set(address, value, 0);
 
             assert_eq!(value, ppu_mem.get(address, 0), "Original address {:02x} is not written properly", address);
             assert_eq!(value, ppu_mem.get(address + 0x1000, 0), "Mirrored address {:02x} is not written properly", address)
@@ -313,12 +313,12 @@ pub mod tests {
     use memory::Address;
     fn assert_mirrored_addresses(ppu_mem: &mut PPUMemory, address1: Address, address2: Address) {
         let value1 = rand::random::<u8>();
-        ppu_mem.set(address1, value1);
+        ppu_mem.set(address1, value1, 0);
         assert_eq!(value1, ppu_mem.get(address1, 0), "value is not written to original address 0x{:x}", address1);
         assert_eq!(value1, ppu_mem.get(address2, 0), "value is not mirrored from 0x{:x} to 0x{:x}", address1, address2);
 
         let value2 = rand::random::<u8>();
-        ppu_mem.set(address2, value2);
+        ppu_mem.set(address2, value2, 0);
         assert_eq!(value2, ppu_mem.get(address2, 0), "value is not written to original address 0x{:x}", address2);
         assert_eq!(value2, ppu_mem.get(address1, 0), "value is not mirrored from 0x{:x} to 0x{:x}", address2, address1);
 
