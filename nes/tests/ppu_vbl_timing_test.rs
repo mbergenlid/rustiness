@@ -3,7 +3,7 @@
 extern crate nes;
 
 mod fakes;
-use nes::opcodes;
+use nes::cpu::opcodes;
 use nes::input::standard_controller::StandardController;
 use nes::ppu::screen::ScreenMock;
 use nes::ppu::ppumemory::PPUMemory;

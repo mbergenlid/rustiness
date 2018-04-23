@@ -111,7 +111,7 @@ impl BreakPoint for VRAMValue {
 mod test {
     use super::BreakPoint;
     use nes::cpu::CpuBuilder;
-    use nes::opcodes;
+    use nes::cpu::opcodes;
     use nes::memory::BasicMemory;
     use nes::ppu::PPU;
     use nes::ppu::ppumemory::PPUMemory;

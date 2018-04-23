@@ -1,9 +1,6 @@
 #![feature(box_syntax)]
-pub mod cpu;
 #[macro_use] pub mod memory;
-pub mod opcodes;
-mod instructions;
-pub mod addressing;
+pub mod cpu;
 pub mod ppu;
 pub mod ines;
 pub mod input;
@@ -41,7 +38,10 @@ pub struct NES<'a, T, A>
 
 use ines::mapper;
 use borrow::MutableRef;
-use instructions::Instruction;
+use cpu::instructions::Instruction;
+use cpu::instructions;
+use cpu::opcodes;
+use cpu::addressing;
 
 impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
 

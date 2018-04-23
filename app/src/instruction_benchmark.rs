@@ -3,7 +3,7 @@ extern crate rand;
 extern crate histogram;
 
 use std::time::{Instant, Duration};
-use nes::opcodes::*;
+use nes::cpu::opcodes::*;
 use nes::cpu::CPU;
 
 pub fn run(args: &[String]) {
