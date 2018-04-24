@@ -4,3 +4,4 @@ pub mod opcodes;
 pub mod instructions;
 pub mod addressing;
 mod cpu;
+mod cpu_tests;

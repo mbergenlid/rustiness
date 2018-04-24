@@ -18,18 +18,22 @@ pub fn test(rom_file: &str) {
     let screen = box ScreenMock::new();
     let mut nes = NES::from_file(rom_file, MutableRef::Box(box standard_controller), audio_device::AudioDevice {}, screen);
 
-
-    while nes.memory.get(0x6000, 0) == 0 {
+    while nes.memory.get(0x6000, 0) == 0 && nes.cycle_count < 10000000 {
         nes.execute();
     }
     println!("Test started");
-    while nes.memory.get(0x6000, 0) == 0x80 {
+    while nes.memory.get(0x6000, 0) == 0x80 && nes.cycle_count < 10000000 {
         nes.execute();
+    }
+
+    if nes.cycle_count >= 10000000 {
+        panic!("{} Timed out!", rom_file);
     }
 
     for _ in 0..29781 {
         nes.execute();
     }
+
 
     match nes.memory.get(0x6000, 0) {
         0x00 => {},

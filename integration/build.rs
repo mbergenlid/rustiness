@@ -13,6 +13,7 @@ fn main() {
 
     compile_dir(&mut f, "ca65");
     compile_dir(&mut f, "ca65/vbl_timing");
+    compile_dir(&mut f, "ca65/cpu_dummy_reads");
 }
 
 fn compile_dir(out_file: &mut File, directory: &str) {

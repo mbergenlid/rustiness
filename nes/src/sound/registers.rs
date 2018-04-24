@@ -23,7 +23,7 @@ impl MemoryMappedIO for Register1 {
 }
 impl MemoryMappedIO for Register3 {
     fn read(&self, _: &Memory) -> u8 {
-        unimplemented!();
+        0
     }
 
     fn write(&mut self, _: &mut Memory, value: u8) {

@@ -65,8 +65,15 @@ impl AddressingMode {
         let msb: u16 = memory.get(cpu.get_and_increment_pc(), 2) as u16;
         let base_address = (msb << 8) | lsb;
         let operand_address = (base_address as u32) + (index as u32);
+        let cycles =
+            if (operand_address as u16 >> 8) > msb {
+                memory.get((msb << 8) | (lsb as u8).wrapping_add(index) as u16, 3); //dummy read
+                4
+            } else {
+                3
+            };
         return AddressingMode {
-            cycles: 3 + ((operand_address as u16 >> 8) > msb) as u8,
+            cycles: cycles,
             operand_address: operand_address as u16
         }
     }
@@ -108,8 +115,18 @@ impl AddressingMode {
         let base_address = ((bah as u16) << 8) | bal as u16;
 
         let operand_address = base_address.wrapping_add(cpu.register_y() as u16);
+        let cycles =
+            if (operand_address >> 8) > (base_address >> 8) {
+                memory.get(
+                    (base_address & 0xFF00)
+                        | (bal as u8).wrapping_add(cpu.register_y()) as u16,
+                    3); //dummy read
+                5
+            } else {
+                4
+            };
         return AddressingMode {
-            cycles: 4 + ((operand_address >> 8) > (base_address >> 8)) as u8,
+            cycles: cycles,
             operand_address: operand_address,
         }
     }
