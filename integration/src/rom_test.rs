@@ -27,8 +27,22 @@ pub fn test(rom_file: &str) {
         nes.execute();
     }
 
+    for _ in 0..29781 {
+        nes.execute();
+    }
+
     match nes.memory.get(0x6000, 0) {
         0x00 => {},
-        code => panic!("Failed with code {:x}", code),
+        code => {
+            let base_address = 0x2000;
+            for row in 0..30 {
+                for col in 0..32 {
+                    let tile = nes.ppu.borrow().memory().get(base_address + row*32 + col, 0);
+                    print!("{}", tile as char);
+                }
+                println!("");
+            }
+            panic!("Failed with code {:x}", code);
+        },
     }
 }
