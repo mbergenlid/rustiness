@@ -127,8 +127,8 @@ impl CPU {
 
         let new_value = self.subtract_without_carry(accumulator, value);
 
-        if accumulator.is_negative() && value.is_positive() && new_value < 0x80 ||
-            accumulator.is_positive() && value.is_negative() && new_value >= 0x80 {
+        let actual_sum = ((self.accumulator as i8) as i16) - ((value as i8) as i16) - (borrow as i16);
+        if actual_sum < -128 || actual_sum > 127 {
             self.set_flags(OVERFLOW_FLAG);
         } else {
             self.clear_flags(OVERFLOW_FLAG);
@@ -488,6 +488,75 @@ mod test {
             cpu.sub_accumulator(0xFF);
             assert_eq!(cpu.accumulator, 0x00);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
+        }
+    }
+
+    #[test]
+    fn overflow_flag() {
+        for s1 in (-128 as i8)..(127 as i8) {
+            for s2 in (-128 as i8)..(127 as i8) {
+                {
+                    let mut cpu = super::CpuBuilder::new()
+                        .flags(0)
+                        .accumulator(s1 as u8)
+                        .build();
+                    cpu.add_accumulator(s2 as u8);
+
+                    let actual_sum = (s1 as i16) + (s2 as i16);
+
+                    if actual_sum >= -128 && actual_sum <= 127 {
+                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+                    } else {
+                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+                    }
+                }
+                {
+                    let mut cpu = super::CpuBuilder::new()
+                        .flags(0)
+                        .accumulator(s1 as u8)
+                        .build();
+                    cpu.sub_accumulator(s2 as u8);
+
+                    let actual_sum = (s1 as i16) - (s2 as i16) - 1;
+
+                    assert_eq!(s1.wrapping_sub(s2).wrapping_sub(1) as u8, cpu.accumulator());
+                    if actual_sum >= -128 && actual_sum <= 127 {
+                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false, "Overflow should be clear: {} - {} - 1", s1, s2);
+                    } else {
+                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true, "Overflow should be set: {} - {} - 1", s1, s2);
+                    }
+                }
+                {
+                    let mut cpu = super::CpuBuilder::new()
+                        .flags(super::CARRY_FLAG)
+                        .accumulator(s1 as u8)
+                        .build();
+                    cpu.add_accumulator(s2 as u8);
+
+                    let actual_sum = (s1 as i16) + (s2 as i16) + 1;
+
+                    if actual_sum >= -128 && actual_sum <= 127 {
+                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+                    } else {
+                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+                    }
+                }
+                {
+                    let mut cpu = super::CpuBuilder::new()
+                        .flags(super::CARRY_FLAG)
+                        .accumulator(s1 as u8)
+                        .build();
+                    cpu.sub_accumulator(s2 as u8);
+
+                    let actual_sum = (s1 as i16) - (s2 as i16);
+
+                    if actual_sum >= -128 && actual_sum <= 127 {
+                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
+                    } else {
+                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
+                    }
+                }
+            }
         }
     }
 

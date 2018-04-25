@@ -38,6 +38,7 @@ pub fn test(rom_file: &str) {
     match nes.memory.get(0x6000, 0) {
         0x00 => {},
         code => {
+            println!("{}", rom_file);
             let base_address = 0x2000;
             for row in 0..30 {
                 for col in 0..32 {
