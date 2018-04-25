@@ -74,10 +74,25 @@ fn open_log_file() -> File {
     return File::create(file_name).unwrap();
 }
 
+use nes::cpu::*;
+
 #[inline]
 fn log<'a, S, A>(log_file: &Option<File>, nes: &NES<'a, S, A>, opcodes: Rc<OpCodes>) where S: Screen + Sized, A: AudioDevice + Sized {
     for mut file in log_file.iter() {
-        file.write_fmt(format_args!("Cycle: {} - {}\n", nes.cycle_count, next_instruction_as_string(&nes, opcodes.clone()))).unwrap();
+        let flags: String =
+                [(NEGATIVE_FLAG, 'N'), (OVERFLOW_FLAG, 'O'), (DECIMAL_FLAG, 'D'), (INTERRUPT_DISABLE_FLAG, 'I'), (ZERO_FLAG, 'Z'), (CARRY_FLAG, 'C')].iter()
+                    .filter(|&&(f, _)| nes.cpu.is_flag_set(f))
+                    .map(|&(_, f)| f)
+                    .collect();
+        file.write_fmt(format_args!(
+                "Cycle: {} - {} - A: {}, X: {}, Y: {}, Flags: {}\n",
+                nes.cycle_count,
+                next_instruction_as_string(&nes, opcodes.clone()),
+                nes.cpu.accumulator(),
+                nes.cpu.register_x(),
+                nes.cpu.register_y(),
+                flags
+        )).unwrap();
     }
 }
 
