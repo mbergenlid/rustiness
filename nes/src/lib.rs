@@ -76,10 +76,7 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
     }
 
     pub fn execute(&mut self) {
-        let instruction = self.op_codes.fetch_instruction(&mut self.cpu, &mut self.memory);
-        let cycles = (*instruction).estimated_cycles();
-
-        instruction.execute(&mut self.cpu, &mut self.memory);
+        let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut self.memory);
         let nmi = self.ppu.borrow_mut().sync(cycles as u32, self.screen.as_mut());
 
         if cfg!(feature = "sound") {

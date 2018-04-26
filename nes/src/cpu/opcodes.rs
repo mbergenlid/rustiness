@@ -29,8 +29,7 @@ impl OpCodes {
 
     pub fn execute_instruction(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let instruction = self.fetch_instruction(cpu, memory);
-        instruction.execute(cpu, memory);
-        return instruction.estimated_cycles();
+        return instruction.execute(cpu, memory);
     }
 }
 

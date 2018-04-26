@@ -4,7 +4,7 @@ use cpu;
 use memory::Memory;
 
 pub trait Instruction {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory);
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8;
     fn estimated_cycles(&self) -> u8;
 }
 
@@ -15,8 +15,9 @@ impl ADC {
     }
 }
 impl Instruction for ADC {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.add_accumulator(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -30,8 +31,9 @@ impl SBC {
     }
 }
 impl Instruction for SBC {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.sub_accumulator(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -45,9 +47,10 @@ impl INC {
     }
 }
 impl Instruction for INC {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.increment(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
@@ -60,8 +63,9 @@ impl INCAbsoluteX {
     }
 }
 impl Instruction for INCAbsoluteX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         self.0.execute(cpu, memory);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -75,9 +79,10 @@ impl DEC {
     }
 }
 impl Instruction for DEC {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.decrement(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
@@ -91,8 +96,9 @@ impl DECAbsoluteX {
 }
 
 impl Instruction for DECAbsoluteX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         self.0.execute(cpu, memory);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -106,8 +112,9 @@ impl AND {
     }
 }
 impl Instruction for AND {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.and_accumulator(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -121,8 +128,9 @@ impl OR {
     }
 }
 impl Instruction for OR {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.or_accumulator(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -136,8 +144,9 @@ impl EOR {
     }
 }
 impl Instruction for EOR {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.xor_accumulator(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -146,8 +155,9 @@ impl Instruction for EOR {
 
 pub struct ASLAccumulator;
 impl Instruction for ASLAccumulator {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.asl_accumulator();
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -161,9 +171,10 @@ impl ASL {
     }
 }
 impl Instruction for ASL {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.arithmetic_shift_left(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value, self.0.cycles);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
@@ -172,10 +183,11 @@ impl Instruction for ASL {
 
 pub struct ASLAbsoluteX;
 impl Instruction for ASLAbsoluteX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let addressing_mode = AddressingMode::absolute_x(cpu, memory);
         let new_value = cpu.arithmetic_shift_left(memory.get(addressing_mode.operand_address, 4));
         memory.set(addressing_mode.operand_address, new_value, 6);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         7
@@ -184,8 +196,9 @@ impl Instruction for ASLAbsoluteX {
 
 pub struct LSRAccumulator;
 impl Instruction for LSRAccumulator {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.logical_shift_right_accumulator();
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 2;
@@ -198,9 +211,10 @@ impl LSR {
     }
 }
 impl Instruction for LSR {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.logical_shift_right(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
@@ -213,9 +227,10 @@ impl LSRAbsoluteX {
     }
 }
 impl Instruction for LSRAbsoluteX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.logical_shift_right(memory.get(self.0.operand_address, 4));
         memory.set(self.0.operand_address, new_value, 6);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -224,8 +239,9 @@ impl Instruction for LSRAbsoluteX {
 
 pub struct ROLAccumulator;
 impl Instruction for ROLAccumulator {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.rotate_accumulator_left();
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 2;
@@ -238,9 +254,10 @@ impl ROL {
     }
 }
 impl Instruction for ROL {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.rotate_left(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
@@ -253,9 +270,10 @@ impl ROLAbsoluteX {
     }
 }
 impl Instruction for ROLAbsoluteX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.rotate_left(memory.get(self.0.operand_address, 4));
         memory.set(self.0.operand_address, new_value, 6);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -264,8 +282,9 @@ impl Instruction for ROLAbsoluteX {
 
 pub struct RORAccumulator;
 impl Instruction for RORAccumulator {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.rotate_accumulator_right();
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 2;
@@ -278,9 +297,10 @@ impl ROR {
     }
 }
 impl Instruction for ROR {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.rotate_right(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         3 + self.0.cycles
@@ -293,9 +313,10 @@ impl RORAbsoluteX {
     }
 }
 impl Instruction for RORAbsoluteX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.rotate_right(memory.get(self.0.operand_address, 4));
         memory.set(self.0.operand_address, new_value, 6);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -309,8 +330,9 @@ impl BIT {
     }
 }
 impl Instruction for BIT {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.bit_test(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -331,10 +353,18 @@ impl Branch {
     }
 }
 impl Instruction for Branch {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let branch_distance: i8 = memory.get(cpu.get_and_increment_pc(), 1) as i8;
         if self.0 {
+            let old_program_counter = cpu.program_counter();
             cpu.add_program_counter(branch_distance as u16);
+            if (cpu.program_counter() >> 8) != (old_program_counter >> 8) {
+                4
+            } else {
+                3
+            }
+        } else {
+            2
         }
     }
     fn estimated_cycles(&self) -> u8 {
@@ -353,8 +383,9 @@ impl JMP {
     }
 }
 impl Instruction for JMP {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.set_program_counter(self.0.operand_address);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         self.1
@@ -363,7 +394,7 @@ impl Instruction for JMP {
 
 pub struct BRK;
 impl Instruction for BRK {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let current_pc = cpu.program_counter() + 1;
         memory.set(cpu.push_stack(), (current_pc >> 8) as u8, 2);
         memory.set(cpu.push_stack(), current_pc as u8, 3);
@@ -373,6 +404,7 @@ impl Instruction for BRK {
         let msbs: u8 = memory.get(0xFFFF, 6);
         cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
         cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -386,7 +418,7 @@ impl NMI {
     }
 }
 impl Instruction for NMI {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let current_pc = cpu.program_counter();
         memory.set(cpu.push_stack(), (current_pc >> 8) as u8, 2);
         memory.set(cpu.push_stack(), current_pc as u8, 3);
@@ -396,6 +428,7 @@ impl Instruction for NMI {
         let msbs: u8 = memory.get(0xFFFB, 6);
         cpu.set_program_counter((msbs as u16) << 8 | lsbs as u16);
         cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 7;
@@ -404,11 +437,12 @@ impl Instruction for NMI {
 
 pub struct RTI;
 impl Instruction for RTI {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let processor_status = memory.get(cpu.pop_stack(), 3);
         cpu.set_processor_status(processor_status);
         let return_address = memory.get(cpu.pop_stack(), 4) as u16 | (memory.get(cpu.pop_stack(), 5) as u16) << 8;
         cpu.set_program_counter(return_address);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 6;
@@ -417,13 +451,14 @@ impl Instruction for RTI {
 
 pub struct JSR;
 impl Instruction for JSR {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let destination_address = AddressingMode::absolute(cpu, memory).operand_address;
         let current_pc = cpu.program_counter() - 1;
         memory.set(cpu.push_stack(), (current_pc >> 8) as u8, 3);
         memory.set(cpu.push_stack(), current_pc as u8, 4);
 
         cpu.set_program_counter(destination_address);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 6;
@@ -432,9 +467,10 @@ impl Instruction for JSR {
 
 pub struct RTS;
 impl Instruction for RTS {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let return_address = memory.get(cpu.pop_stack(), 3) as u16 | (memory.get(cpu.pop_stack(), 4) as u16) << 8;
         cpu.set_program_counter(return_address + 1);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         return 6;
@@ -448,8 +484,9 @@ impl STA {
     }
 }
 impl Instruction for STA {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         memory.set(self.0.operand_address, cpu.accumulator(), self.0.cycles);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         self.1
@@ -463,8 +500,9 @@ impl STX {
     }
 }
 impl Instruction for STX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         memory.set(self.0.operand_address, cpu.register_x(), self.0.cycles);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         self.1
@@ -478,8 +516,9 @@ impl STY {
     }
 }
 impl Instruction for STY {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         memory.set(self.0.operand_address, cpu.register_y(), self.0.cycles);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         self.1
@@ -493,8 +532,9 @@ impl LDX {
     }
 }
 impl Instruction for LDX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.load_x(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -508,8 +548,9 @@ impl LDY {
     }
 }
 impl Instruction for LDY {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.load_y(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -523,8 +564,9 @@ impl LDA {
     }
 }
 impl Instruction for LDA {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.load_accumulator(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -538,8 +580,9 @@ impl CMP {
     }
 }
 impl Instruction for CMP {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.cmp_accumulator(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -553,8 +596,9 @@ impl CPX {
     }
 }
 impl Instruction for CPX {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.cmp_register_x(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -568,8 +612,9 @@ impl CPY {
     }
 }
 impl Instruction for CPY {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         cpu.cmp_register_y(memory.get(self.0.operand_address, self.0.cycles));
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         1 + self.0.cycles
@@ -579,7 +624,7 @@ impl Instruction for CPY {
 //Unofficial
 //pub struct ISC(AddressingMode);
 //impl Instruction for ISC {
-//    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+//    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
 //        let new_value = cpu.increment(memory.get(self.0.operand_address));
 //        memory.set(self.0.operand_address, new_value);
 //        cpu.sub_accumulator(new_value);
@@ -592,7 +637,7 @@ impl Instruction for CPY {
 //const DO_NOT_KNOW: u8 = 0;
 //pub struct SRE(AddressingMode);
 //impl Instruction for SRE {
-//    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+//    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
 //        let new_value = cpu.logical_shift_right(memory.get(self.0.operand_address));
 //        memory.set(self.0.operand_address, new_value);
 //        cpu.xor_accumulator(memory.get(self.0.operand_address));
@@ -604,8 +649,9 @@ impl Instruction for CPY {
 
 pub struct CLC;
 impl Instruction for CLC {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.clear_flags(cpu::CARRY_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -613,8 +659,9 @@ impl Instruction for CLC {
 }
 pub struct SEC;
 impl Instruction for SEC {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.set_flags(cpu::CARRY_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -622,8 +669,9 @@ impl Instruction for SEC {
 }
 pub struct CLI;
 impl Instruction for CLI {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.clear_flags(cpu::INTERRUPT_DISABLE_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -631,8 +679,9 @@ impl Instruction for CLI {
 }
 pub struct SEI;
 impl Instruction for SEI {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.set_flags(cpu::INTERRUPT_DISABLE_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -640,8 +689,9 @@ impl Instruction for SEI {
 }
 pub struct CLV;
 impl Instruction for CLV {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.clear_flags(cpu::OVERFLOW_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -649,8 +699,9 @@ impl Instruction for CLV {
 }
 pub struct CLD;
 impl Instruction for CLD {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.clear_flags(cpu::DECIMAL_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -658,8 +709,9 @@ impl Instruction for CLD {
 }
 pub struct SED;
 impl Instruction for SED {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.set_flags(cpu::DECIMAL_FLAG);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -667,8 +719,9 @@ impl Instruction for SED {
 }
 pub struct NOP;
 impl Instruction for NOP {
-    fn execute(&self, _cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, _cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         //DO NOTHING
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -677,9 +730,10 @@ impl Instruction for NOP {
 
 pub struct TAX;
 impl Instruction for TAX {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         let acc = cpu.accumulator();
         cpu.load_x(acc);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -687,9 +741,10 @@ impl Instruction for TAX {
 }
 pub struct TXA;
 impl Instruction for TXA {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         let temp = cpu.register_x();
         cpu.load_accumulator(temp);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -697,8 +752,9 @@ impl Instruction for TXA {
 }
 pub struct DEX;
 impl Instruction for DEX {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.decrement_x();
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -706,8 +762,9 @@ impl Instruction for DEX {
 }
 pub struct INX;
 impl Instruction for INX {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
-        cpu.increment_x()
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
+        cpu.increment_x();
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -715,9 +772,10 @@ impl Instruction for INX {
 }
 pub struct TAY;
 impl Instruction for TAY {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         let temp = cpu.accumulator();
         cpu.load_y(temp);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -725,9 +783,10 @@ impl Instruction for TAY {
 }
 pub struct TYA;
 impl Instruction for TYA {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         let temp = cpu.register_y();
         cpu.load_accumulator(temp);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -735,8 +794,9 @@ impl Instruction for TYA {
 }
 pub struct DEY;
 impl Instruction for DEY {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.decrement_y();
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -744,8 +804,9 @@ impl Instruction for DEY {
 }
 pub struct INY;
 impl Instruction for INY {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         cpu.increment_y();
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -754,9 +815,10 @@ impl Instruction for INY {
 
 pub struct TXS;
 impl Instruction for TXS {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         let temp = cpu.register_x();
         cpu.stack_pointer = temp;
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -764,9 +826,10 @@ impl Instruction for TXS {
 }
 pub struct TSX;
 impl Instruction for TSX {
-    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, _memory: &mut Memory) -> u8 {
         let temp = cpu.stack_pointer;
         cpu.load_x(temp);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         2
@@ -774,8 +837,9 @@ impl Instruction for TSX {
 }
 pub struct PHA;
 impl Instruction for PHA {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         memory.set(cpu.push_stack(), cpu.accumulator(), 2);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         3
@@ -783,9 +847,10 @@ impl Instruction for PHA {
 }
 pub struct PLA;
 impl Instruction for PLA {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let temp = memory.get(cpu.pop_stack(), 4);
         cpu.load_accumulator(temp);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         4
@@ -793,8 +858,9 @@ impl Instruction for PLA {
 }
 pub struct PHP;
 impl Instruction for PHP {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         memory.set(cpu.push_stack(), cpu.processor_status() | 0x30, 2);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         3
@@ -802,9 +868,10 @@ impl Instruction for PHP {
 }
 pub struct PLP;
 impl Instruction for PLP {
-    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+    fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let temp = memory.get(cpu.pop_stack(), 3);
         cpu.set_processor_status(temp);
+        return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
         4
