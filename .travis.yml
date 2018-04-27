@@ -2,6 +2,10 @@
 language: rust
 rust:
   - nightly
+cache:
+  cargo: true
+  directories:
+    - cc65
 
 before_install:
   - git clone https://github.com/cc65/cc65.git
