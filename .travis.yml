@@ -4,6 +4,6 @@ rust:
   - nightly
 
 before_install:
-  - wget 'https://download.opensuse.org/repositories/home:/strik/Debian_9.0/amd64/cc65_2.17.0.git.1524735994.c92a3c5bd_amd64.deb'
+  - wget 'https://download.opensuse.org/repositories/home:/strik/Debian_8.0/amd64/cc65_2.17.0.git.1524735994.c92a3c5bd_amd64.deb'
   - sudo dpkg -i cc65_2.17.0.git.1524735994.c92a3c5bd_amd64.deb
 
