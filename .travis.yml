@@ -8,4 +8,5 @@ before_install:
   - cd cc65
   - make > /dev/null
   - sudo make avail
+  - sudo apt-get install libsdl2-dev
 
