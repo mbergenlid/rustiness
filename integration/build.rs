@@ -5,7 +5,19 @@ use std::fs::File;
 use std::io::Write;
 
 use std::fs::read_dir;
+
 fn main() {
+    let install = Command::new("bash")
+        .arg("install-cc65.sh")
+        .status()
+        .expect("Failed to install cc65 dependency");
+    if !install.success() {
+        panic!(
+            format!(
+                "Failed to install cc65 dependency\nstatus: {}",
+                install
+            ));
+    }
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("test_definitions.rs");
     let mut f = File::create(&dest_path).unwrap();
@@ -27,7 +39,7 @@ fn compile_dir(out_file: &mut File, directory: &str) {
     for file in files {
         let file_name = file.file_name().unwrap().to_string_lossy();
         let name = &file_name[0..(file_name.len()-2)];
-        let assemble = Command::new("ca65")
+        let assemble = Command::new(".cc65/bin/ca65")
                             .arg("-o")
                             .arg(format!("{}/{}.o", out_dir, name))
                             .arg("-I")
@@ -45,7 +57,7 @@ fn compile_dir(out_file: &mut File, directory: &str) {
                     String::from_utf8_lossy(&assemble.stderr)
                 ));
         }
-        let linking = Command::new("ld65")
+        let linking = Command::new(".cc65/bin/ld65")
                             .args(&["-C", &(directory.to_owned() + "/nes.cfg"), "-o"])
                             .arg(format!("{}/{}.nes", out_dir, name))
                             .arg(format!("{}/{}.o", out_dir, name))

@@ -6,3 +6,5 @@ target
 
 nes/Cargo.lock
 gliumscreen/Cargo.lock
+
+integration/.cc65

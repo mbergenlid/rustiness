@@ -5,13 +5,9 @@ rust:
 cache:
   cargo: true
   directories:
-    - cc65
+    - integration/.cc65
 
 before_install:
-  - git clone https://github.com/cc65/cc65.git
-  - cd cc65
-  - make > /dev/null
-  - sudo make avail
   - sudo apt-get install libegl1-mesa-dev
   - sudo apt-get install libgles2-mesa-dev
   - sudo apt-get install libsdl2-dev
