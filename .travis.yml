@@ -3,9 +3,7 @@ language: rust
 rust:
   - nightly
 
-install:
-  - echo 'deb http://download.opensuse.org/repositories/home:/strik/Debian_9.0/ /' > /etc/apt/sources.list.d/home:strik.list
-  - apt-get update
-  - apt-get install cc65
-  - cargo build --verbose
+before_install:
+  - wget 'https://download.opensuse.org/repositories/home:/strik/Debian_9.0/amd64/cc65_2.17.0.git.1524735994.c92a3c5bd_amd64.deb'
+  - sudo dpkg -i cc65_2.17.0.git.1524735994.c92a3c5bd_amd64.deb
 
