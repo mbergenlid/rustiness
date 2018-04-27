@@ -8,5 +8,7 @@ before_install:
   - cd cc65
   - make > /dev/null
   - sudo make avail
+  - sudo apt-get install libegl1-mesa-dev
+  - sudo apt-get install libgles2-mesa-dev
   - sudo apt-get install libsdl2-dev
 
