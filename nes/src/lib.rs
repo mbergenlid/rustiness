@@ -217,7 +217,7 @@ mod test {
         let elapsed = start.elapsed();
         let expected_duration = Duration::new(0, 10000*NANOS_PER_CLOCK_CYCLE);
         assert!(elapsed >= expected_duration, "Should take at least {:?} but took {:?}", expected_duration, elapsed);
-        let expected_max_duration = Duration::new(0, 10100*NANOS_PER_CLOCK_CYCLE);
+        let expected_max_duration = Duration::new(0, 10500*NANOS_PER_CLOCK_CYCLE);
         assert!(elapsed <= expected_max_duration, "Should take at most {:?} but took {:?}", expected_max_duration, elapsed);
     }
 
