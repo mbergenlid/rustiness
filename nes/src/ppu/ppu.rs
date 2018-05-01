@@ -60,6 +60,7 @@ pub struct PPU {
     pending_nmi: u32,
     nmi_triggered: bool,
     nmi_active: bool,
+    frame_skipped: bool,
     memory: PPUMemory,
     vram_registers: VRAMRegisters,
     temp_vram_read_buffer: u8,
@@ -80,7 +81,7 @@ pub struct PPU {
 use std::fmt::{Formatter, Error, Display};
 impl Display for PPU {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
-        formatter.write_fmt(format_args!("PPU: {}\n", self.cycle_count)).unwrap();
+        formatter.write_fmt(format_args!("PPU: {}\t{}\n", self.cycle_count, if self.odd_flag { "Odd" } else { "Even" })).unwrap();
         formatter.write_fmt(
             format_args!("\tControl register: 0b{:08b}\n", self.ppu_ctrl())).unwrap();
         formatter.write_fmt(
@@ -102,9 +103,9 @@ const SCANLINES_PER_VBLANK: u32 = 20;
 const SCANLINES_PER_FRAME: u32 = 262;
 const VISIBLE_SCANLINES: u32 = 240;
 const POST_RENDER_LINES: u32 = 1;
-const VBLANK_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES)*PPU_CYCLES_PER_SCANLINE; //82 181
-const NMI_CYCLE: u32 = VBLANK_CYCLE+3; //82 184
-const VBLANK_CLEAR_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE; //89 001
+const VBLANK_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES)*PPU_CYCLES_PER_SCANLINE+1; //82 182
+const NMI_CYCLE: u32 = VBLANK_CYCLE+3; //82 185
+const VBLANK_CLEAR_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE+1; //89 002
 
 impl PPU {
     pub fn new(memory: PPUMemory) -> PPU {
@@ -118,6 +119,7 @@ impl PPU {
             pending_nmi: 0,
             nmi_triggered: false,
             nmi_active: false,
+            frame_skipped: false,
             memory: memory,
             vram_registers: VRAMRegisters::new(),
             temp_vram_read_buffer: 0,
@@ -156,7 +158,8 @@ impl PPU {
         self.control_register.value
     }
 
-    pub fn set_ppu_mask(&mut self, value: u8) {
+    pub fn set_ppu_mask(&mut self, value: u8, sub_cycle: u8) {
+        self.partially_update((sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+3);
         self.mask_register.value = value;
     }
 
@@ -246,16 +249,6 @@ impl PPU {
 
     fn update(&mut self, ppu_cycle_count: u32) {
         self.cycle_count += ppu_cycle_count;
-        if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
-            self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
-            self.vblank_triggered = false;
-            self.vblank_cleared = false;
-            self.nmi_triggered = false;
-            self.odd_flag = !self.odd_flag;
-            if self.mask_register.is_rendering_enabled() && self.odd_flag {
-                self.cycle_count += 1;
-            }
-        }
         if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
             //VBLANK
             self.status_register = self.status_register | 0x80; //set vblank
@@ -272,6 +265,19 @@ impl PPU {
             //VBLANK is over
             self.status_register = self.status_register & 0x3F;
             self.vblank_cleared = true;
+        } else if !self.frame_skipped && self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE-2 {
+            self.odd_flag = !self.odd_flag;
+            self.frame_skipped = true;
+            if self.mask_register.is_rendering_enabled() && self.odd_flag {
+                self.cycle_count += 1;
+            }
+        }
+        if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
+            self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
+            self.vblank_triggered = false;
+            self.vblank_cleared = false;
+            self.nmi_triggered = false;
+            self.frame_skipped = false;
         }
     }
 
@@ -513,10 +519,10 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
         ppu.set_ppu_ctrl(0x80);
-        update_ppu(27392+29781*2, &mut ppu); //82_178 = VBL-3
-        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_180)
+        update_ppu(27393, &mut ppu); //82_179 = VBL-3
+        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_181)
         assert_eq!(0x00, ppu.status(0) & 0x80); //Reads one PPU clock before vbl suppresses vbl for this frame
-        assert_eq!(false, ppu.sync(4, screen)); //82_190
+        assert_eq!(false, ppu.sync(4, screen)); //82_191
         assert_eq!(0x00, ppu.status(0) & 0x80); //VBL has been suppressed by previous read
     }
 
@@ -527,8 +533,8 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
         ppu.set_ppu_ctrl(0x80);
-        update_ppu(27393, &mut ppu); //82_179 = VBL-2
-        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_180)
+        update_ppu(29781+27393, &mut ppu); //82_180 = VBL-2
+        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_182)
         assert_eq!(0x80, ppu.status(0) & 0x80); //Reads status exactly on vbl suppresses nmi
         assert_eq!(false, ppu.sync(2, screen));
     }
@@ -565,6 +571,7 @@ pub mod tests {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
+        update_ppu(29_781, &mut ppu);
         update_ppu(29_665, &mut ppu); //88_995 (in VBL)
         assert_eq!(true, ppu.status_register.is_vblank());
 
@@ -577,7 +584,7 @@ pub mod tests {
     fn read_status_occuring_mid_instruction() {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
-        update_ppu(27_393, &mut ppu); //82_179
+        update_ppu(29_781+27_393, &mut ppu); //82_180
         assert_eq!(0x80, ppu.status(0) & 0x80); //82_182
     }
 
@@ -618,11 +625,11 @@ pub mod tests {
     fn even_odd_frames() {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
-        ppu.set_ppu_mask(0x18);
-        update_ppu(27394, &mut ppu); //82_182
+        ppu.set_ppu_mask(0x18, 0);
+        update_ppu(29781+27394, &mut ppu); //82_183
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        update_ppu(29780, &mut ppu); //82_181 (82_180 but odd frame should skip 1 cycle)
+        update_ppu(29780, &mut ppu); //82_182 (82_181 but odd frame should skip 1 cycle)
         assert_eq!(true, ppu.status_register.is_vblank());
     }
 
@@ -630,7 +637,7 @@ pub mod tests {
     fn odd_frames_should_not_skip_one_cycle_if_rendering_is_disabled() {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
-        ppu.set_ppu_mask(0x00);
+        ppu.set_ppu_mask(0x00, 0);
         update_ppu(27394, &mut ppu); //82_182
         assert_eq!(true, ppu.status_register.is_vblank());
 

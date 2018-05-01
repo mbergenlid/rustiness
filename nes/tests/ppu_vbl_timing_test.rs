@@ -80,6 +80,13 @@ fn vbl_timing() {
         }
     }
     println!("{}", nes.ppu.borrow()); //82_182
+    for _ in 0..(11*1103) {
+        nes.execute();
+        if nes.cpu.program_counter() >= 0x8010 {
+            println!("AHSD");
+        }
+    }
+    println!("{}", nes.ppu.borrow()); //82_183
     nes.execute();
     println!("{}", nes.ppu.borrow());
     assert_eq!(nes.cpu.program_counter(), 0x8010);

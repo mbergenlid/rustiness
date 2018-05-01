@@ -32,7 +32,11 @@ impl MemoryMappedIO for PPUMask {
         unimplemented!();
     }
     fn write(&mut self, _: &mut Memory, value: u8) {
-        self.0.borrow_mut().set_ppu_mask(value);
+        self.0.borrow_mut().set_ppu_mask(value, 0);
+    }
+
+    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: u8) {
+        self.0.borrow_mut().set_ppu_mask(value, sub_cycle);
     }
 }
 impl MemoryMappedIO for PPUStatus {

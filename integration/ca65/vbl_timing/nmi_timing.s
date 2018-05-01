@@ -29,10 +29,11 @@ main:   jsr console_hide
 	check_crc $A6CCB10A
 	jmp tests_passed
 
+; (82221+0)+(29749+29781+2+3+2+2+4)*3-262*341*2
 test:   jsr print_a
 	jsr disable_rendering
     ;; Either sync_vbl_delay is wrong or I misunderstand when VBL starts
-	jsr sync_vbl_delay  ; 82_220 ; 82_217
+	jsr sync_vbl_delay  ; 82_221 ; 82_217
 	delay 29749+29781   ; 89_248 ; 82_123
 	lda #$FF            ; 82_135 ; 
 	sta nmi_data        ; 82_141
