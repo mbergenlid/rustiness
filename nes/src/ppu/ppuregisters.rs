@@ -84,13 +84,14 @@ impl MemoryMappedIO for OAMDMA {
     fn write(&mut self, memory: &mut Memory, value: u8) {
         let dma_address: u16 = (value as u16) << 8;
         let mut ppu = self.0.borrow_mut();
-        let oam_address = ppu.get_oam_address() as usize;
+        let sprites = ppu.sprites_mut();
+        let oam_address = sprites.address() as usize;
         if oam_address == 0 {
-            memory.dma(dma_address..(dma_address+256), ppu.sprites());
+            memory.dma(dma_address..(dma_address+256), sprites.slice());
         } else {
             let wrap_around_address: u16 = dma_address+(256-oam_address as u16);
-            memory.dma(dma_address..wrap_around_address, &mut ppu.sprites()[oam_address..(256-oam_address)+1]);
-            memory.dma(wrap_around_address..(dma_address+256), &mut ppu.sprites()[0..]);
+            memory.dma(dma_address..wrap_around_address, &mut sprites.slice()[oam_address..(256-oam_address)+1]);
+            memory.dma(wrap_around_address..(dma_address+256), &mut sprites.slice()[0..]);
         }
     }
 }
@@ -100,16 +101,16 @@ impl MemoryMappedIO for OAMAddress {
         unimplemented!();
     }
     fn write(&mut self, _: &mut Memory, value: u8) {
-        self.0.borrow_mut().oam_address(value);
+        self.0.borrow_mut().sprites_mut().set_address(value);
     }
 }
 
 impl MemoryMappedIO for OAMData {
     fn read(&self, _: &Memory) -> u8 {
-        self.0.borrow().get_oam_data()
+        self.0.borrow().sprites().read_byte()
     }
     fn write(&mut self, _: &mut Memory, value: u8) {
-        self.0.borrow_mut().oam_data(value);
+        self.0.borrow_mut().sprites_mut().write_byte(value);
     }
 }
 

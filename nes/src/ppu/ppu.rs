@@ -3,7 +3,7 @@ use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer, Rectangle};
 use ppu::vram_registers::VRAMRegisters;
 use ppu::ppumemory;
 use ppu::ppumemory::PPUMemory;
-use ppu::sprite::Sprite;
+use ppu::sprite::{Sprites,Sprite};
 
 struct PPUCtrl {
     value: u8,
@@ -72,8 +72,7 @@ pub struct PPU {
     should_update_screen: bool,
     mirroring: ppumemory::Mirroring,
 
-    sprites: [u8; 64*4],
-    oam_address: u8,
+    sprites: Sprites,
 
     odd_flag: bool,
 }
@@ -131,8 +130,7 @@ impl PPU {
             should_update_screen: false,
             mirroring: mirroring,
 
-            sprites: [0; 64*4],
-            oam_address: 0,
+            sprites: Sprites::new(),
 
             odd_flag: false,
         }
@@ -220,26 +218,12 @@ impl PPU {
         self.vram_registers.current = current_vram;
     }
 
-    pub fn sprites(&mut self) -> &mut [u8] {
+    pub fn sprites_mut(&mut self) -> &mut Sprites {
         &mut self.sprites
     }
 
-    pub fn oam_address(&mut self, value: u8) {
-        self.oam_address = value;
-    }
-
-    pub fn get_oam_address(&mut self) -> u8 {
-        self.oam_address
-    }
-
-    pub fn oam_data(&mut self, value: u8) {
-        let oam_address = self.oam_address;
-        self.oam_address = self.oam_address.wrapping_add(1);
-        self.sprites[oam_address as usize] = value;
-    }
-
-    pub fn get_oam_data(&self) -> u8 {
-        self.sprites[self.oam_address as usize]
+    pub fn sprites(&self) -> &Sprites {
+        &self.sprites
     }
 
     fn partially_update(&mut self, ppu_cycles: u32) {
@@ -327,7 +311,7 @@ impl PPU {
         };
         use std::cmp::min;
         screen.set_backdrop_color(COLOUR_PALETTE[self.memory.get(0x3F00, 0) as usize]);
-        self.render_back_sprites(screen);
+        self.sprites.render_back_sprites(screen);
         let area_width_minus_left = area_width.wrapping_sub(left);
         let area_height_minus_top = area_height.wrapping_sub(top);
         screen.render(
@@ -357,14 +341,14 @@ impl PPU {
         }
 
         //Update sprites
-        self.render_front_sprites(screen);
+        self.sprites.render_front_sprites(screen);
 
         screen.present();
     }
 
     fn update_sprites(&mut self, buffer: &mut PixelBuffer) {
         for sprite_index in 0..64 {
-            let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
+            let sprite = &self.sprites[sprite_index];
             let pattern_table_base_address = self.control_register.sprite_pattern_table();
             let pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
             let pattern = self.memory.patterns()[(pattern_table_address as usize) >> 4];
@@ -377,38 +361,6 @@ impl PPU {
         }
     }
 
-    pub fn render_back_sprites<T>(&mut self, screen: &mut T) where T: Screen + Sized {
-        for sprite_index in (0..64).rev() {
-            let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
-            let position_y = sprite.position_y();
-            if sprite.is_back() && position_y < 0xFE {
-                screen.render_sprite(
-                    Rectangle { x: (sprite_index*8) as i32, y: 0, width: 8, height: 8 },
-                    sprite.position_x() as usize,
-                    (position_y + 1) as usize,
-                    sprite.flip_horizontal(),
-                    sprite.flip_vertical(),
-                );
-            }
-        }
-
-    }
-
-    pub fn render_front_sprites<T>(&mut self, screen: &mut T) where T: Screen + Sized {
-        for sprite_index in (0..64).rev() {
-            let sprite = &self.sprites[(sprite_index*4)..(sprite_index*4+4)];
-            let position_y = sprite.position_y();
-            if sprite.is_front() && position_y < 0xFE {
-                screen.render_sprite(
-                    Rectangle { x: (sprite_index*8) as i32, y: 0, width: 8, height: 8 },
-                    sprite.position_x() as usize,
-                    (position_y + 1) as usize,
-                    sprite.flip_horizontal(),
-                    sprite.flip_vertical(),
-                );
-            }
-        }
-    }
 
     pub fn draw_buffer(&mut self, pixel_buffer: &mut PixelBuffer) {
         let pattern_table = self.control_register.background_pattern_table() as usize;

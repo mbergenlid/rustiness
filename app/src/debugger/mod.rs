@@ -192,7 +192,7 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 let mut ppu = nes.ppu.borrow_mut();
                 let sprites = ppu.sprites();
                 for s in 0..64 {
-                    let sprite = &sprites[s*4..(s*4+4)];
+                    let sprite = &sprites[s];
                     println!(
                         "Sprite {}: {} (x), {} (y), 0x{:x} (pattern), 0x{:02x} (attributes)",
                         s,
