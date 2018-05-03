@@ -38,7 +38,12 @@ impl PPUMask {
     fn is_rendering_enabled(&self) -> bool {
         self.value & 0x18 > 0
     }
-
+    fn is_background_enabled(&self) -> bool {
+        self.value & 0x08 > 0
+    }
+    fn is_sprite_enabled(&self) -> bool {
+        self.value & 0x10 > 0
+    }
 }
 
 trait PPUStatus {
@@ -262,7 +267,39 @@ impl PPU {
             self.vblank_cleared = false;
             self.nmi_triggered = false;
             self.frame_skipped = false;
+
+            if self.determine_sprite_0_hit_cycle() < 0xFFFFFFFF {
+                if self.mask_register.is_background_enabled()
+                        && self.mask_register.is_sprite_enabled() {
+                    self.status_register |= 0x40;
+                }
+            }
         }
+    }
+
+    fn determine_sprite_0_hit_cycle(&self) -> u64 {
+        let sprite_0 = &self.sprites[0];
+        let scanline = (sprite_0.position_y().wrapping_add(1)) as u32;
+        let dot_base = 2 + sprite_0.position_x() as u32;
+
+        let row = (scanline/8) as u16;
+        let col = (dot_base/8) as u16;
+
+        let name_table = self.memory.name_table();
+        let tile = name_table.tile(row, col);
+        let pattern_base_index = (self.control_register.sprite_pattern_table() >> 4) as usize;
+        let pattern = self.memory.patterns()[pattern_base_index + sprite_0.pattern_index() as usize];
+        let bg_pattern_base_index = self.control_register.background_pattern_table() as usize;
+        let bg_pattern = self.memory.patterns()[bg_pattern_base_index + tile.0 as usize];
+
+        for py in 0..8 {
+            for px in 0..8 {
+                if pattern.pixel(px,py) != 0 && bg_pattern.pixel(px,py) != 0 {
+                    return 0;
+                }
+            }
+        }
+        return 0xFFFFFFFF;
     }
 
     /**

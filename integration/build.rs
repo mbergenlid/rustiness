@@ -27,6 +27,7 @@ fn main() {
     compile_dir(&mut f, "ca65/vbl_timing");
     compile_dir(&mut f, "ca65/cpu_dummy_reads");
     compile_dir(&mut f, "ca65/instr_tests");
+    include_pre_compiled_test(&mut f, "ca65/ppu_sprite_hit");
 }
 
 fn compile_dir(out_file: &mut File, directory: &str) {
@@ -78,5 +79,21 @@ fn compile_dir(out_file: &mut File, directory: &str) {
                 rom_test::test("{}/{}.nes");
             }}
         "#, name, out_dir, name).as_bytes()).unwrap();
+    }
+}
+
+fn include_pre_compiled_test(out_file: &mut File, directory: &str) {
+    let nes_files = read_dir(directory).unwrap()
+        .map(|f| f.unwrap().path())
+        .filter(|f| f.file_name().map(|name| name.to_string_lossy().ends_with(".nes")).unwrap_or(false));
+    for nes_file in nes_files {
+        let file_name = nes_file.file_name().unwrap().to_string_lossy();
+        let name = &file_name[0..(file_name.len()-4)];
+        out_file.write_all(format!(r#"
+            #[test]
+            pub fn {}() {{
+                rom_test::test("{}");
+            }}
+        "#, name, nes_file.to_string_lossy()).as_bytes()).unwrap();
     }
 }
