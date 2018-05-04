@@ -33,7 +33,7 @@ pub struct NameTable {
     raw_data: Vec<u8>
 }
 use ppu::ppumemory::Palette;
-use ppu::pattern::Pattern;
+use ppu::pattern::{Pattern, Pixel};
 
 impl NameTable {
     pub fn from_memory(memory: &Memory) -> NameTable {
@@ -109,6 +109,14 @@ impl NameTable {
             }
         }
     }
+
+    pub fn pixel(&self, x: u16, y: u16, patterns: &[Pattern]) -> Pixel {
+        let row = (y/8) as usize;
+        let col = (x/8) as usize;
+        let &(pattern, _) = &self.tiles[row][col].pattern_and_colour;
+        let pattern = patterns[pattern as usize];
+        return pattern.pixel((x & 0x7) as u8, (y & 0x7) as u8);
+    }
 }
 
 impl Memory for NameTable {
@@ -148,6 +156,7 @@ impl Memory for NameTable {
 mod test {
     use super::NameTable;
     use memory::{Memory, BasicMemory};
+    use ppu::pattern::Pattern;
 
     #[test]
     fn name_table_1() {
@@ -315,6 +324,60 @@ mod test {
         assert_eq!((0xC7, 0x03), name_table.tile(row_offset+6,col_offset+ 7));
         assert_eq!((0xE6, 0x03), name_table.tile(row_offset+7,col_offset+ 6));
         assert_eq!((0xE7, 0x03), name_table.tile(row_offset+7,col_offset+ 7));
+    }
+
+    #[test]
+    fn test_pixel() {
+        let mut name_table = NameTable::from_memory(&BasicMemory::new());
+        populate(&mut name_table);
+
+        let patterns = patterns();
+
+        assert_eq!(patterns[0].pixel(0,0), name_table.pixel(0, 0, &patterns));
+        assert_eq!(patterns[0].pixel(1,0), name_table.pixel(1, 0, &patterns));
+        assert_eq!(patterns[0].pixel(2,0), name_table.pixel(2, 0, &patterns));
+        assert_eq!(patterns[0].pixel(3,0), name_table.pixel(3, 0, &patterns));
+        assert_eq!(patterns[0].pixel(4,0), name_table.pixel(4, 0, &patterns));
+
+        assert_eq!(patterns[1].pixel(0,1), name_table.pixel(8,  1, &patterns));
+        assert_eq!(patterns[1].pixel(1,1), name_table.pixel(9,  1, &patterns));
+        assert_eq!(patterns[1].pixel(2,1), name_table.pixel(10, 1, &patterns));
+        assert_eq!(patterns[1].pixel(3,1), name_table.pixel(11, 1, &patterns));
+        assert_eq!(patterns[1].pixel(4,1), name_table.pixel(12, 1, &patterns));
+        assert_eq!(patterns[1].pixel(5,1), name_table.pixel(13, 1, &patterns));
+        assert_eq!(patterns[1].pixel(6,1), name_table.pixel(14, 1, &patterns));
+        assert_eq!(patterns[1].pixel(7,1), name_table.pixel(15, 1, &patterns));
+
+        assert_eq!(patterns[32].pixel(0,0), name_table.pixel(0, 8+0, &patterns));
+        assert_eq!(patterns[32].pixel(1,0), name_table.pixel(1, 8+0, &patterns));
+        assert_eq!(patterns[32].pixel(2,0), name_table.pixel(2, 8+0, &patterns));
+        assert_eq!(patterns[32].pixel(3,0), name_table.pixel(3, 8+0, &patterns));
+        assert_eq!(patterns[32].pixel(4,0), name_table.pixel(4, 8+0, &patterns));
+        assert_eq!(patterns[32].pixel(5,0), name_table.pixel(5, 8+0, &patterns));
+        assert_eq!(patterns[32].pixel(6,0), name_table.pixel(6, 8+0, &patterns));
+        assert_eq!(patterns[32].pixel(7,0), name_table.pixel(7, 8+0, &patterns));
+
+        assert_eq!(patterns[118].pixel(0,4), name_table.pixel(176+0, 24+4, &patterns));
+        assert_eq!(patterns[118].pixel(1,4), name_table.pixel(176+1, 24+4, &patterns));
+        assert_eq!(patterns[118].pixel(2,4), name_table.pixel(176+2, 24+4, &patterns));
+        assert_eq!(patterns[118].pixel(3,4), name_table.pixel(176+3, 24+4, &patterns));
+        assert_eq!(patterns[118].pixel(4,4), name_table.pixel(176+4, 24+4, &patterns));
+        assert_eq!(patterns[118].pixel(5,4), name_table.pixel(176+5, 24+4, &patterns));
+        assert_eq!(patterns[118].pixel(6,4), name_table.pixel(176+6, 24+4, &patterns));
+        assert_eq!(patterns[118].pixel(7,4), name_table.pixel(176+7, 24+4, &patterns));
+    }
+
+    fn patterns() -> Vec<Pattern> {
+        let mut patterns = Vec::new();
+        for _ in 0..0x100 {
+            let mut pattern = Pattern::new();
+            for address in 0..0xF {
+                let value = rand::random::<u8>();
+                pattern.set(address, value, 0);
+            }
+            patterns.push(pattern);
+        }
+        return patterns;
     }
 }
 

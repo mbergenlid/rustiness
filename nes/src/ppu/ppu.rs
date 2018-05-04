@@ -279,25 +279,25 @@ impl PPU {
 
     fn determine_sprite_0_hit_cycle(&self) -> u64 {
         let sprite_0 = &self.sprites[0];
-        let scanline = (sprite_0.position_y().wrapping_add(1)) as u32;
-        let dot_base = 2 + sprite_0.position_x() as u32;
-
-        let row = (scanline/8) as u16;
-        let col = (dot_base/8) as u16;
 
         let name_table = self.memory.name_table();
-        let tile = name_table.tile(row, col);
         let pattern_base_index = (self.control_register.sprite_pattern_table() >> 4) as usize;
-        let pattern = self.memory.patterns()[pattern_base_index + sprite_0.pattern_index() as usize];
+        let sprite_pattern = self.memory.patterns()[pattern_base_index + sprite_0.pattern_index() as usize];
         let bg_pattern_base_index = self.control_register.background_pattern_table() as usize;
-        let bg_pattern = self.memory.patterns()[bg_pattern_base_index + tile.0 as usize];
+        let bg_patterns = &self.memory.patterns()[bg_pattern_base_index..(bg_pattern_base_index+0x100)];
 
+        let mut absolute_y = sprite_0.position_y().wrapping_add(1) as u16;
         for py in 0..8 {
+            let mut absolute_x = sprite_0.position_x() as u16;
             for px in 0..8 {
-                if pattern.pixel(px,py) != 0 && bg_pattern.pixel(px,py) != 0 {
-                    return 0;
+                if sprite_pattern.pixel(px,py) != 0
+                    && name_table.pixel(absolute_x,absolute_y,&bg_patterns) != 0 {
+
+                        return 0;
                 }
+                absolute_x += 1;
             }
+            absolute_y += 1;
         }
         return 0xFFFFFFFF;
     }
