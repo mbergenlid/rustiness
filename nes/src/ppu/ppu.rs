@@ -83,6 +83,7 @@ pub struct PPU {
     sprites: Sprites,
 
     odd_flag: bool,
+    sprite_hit_cycle: u32,
 }
 
 use std::fmt::{Formatter, Error, Display};
@@ -141,6 +142,7 @@ impl PPU {
             sprites: Sprites::new(),
 
             odd_flag: false,
+            sprite_hit_cycle: 0xFFFFFFFF,
         }
     }
 
@@ -271,16 +273,18 @@ impl PPU {
             self.nmi_triggered = false;
             self.frame_skipped = false;
 
-            if self.determine_sprite_0_hit_cycle() < 0xFFFFFFFF {
-                if self.mask_register.is_background_enabled()
-                        && self.mask_register.is_sprite_enabled() {
-                    self.status_register |= 0x40;
-                }
+            self.sprite_hit_cycle = self.determine_sprite_0_hit_cycle();
+        }
+        if self.cycle_count >= self.sprite_hit_cycle {
+            if self.mask_register.is_background_enabled()
+                    && self.mask_register.is_sprite_enabled() {
+                self.status_register |= 0x40;
             }
+            self.sprite_hit_cycle = 0xFFFFFFFF;
         }
     }
 
-    fn determine_sprite_0_hit_cycle(&self) -> u64 {
+    fn determine_sprite_0_hit_cycle(&self) -> u32 {
         let sprite_0 = &self.sprites[0];
 
         if sprite_0.position_y() == 255 {
@@ -317,7 +321,7 @@ impl PPU {
         &self,
         sprite_0: &Sprite,
         sprite_pattern: &SpritePattern
-    ) -> u64 {
+    ) -> u32 {
         let name_table = self.memory.name_table();
         let bg_pattern_base_index = self.control_register.background_pattern_table() as usize;
         let bg_patterns =
