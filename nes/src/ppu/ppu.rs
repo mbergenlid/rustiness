@@ -44,6 +44,9 @@ impl PPUMask {
     fn is_sprite_enabled(&self) -> bool {
         self.value & 0x10 > 0
     }
+    fn is_left_clipping_enabled(&self) -> bool {
+        self.value & 0x06 != 0x06
+    }
 }
 
 trait PPUStatus {
@@ -313,18 +316,24 @@ impl PPU {
     ) -> u64 {
         let name_table = self.memory.name_table();
         let bg_pattern_base_index = self.control_register.background_pattern_table() as usize;
-        let bg_patterns = &self.memory.patterns()[bg_pattern_base_index..(bg_pattern_base_index+0x100)];
+        let bg_patterns =
+            &self.memory.patterns()[bg_pattern_base_index..(bg_pattern_base_index+0x100)];
 
         let mut absolute_y = sprite_0.position_y().wrapping_add(1) as u16;
         for py in 0..8 {
-            let mut absolute_x = sprite_0.position_x() as u16;
-            for px in 0..8 {
+            let absolute_x = sprite_0.position_x() as u16;
+            let px_start =
+                if sprite_0.position_x() < 8 && self.mask_register.is_left_clipping_enabled() {
+                    8 - sprite_0.position_x()
+                } else {
+                    0
+                };
+            for px in px_start..8 {
                 if sprite_pattern.pixel(px,py) != 0
-                    && name_table.pixel(absolute_x,absolute_y,&bg_patterns) != 0 {
+                    && name_table.pixel(absolute_x+(px as u16),absolute_y,&bg_patterns) != 0 {
 
                         return 0;
                 }
-                absolute_x += 1;
             }
             absolute_y += 1;
         }
