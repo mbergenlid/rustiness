@@ -283,6 +283,10 @@ impl PPU {
     fn determine_sprite_0_hit_cycle(&self) -> u64 {
         let sprite_0 = &self.sprites[0];
 
+        if sprite_0.position_y() == 255 {
+            return 0xFFFFFFFF;
+        }
+
         let pattern_base_index = (self.control_register.sprite_pattern_table() >> 4) as usize;
         let sprite_pattern_0  =
             &self.memory.patterns()[pattern_base_index + sprite_0.pattern_index() as usize];
@@ -319,7 +323,7 @@ impl PPU {
         let bg_patterns =
             &self.memory.patterns()[bg_pattern_base_index..(bg_pattern_base_index+0x100)];
 
-        let mut absolute_y = sprite_0.position_y().wrapping_add(1) as u16;
+        let mut absolute_y = (sprite_0.position_y() + 1) as u16;
         for py in 0..8 {
             let absolute_x = sprite_0.position_x() as u16;
             let px_start =
