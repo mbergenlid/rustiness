@@ -3,7 +3,7 @@ use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer, Rectangle};
 use ppu::vram_registers::VRAMRegisters;
 use ppu::ppumemory;
 use ppu::ppumemory::PPUMemory;
-use ppu::sprite::{Sprites,Sprite};
+use ppu::sprite::{Sprites,Sprite,SpritePattern,HorizontalPattern, VerticalPattern};
 
 struct PPUCtrl {
     value: u8,
@@ -280,9 +280,38 @@ impl PPU {
     fn determine_sprite_0_hit_cycle(&self) -> u64 {
         let sprite_0 = &self.sprites[0];
 
-        let name_table = self.memory.name_table();
         let pattern_base_index = (self.control_register.sprite_pattern_table() >> 4) as usize;
-        let sprite_pattern = self.memory.patterns()[pattern_base_index + sprite_0.pattern_index() as usize];
+        let sprite_pattern_0  =
+            &self.memory.patterns()[pattern_base_index + sprite_0.pattern_index() as usize];
+        if sprite_0.flip_horizontal() && sprite_0.flip_vertical() {
+            self.determine_sprite_0_hit_cycle_from_sprite(
+                &sprite_0,
+                &HorizontalPattern::new(VerticalPattern::new(sprite_pattern_0))
+            )
+        } else if sprite_0.flip_horizontal() {
+            self.determine_sprite_0_hit_cycle_from_sprite(
+                &sprite_0,
+                &HorizontalPattern::new(sprite_pattern_0)
+            )
+        } else if sprite_0.flip_vertical() {
+            self.determine_sprite_0_hit_cycle_from_sprite(
+                &sprite_0,
+                &VerticalPattern::new(sprite_pattern_0)
+            )
+        } else {
+            self.determine_sprite_0_hit_cycle_from_sprite(
+                &sprite_0,
+                sprite_pattern_0
+            )
+        }
+    }
+
+    fn determine_sprite_0_hit_cycle_from_sprite(
+        &self,
+        sprite_0: &Sprite,
+        sprite_pattern: &SpritePattern
+    ) -> u64 {
+        let name_table = self.memory.name_table();
         let bg_pattern_base_index = self.control_register.background_pattern_table() as usize;
         let bg_patterns = &self.memory.patterns()[bg_pattern_base_index..(bg_pattern_base_index+0x100)];
 

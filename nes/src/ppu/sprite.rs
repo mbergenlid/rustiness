@@ -99,3 +99,93 @@ impl Index<usize> for Sprites {
         &self.data[(index*4)..(index*4+4)]
     }
 }
+
+use ppu::pattern::{Pixel, Pattern};
+pub trait SpritePattern {
+    fn pixel(&self, x: u8, y: u8) -> Pixel;
+}
+
+impl SpritePattern for Pattern {
+    fn pixel(&self, x: u8, y: u8) -> Pixel {
+        self.pixel(x,y)
+    }
+}
+
+impl <'a> SpritePattern for &'a Pattern {
+    fn pixel(&self, x: u8, y: u8) -> Pixel {
+        (*self).pixel(x,y)
+    }
+}
+
+pub struct HorizontalPattern<T: SpritePattern + Sized>(T);
+
+impl <T: SpritePattern + Sized> HorizontalPattern<T> {
+    pub fn new(pattern: T) -> HorizontalPattern<T> {
+        HorizontalPattern(pattern)
+    }
+}
+
+impl <T: SpritePattern + Sized> SpritePattern for HorizontalPattern<T> {
+    fn pixel(&self, x: u8, y: u8) -> Pixel {
+        self.0.pixel(7-x, y)
+    }
+}
+
+pub struct VerticalPattern<T: SpritePattern + Sized>(T);
+
+impl <T: SpritePattern + Sized> VerticalPattern<T> {
+    pub fn new(pattern: T) -> VerticalPattern<T> {
+        VerticalPattern(pattern)
+    }
+}
+
+impl <T: SpritePattern + Sized> SpritePattern for VerticalPattern<T> {
+    fn pixel(&self, x: u8, y: u8) -> Pixel {
+        self.0.pixel(x, 7-y)
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::{SpritePattern, HorizontalPattern, VerticalPattern};
+    use ppu::pattern::Pattern;
+    use memory::Memory;
+    #[test]
+    fn horizontally_flipped_pattern() {
+        let mut pattern = Pattern::new();
+        pattern.set(0x0, 0b01010101, 0);
+        pattern.set(0x8, 0b00110011, 0);
+
+        let horizontal = HorizontalPattern::new(&pattern);
+
+        assert_eq!(pattern.pixel(0,0), horizontal.pixel(7, 0));
+        assert_eq!(pattern.pixel(1,0), horizontal.pixel(6, 0));
+        assert_eq!(pattern.pixel(2,0), horizontal.pixel(5, 0));
+        assert_eq!(pattern.pixel(3,0), horizontal.pixel(4, 0));
+        assert_eq!(pattern.pixel(4,0), horizontal.pixel(3, 0));
+        assert_eq!(pattern.pixel(5,0), horizontal.pixel(2, 0));
+        assert_eq!(pattern.pixel(6,0), horizontal.pixel(1, 0));
+        assert_eq!(pattern.pixel(7,0), horizontal.pixel(0, 0));
+
+    }
+
+    #[test]
+    fn vertically_flipped_pattern() {
+        let mut pattern = Pattern::new();
+        pattern.set(0x0, 0b01010101, 0);
+        pattern.set(0x8, 0b00110011, 0);
+
+        let horizontal = VerticalPattern::new(&pattern);
+
+        assert_eq!(pattern.pixel(0,0), horizontal.pixel(0, 7));
+        assert_eq!(pattern.pixel(1,0), horizontal.pixel(1, 7));
+        assert_eq!(pattern.pixel(2,0), horizontal.pixel(2, 7));
+        assert_eq!(pattern.pixel(3,0), horizontal.pixel(3, 7));
+        assert_eq!(pattern.pixel(4,0), horizontal.pixel(4, 7));
+        assert_eq!(pattern.pixel(5,0), horizontal.pixel(5, 7));
+        assert_eq!(pattern.pixel(6,0), horizontal.pixel(6, 7));
+        assert_eq!(pattern.pixel(7,0), horizontal.pixel(7, 7));
+
+    }
+}
