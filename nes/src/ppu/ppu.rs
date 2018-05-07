@@ -328,7 +328,13 @@ impl PPU {
                 } else {
                     0
                 };
-            for px in px_start..8 {
+            let px_end =
+                if sprite_0.position_x() > (255-8) {
+                    255-sprite_0.position_x()
+                } else {
+                    8
+                };
+            for px in px_start..px_end {
                 if sprite_pattern.pixel(px,py) != 0
                     && name_table.pixel(absolute_x+(px as u16),absolute_y,&bg_patterns) != 0 {
 
