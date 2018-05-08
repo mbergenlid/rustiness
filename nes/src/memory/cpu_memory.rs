@@ -1,5 +1,6 @@
 use memory::{Memory, Address, MemoryMappedIO};
 use borrow::MutableRef;
+use Cycles;
 
 pub struct CPUMemory<'a> {
     memory: Box<Memory>,
@@ -36,7 +37,7 @@ impl<'a, 'b> Debug for CPUMemoryReference<'a, 'b> {
 
 use std::borrow::BorrowMut;
 impl <'a> Memory for CPUMemory<'a> {
-    fn get(&self, address: Address, sub_cycle: u8) -> u8 {
+    fn get(&self, address: Address, sub_cycle: Cycles) -> u8 {
         let address = self.translate(address);
         if address < 0x2000 {
             self.memory.get(address, sub_cycle)
@@ -48,7 +49,7 @@ impl <'a> Memory for CPUMemory<'a> {
         }
     }
 
-    fn set(&mut self, address: Address, value: u8, sub_cycles: u8) {
+    fn set(&mut self, address: Address, value: u8, sub_cycles: Cycles) {
         let address = self.translate(address);
         if address < 0x2000 {
             self.memory.set(address, value, sub_cycles);

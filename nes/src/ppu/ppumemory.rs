@@ -4,6 +4,7 @@ use ppu::pattern::Pattern;
 use ppu::name_tables::NameTable;
 
 pub type Palette = [u8; 4];
+use Cycles;
 
 #[derive(Copy, Clone)]
 pub enum Mirroring {
@@ -97,7 +98,7 @@ impl PPUMemory {
 }
 
 impl Memory for PPUMemory {
-    fn get(&self, address: Address, sub_cycles: u8) -> u8 {
+    fn get(&self, address: Address, sub_cycles: Cycles) -> u8 {
         let address = self.translate(address);
         if address < 0x2000 {
             self.patterns[(address as usize) >> 4].get(address, sub_cycles)
@@ -110,7 +111,7 @@ impl Memory for PPUMemory {
             self.basic_memory.get(address, sub_cycles)
         }
     }
-    fn set(&mut self, address: Address, value: u8, sub_cycle: u8) {
+    fn set(&mut self, address: Address, value: u8, sub_cycle: Cycles) {
         let address = self.translate(address);
         if address < 0x2000 {
             self.patterns[(address as usize) >> 4].set(address, value, sub_cycle);

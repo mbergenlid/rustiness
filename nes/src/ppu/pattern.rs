@@ -2,6 +2,7 @@ use ppu::screen::{COLOUR_PALETTE, PixelBuffer};
 use ppu::ppumemory::Palette;
 
 pub type Pixel = u8;
+use Cycles;
 
 #[derive(Clone, Copy)]
 pub struct Pattern {
@@ -52,10 +53,10 @@ impl Pattern {
 
 use memory::{Memory, Address};
 impl Memory for Pattern {
-    fn get(&self, address: Address, _: u8) -> u8 {
+    fn get(&self, address: Address, _: Cycles) -> u8 {
         return self.raw_data[(address as usize) & 0xF];
     }
-    fn set(&mut self, address: Address, value: u8, _: u8) {
+    fn set(&mut self, address: Address, value: u8, _: Cycles) {
         let address: usize = address as usize;
         self.raw_data[address & 0xF] = value;
         let row = address & 0x7;

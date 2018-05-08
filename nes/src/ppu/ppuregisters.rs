@@ -3,6 +3,7 @@ use std::rc::Rc;
 use memory::MemoryMappedIO;
 use ppu::PPU;
 use memory::Memory;
+use Cycles;
 
 pub struct PPUCtrl(pub Rc<RefCell<PPU>>);
 pub struct PPUMask(pub Rc<RefCell<PPU>>);
@@ -22,7 +23,7 @@ impl MemoryMappedIO for PPUCtrl {
         self.0.borrow_mut().set_ppu_ctrl_at_cycle(value, 0);
     }
 
-    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: u8) {
+    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: Cycles) {
         self.0.borrow_mut().set_ppu_ctrl_at_cycle(value, sub_cycle);
     }
 }
@@ -35,7 +36,7 @@ impl MemoryMappedIO for PPUMask {
         self.0.borrow_mut().set_ppu_mask(value, 0);
     }
 
-    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: u8) {
+    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: Cycles) {
         self.0.borrow_mut().set_ppu_mask(value, sub_cycle);
     }
 }
@@ -46,7 +47,7 @@ impl MemoryMappedIO for PPUStatus {
     fn write(&mut self, _: &mut Memory, _: u8) {
         //Do nothing
     }
-    fn read_at_cycle(&self, _: &Memory, sub_cycle: u8) -> u8 {
+    fn read_at_cycle(&self, _: &Memory, sub_cycle: Cycles) -> u8 {
         self.0.borrow_mut().status(sub_cycle)
     }
 }

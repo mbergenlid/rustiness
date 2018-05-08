@@ -2,6 +2,8 @@ use sound::square;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use Cycles;
+
 pub trait AudioDevice {
     fn play(&self, &[i16]);
 }
@@ -11,7 +13,7 @@ pub struct APU<T: AudioDevice> {
     volume_scale: i16,
     square1: Rc<RefCell<square::PulseGenerator>>,
     square2: Rc<RefCell<square::PulseGenerator>>,
-    cpu_cycles: u32
+    cpu_cycles: Cycles,
 }
 
 impl<T: AudioDevice> APU<T> {
@@ -34,10 +36,10 @@ impl<T: AudioDevice> APU<T> {
 }
 
 impl<T: AudioDevice> APU<T> {
-    pub fn update(&mut self, cpu_cycles: u8) {
+    pub fn update(&mut self, cpu_cycles: Cycles) {
         self.square1.borrow_mut().update(cpu_cycles);
         self.square2.borrow_mut().update(cpu_cycles);
-        self.cpu_cycles += cpu_cycles as u32;
+        self.cpu_cycles += cpu_cycles;
         if self.cpu_cycles >= 37 {
             self.cpu_cycles -= 37;
             self.audio_device.play(
@@ -61,7 +63,8 @@ mod test {
     use std::rc::Rc;
     use std::cell::RefCell;
     use super::APU;
-    const FOUR_PULSE_SAMPLES_IN_CPU_CYCLES: u32 = 149;
+    use Cycles;
+    const FOUR_PULSE_SAMPLES_IN_CPU_CYCLES: Cycles = 149;
 
     #[test]
     fn should_update_audio_device_at_correct_sample_rate() {
@@ -70,7 +73,7 @@ mod test {
 
         let mut clock = ClockTester::new(apu, FOUR_PULSE_SAMPLES_IN_CPU_CYCLES);
         clock.count_down(
-            |apu, tick| apu.update(tick),
+            |apu, tick| apu.update(tick.into()),
             &|_, _| (),
             &|_, _| assert_eq!(audio_device.borrow().len(), 4)
         );

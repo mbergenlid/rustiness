@@ -1,5 +1,6 @@
 use sound::length_counter::LengthCounter;
 use sound::envelope::Envelope;
+use Cycles;
 
 struct CircularBuffer {
     buffer: [i16; 8],
@@ -69,7 +70,7 @@ impl PulseGenerator {
         self.length = LengthCounter::new(length);
     }
 
-    pub fn update(&mut self, cpu_cycles: u8) {
+    pub fn update(&mut self, cpu_cycles: Cycles) {
         self.timer += cpu_cycles as u32;
         self.length.clock(cpu_cycles);
         self.envelope.clock(cpu_cycles);

@@ -1,8 +1,9 @@
+use Cycles;
 pub struct LengthCounter {
     value: u8,
-    cpu_cycles: u32
+    cpu_cycles: Cycles
 }
-const APU_CYCLES_CLOCK_RATE: u32 = 14913;
+const APU_CYCLES_CLOCK_RATE: Cycles = 14913;
 
 const LENGTH_TABLE: [u8; 32] = [
     10, 254, 20, 2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
@@ -17,9 +18,9 @@ impl LengthCounter {
         }
     }
 
-    pub fn clock(&mut self, cpu_cycles: u8) {
+    pub fn clock(&mut self, cpu_cycles: Cycles) {
         if self.value > 0 {
-            self.cpu_cycles += cpu_cycles as u32;
+            self.cpu_cycles += cpu_cycles;
             if self.cpu_cycles >= APU_CYCLES_CLOCK_RATE {
                 self.value -= 1;
                 self.cpu_cycles -= APU_CYCLES_CLOCK_RATE;

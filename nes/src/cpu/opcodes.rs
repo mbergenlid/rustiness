@@ -4,6 +4,7 @@ use cpu::CPU;
 use cpu;
 use memory::Memory;
 use instructions::Instruction;
+use Cycles;
 
 pub struct OpCodes {
     codes: Vec<Option<InstructionFactory>>,
@@ -27,7 +28,7 @@ impl OpCodes {
         }
     }
 
-    pub fn execute_instruction(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+    pub fn execute_instruction(&self, cpu: &mut CPU, memory: &mut Memory) -> Cycles {
         let instruction = self.fetch_instruction(cpu, memory);
         return instruction.execute(cpu, memory);
     }
@@ -366,8 +367,9 @@ mod tests {
     use cpu;
     use memory::Memory;
     use opcodes;
+    use Cycles;
 
-    fn execute_instruction(cpu: &mut cpu::CPU, memory: &mut Memory) -> u8 {
+    fn execute_instruction(cpu: &mut cpu::CPU, memory: &mut Memory) -> Cycles {
         super::OpCodes::new().execute_instruction(cpu, memory)
     }
 

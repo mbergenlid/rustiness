@@ -1,11 +1,13 @@
 
-const APU_CYCLES_CLOCK_RATE: u32 = 14913;
+const APU_CYCLES_CLOCK_RATE: Cycles = 14913;
+
+use Cycles;
 
 pub struct Envelope {
     divider: u8,
     volume: u8,
     decay_level: u8,
-    cpu_cycles: u32,
+    cpu_cycles: Cycles,
     constant_volume: bool
 }
 
@@ -30,9 +32,9 @@ impl Envelope {
         }
     }
 
-    pub fn clock(&mut self, cpu_cycles: u8) {
+    pub fn clock(&mut self, cpu_cycles: Cycles) {
         if self.decay_level > 0 && !self.constant_volume {
-            self.cpu_cycles += cpu_cycles as u32;
+            self.cpu_cycles += cpu_cycles;
             if self.cpu_cycles >= APU_CYCLES_CLOCK_RATE {
                 if self.divider == 0 {
                     self.decay_level -= 1;

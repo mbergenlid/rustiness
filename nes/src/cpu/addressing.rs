@@ -1,11 +1,12 @@
 use cpu::CPU;
 use memory::Memory;
 use memory::Address;
+use Cycles;
 
 pub const NO_ADDRESSING: AddressingMode = AddressingMode { cycles: 0, operand_address: 0 };
 pub struct AddressingMode {
     pub operand_address: Address,
-    pub cycles: u8,
+    pub cycles: Cycles,
 }
 
 impl AddressingMode {

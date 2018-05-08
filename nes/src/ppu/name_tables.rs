@@ -3,6 +3,8 @@ use ppu::attributetable::AttributeTable;
 use ppu::screen::PixelBuffer;
 use std::cell::Cell;
 
+use Cycles;
+
 #[derive(Clone)]
 struct Tile {
     pattern_and_colour: (u8, u8),
@@ -120,11 +122,11 @@ impl NameTable {
 }
 
 impl Memory for NameTable {
-    fn get(&self, address: Address, _: u8) -> u8 {
+    fn get(&self, address: Address, _: Cycles) -> u8 {
         self.raw_data[(address as usize) - 0x2000]
     }
 
-    fn set(&mut self, address: Address, value: u8, _: u8) {
+    fn set(&mut self, address: Address, value: u8, _: Cycles) {
         let row_offset: usize = if address & 0x800 == 0 { 0 } else { 30 };
         let col_offset: usize = if address & 0x400 == 0 { 0 } else { 32 };
         if address & 0x3C0 == 0x3C0 {

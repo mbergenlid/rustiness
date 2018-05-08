@@ -5,6 +5,8 @@ use ppu::ppumemory;
 use ppu::ppumemory::PPUMemory;
 use ppu::sprite::{Sprites,Sprite,SpritePattern,HorizontalPattern, VerticalPattern};
 
+use Cycles;
+
 struct PPUCtrl {
     value: u8,
 }
@@ -75,15 +77,15 @@ pub struct PPU {
 
     vram_changed: bool,
 
-    cycle_count: u32,
-    cycles_already_executed: u32,
+    cycle_count: Cycles,
+    cycles_already_executed: Cycles,
     should_update_screen: bool,
     mirroring: ppumemory::Mirroring,
 
     sprites: Sprites,
 
     odd_flag: bool,
-    sprite_hit_cycle: u32,
+    sprite_hit_cycle: Cycles,
 }
 
 use std::fmt::{Formatter, Error, Display};
@@ -105,15 +107,15 @@ impl Display for PPU {
     }
 }
 
-const PPU_CYCLES_PER_CPU_CYCLE: u32 = 3;
-const PPU_CYCLES_PER_SCANLINE: u32 = 341;
+const PPU_CYCLES_PER_CPU_CYCLE: Cycles = 3;
+const PPU_CYCLES_PER_SCANLINE: Cycles = 341;
 const SCANLINES_PER_VBLANK: u32 = 20;
 const SCANLINES_PER_FRAME: u32 = 262;
 const VISIBLE_SCANLINES: u32 = 240;
 const POST_RENDER_LINES: u32 = 1;
-const VBLANK_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES)*PPU_CYCLES_PER_SCANLINE+1; //82 182
-const NMI_CYCLE: u32 = VBLANK_CYCLE+3; //82 185
-const VBLANK_CLEAR_CYCLE: u32 = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE+1; //89 002
+const VBLANK_CYCLE: Cycles = (VISIBLE_SCANLINES+POST_RENDER_LINES)*PPU_CYCLES_PER_SCANLINE+1; //82 182
+const NMI_CYCLE: Cycles = VBLANK_CYCLE+3; //82 185
+const VBLANK_CLEAR_CYCLE: Cycles = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE+1; //89 002
 
 impl PPU {
     pub fn new(memory: PPUMemory) -> PPU {
@@ -146,8 +148,8 @@ impl PPU {
         }
     }
 
-    pub fn set_ppu_ctrl_at_cycle(&mut self, value: u8, sub_cycle: u8) {
-        self.partially_update((sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+3);
+    pub fn set_ppu_ctrl_at_cycle(&mut self, value: u8, sub_cycle: Cycles) {
+        self.partially_update(sub_cycle*PPU_CYCLES_PER_CPU_CYCLE+3);
 
         if !self.control_register.nmi_enabled()
                 && (value & 0x80 != 0)
@@ -166,13 +168,13 @@ impl PPU {
         self.control_register.value
     }
 
-    pub fn set_ppu_mask(&mut self, value: u8, sub_cycle: u8) {
-        self.partially_update((sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+3);
+    pub fn set_ppu_mask(&mut self, value: u8, sub_cycle: Cycles) {
+        self.partially_update(sub_cycle*PPU_CYCLES_PER_CPU_CYCLE+3);
         self.mask_register.value = value;
     }
 
-    pub fn status(&mut self, sub_cycle: u8) -> u8 {
-        self.partially_update((sub_cycle as u32)*PPU_CYCLES_PER_CPU_CYCLE+2);
+    pub fn status(&mut self, sub_cycle: Cycles) -> u8 {
+        self.partially_update(sub_cycle*PPU_CYCLES_PER_CPU_CYCLE+2);
         let status_register = self.status_register;
         self.status_register &= 0x7F;
         self.vram_registers.reset_write_toggle();
@@ -236,12 +238,12 @@ impl PPU {
         &self.sprites
     }
 
-    fn partially_update(&mut self, ppu_cycles: u32) {
+    fn partially_update(&mut self, ppu_cycles: Cycles) {
         self.update(ppu_cycles);
         self.cycles_already_executed = ppu_cycles;
     }
 
-    fn update(&mut self, ppu_cycle_count: u32) {
+    fn update(&mut self, ppu_cycle_count: Cycles) {
         self.cycle_count += ppu_cycle_count;
         if !self.vblank_triggered && self.cycle_count >= VBLANK_CYCLE {
             //VBLANK
@@ -284,7 +286,7 @@ impl PPU {
         }
     }
 
-    fn determine_sprite_0_hit_cycle(&self) -> u32 {
+    fn determine_sprite_0_hit_cycle(&self) -> Cycles {
         let sprite_0 = &self.sprites[0];
 
         if sprite_0.position_y() == 255 {
@@ -321,7 +323,7 @@ impl PPU {
         &self,
         sprite_0: &Sprite,
         sprite_pattern: &SpritePattern
-    ) -> u32 {
+    ) -> Cycles {
         let name_table = self.memory.name_table();
         let bg_pattern_base_index = self.control_register.background_pattern_table() as usize;
         let bg_patterns =
@@ -357,7 +359,7 @@ impl PPU {
     /**
      * Returns true if a VBLANK should be generated.
      */
-    pub fn sync<T>(&mut self, cpu_cycle_count: u32, screen: &mut T) -> bool
+    pub fn sync<T>(&mut self, cpu_cycle_count: Cycles, screen: &mut T) -> bool
         where T: Screen + Sized
     {
         let remaining_cycles = cpu_cycle_count*PPU_CYCLES_PER_CPU_CYCLE - self.cycles_already_executed;

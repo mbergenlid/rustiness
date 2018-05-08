@@ -30,6 +30,8 @@ use std::rc::Rc;
 use self::command::Command;
 use nes::borrow::MutableRef;
 
+use nes::Cycles;
+
 pub fn start() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -274,7 +276,7 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
             "mem" => {
                 let address = cmd.hex_arg(1).unwrap_or(0);
                 let cycle = cmd.hex_arg(2).unwrap_or(0);
-                println!("Memory 0x{:04x} -> 0x{:02x}", address, nes.memory.get(address, cycle as u8));
+                println!("Memory 0x{:04x} -> 0x{:02x}", address, nes.memory.get(address, cycle as Cycles));
             },
             "press" => {
                 match *fake_controller {

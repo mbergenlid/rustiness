@@ -7,6 +7,7 @@ mod test {
     use memory::Memory;
     use std::collections::HashMap;
     use std::cell::RefCell;
+    use Cycles;
 
     #[test]
     fn absolute_indexed_addressing_should_do_dummy_read() {
@@ -88,19 +89,19 @@ mod test {
     }
 
     impl Memory for MemorySpy {
-        fn get(&self, address: u16, sub_cycle: u8) -> u8 {
+        fn get(&self, address: u16, sub_cycle: Cycles) -> u8 {
             let mut reads = self.reads.borrow_mut();
             let reads_at_address = reads.entry(address).or_insert(0);
             *reads_at_address += 1;
 
             self.memory.get(address, sub_cycle)
         }
-        fn set(&mut self, address: u16, value: u8, sub_cycle: u8) {
+        fn set(&mut self, address: u16, value: u8, sub_cycle: Cycles) {
             self.memory.set(address, value, sub_cycle)
         }
     }
 
-    fn set_up(memory: Box<Memory>) -> (u8, MemorySpy) {
+    fn set_up(memory: Box<Memory>) -> (Cycles, MemorySpy) {
         let mut memory_spy = MemorySpy::new(memory);
         let opcodes = OpCodes::new();
         let mut cpu = CpuBuilder::new()

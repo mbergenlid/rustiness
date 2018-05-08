@@ -19,8 +19,9 @@ use sound::registers::{Register1, Register3, Register4};
 use sound::AudioDevice;
 use sound::APU;
 
-
 const NANOS_PER_CLOCK_CYCLE: u32 = 559;
+
+pub type Cycles = u32;
 
 pub struct NES<'a, T, A>
     where T: Screen + Sized, A: AudioDevice + Sized
@@ -77,19 +78,19 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
 
     pub fn execute(&mut self) {
         let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut self.memory);
-        let nmi = self.ppu.borrow_mut().sync(cycles as u32, self.screen.as_mut());
+        let nmi = self.ppu.borrow_mut().sync(cycles, self.screen.as_mut());
 
         if cfg!(feature = "sound") {
             self.apu.update(cycles);
         }
         self.cycle_count += cycles as u64;
-        self.clock.tick(cycles as u32);
+        self.clock.tick(cycles);
 
         if nmi {
             let nmi_instruction = instructions::NMI::new();
             let cycles = nmi_instruction.estimated_cycles();
             nmi_instruction.execute(&mut self.cpu, &mut self.memory);
-            self.ppu.borrow_mut().sync(cycles as u32, self.screen.as_mut());
+            self.ppu.borrow_mut().sync(cycles, self.screen.as_mut());
             self.cycle_count += cycles as u64;
         }
     }
@@ -159,7 +160,7 @@ impl Clock {
         }
     }
 
-    pub fn tick(&mut self, cycles: u32) {
+    pub fn tick(&mut self, cycles: Cycles) {
         self.should_have_elapsed = self.should_have_elapsed + Duration::new(0, cycles*NANOS_PER_CLOCK_CYCLE);
         let elapsed = self.start.elapsed();
         if self.should_have_elapsed > elapsed {
