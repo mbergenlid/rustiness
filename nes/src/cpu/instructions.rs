@@ -487,7 +487,12 @@ impl STA {
 impl Instruction for STA {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> Cycles {
         memory.set(self.0.operand_address, cpu.accumulator(), self.0.cycles);
-        return self.estimated_cycles();
+        return
+            if self.0.operand_address == 0x4014 {
+                self.estimated_cycles() + 513
+            } else {
+                self.estimated_cycles()
+            };
     }
     fn estimated_cycles(&self) -> Cycles {
         self.1

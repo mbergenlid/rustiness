@@ -296,4 +296,20 @@ mod test {
         memory.set(0x2003, 0x1, 0);
         assert_eq!(1, memory.get(0x2004, 0));
     }
+
+    use cpu::opcodes;
+    use cpu::opcodes::OpCodes;
+    use cpu::CPU;
+
+    #[test]
+    fn dma_copy_should_take_513_cycles() {
+        let mut memory = memory!(
+            0x8000 => opcodes::STA_ABSOLUTE,
+            0x8001 => 0x14,
+            0x8002 => 0x40
+        );
+        let mut cpu = CPU::new(0x8000);
+        let cycles = OpCodes::new().execute_instruction(&mut cpu, &mut memory);
+        assert_eq!(4+513, cycles);
+    }
 }
