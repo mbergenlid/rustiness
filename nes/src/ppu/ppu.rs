@@ -116,6 +116,7 @@ const POST_RENDER_LINES: u32 = 1;
 const VBLANK_CYCLE: Cycles = (VISIBLE_SCANLINES+POST_RENDER_LINES)*PPU_CYCLES_PER_SCANLINE+1; //82 182
 const NMI_CYCLE: Cycles = VBLANK_CYCLE+3; //82 185
 const VBLANK_CLEAR_CYCLE: Cycles = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE+1; //89 002
+const SPRITE_HIT_CLEAR_CYCLE: Cycles = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE; //89 001
 
 impl PPU {
     pub fn new(memory: PPUMemory) -> PPU {
@@ -259,7 +260,7 @@ impl PPU {
             self.nmi_active = self.control_register.nmi_enabled();
         } else if !self.vblank_cleared && self.cycle_count >= VBLANK_CLEAR_CYCLE {
             //VBLANK is over
-            self.status_register = self.status_register & 0x3F;
+            self.status_register = self.status_register & 0x7F;
             self.vblank_cleared = true;
         } else if !self.frame_skipped && self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE-2 {
             self.odd_flag = !self.odd_flag;
@@ -267,6 +268,9 @@ impl PPU {
             if self.mask_register.is_rendering_enabled() && self.odd_flag {
                 self.cycle_count += 1;
             }
+        }
+        if self.cycle_count >= SPRITE_HIT_CLEAR_CYCLE {
+            self.status_register = self.status_register & (0x40 ^ 0xFF);
         }
         if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
             self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
@@ -329,7 +333,7 @@ impl PPU {
         let bg_patterns =
             &self.memory.patterns()[bg_pattern_base_index..(bg_pattern_base_index+0x100)];
 
-        let mut absolute_y = (sprite_0.position_y() + 1) as u16;
+        let absolute_y = (sprite_0.position_y() + 1) as u16;
         for py in 0..8 {
             let absolute_x = sprite_0.position_x() as u16;
             let px_start =
@@ -345,13 +349,16 @@ impl PPU {
                     8
                 };
             for px in px_start..px_end {
-                if sprite_pattern.pixel(px,py) != 0
-                    && name_table.pixel(absolute_x+(px as u16),absolute_y,&bg_patterns) != 0 {
-
-                        return 0;
+                if  sprite_pattern.pixel(px,py) != 0
+                        &&
+                    name_table.pixel(
+                        absolute_x+(px as u16),
+                        absolute_y+(py as u16),
+                        &bg_patterns
+                    ) != 0 {
+                        return 1 + (absolute_y as u32)*341 + (absolute_x as u32);
                 }
             }
-            absolute_y += 1;
         }
         return 0xFFFFFFFF;
     }
