@@ -1,7 +1,6 @@
-
 pub type Address = u16;
 use std::iter::Iterator;
-use std::ops::{Range, Index};
+use std::ops::{Index, Range};
 
 use Cycles;
 
@@ -25,12 +24,14 @@ pub trait Memory {
 }
 
 pub struct BasicMemory {
-    data: Vec<u8>
+    data: Vec<u8>,
 }
 
 impl BasicMemory {
     pub fn new() -> BasicMemory {
-        return BasicMemory { data: vec![0; 65_536]};
+        return BasicMemory {
+            data: vec![0; 65_536],
+        };
     }
 }
 
@@ -44,7 +45,6 @@ impl Memory for BasicMemory {
     }
 }
 
-
 impl Index<Range<usize>> for BasicMemory {
     type Output = [u8];
     fn index(&self, index: Range<usize>) -> &[u8] {
@@ -53,18 +53,17 @@ impl Index<Range<usize>> for BasicMemory {
 }
 
 pub trait MemoryMappedIO {
-    fn read(&self, &Memory) -> u8;
-    fn write(&mut self, &mut Memory, value: u8);
+    fn read(&self, &dyn Memory) -> u8;
+    fn write(&mut self, &mut dyn Memory, value: u8);
 
-    fn read_at_cycle(&self, memory: &Memory, _: Cycles) -> u8 {
+    fn read_at_cycle(&self, memory: &dyn Memory, _: Cycles) -> u8 {
         self.read(memory)
     }
 
-    fn write_at_cycle(&mut self, memory: &mut Memory, value: u8, _: Cycles) {
+    fn write_at_cycle(&mut self, memory: &mut dyn Memory, value: u8, _: Cycles) {
         self.write(memory, value)
     }
 }
-
 
 #[macro_export]
 macro_rules! memory {

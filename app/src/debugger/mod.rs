@@ -1,31 +1,31 @@
+extern crate image;
 extern crate nes;
 extern crate nes_sdl2;
-extern crate image;
 
-mod opcodes;
-mod fakecontroller;
 mod breakpoint;
 mod command;
+mod fakecontroller;
+mod opcodes;
 mod screen;
-use nes::NES;
+use self::fakecontroller::FakeController;
+use self::opcodes::OpCodes;
+use nes::input::standard_controller::StandardController;
 use nes::memory::Memory;
 use nes::ppu::attributetable;
 use nes::ppu::screen::{Screen, ScreenMock, COLOUR_PALETTE};
 use nes::ppu::sprite::Sprite;
-use nes::input::standard_controller::StandardController;
-use nes_sdl2::SDL2;
 use nes::sound::AudioDevice;
+use nes::NES;
 use nes_sdl2::standard_controller::SdlEvents;
-use self::fakecontroller::FakeController;
-use self::opcodes::OpCodes;
+use nes_sdl2::SDL2;
 
-use std::fs::File;
 use std::env;
-use std::string::String;
+use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
+use std::string::String;
 
 use self::command::Command;
 use nes::borrow::MutableRef;
@@ -41,26 +41,39 @@ pub fn start() {
     let file = &args[2];
     let sdl = SDL2::new();
 
-    let fake_controller: Option<FakeController> =
-        args.iter().find(|&a| a == "-c")
-            .map(|_| FakeController::new());
+    let fake_controller: Option<FakeController> = args
+        .iter()
+        .find(|&a| a == "-c")
+        .map(|_| FakeController::new());
     let source = sdl.event_pump();
-    let mut standard_controller =
-        fake_controller.as_ref()
-            .map(|c| StandardController::new(c))
-            .unwrap_or_else(|| {
-                StandardController::new(&source)
-            });
-    let use_screen_mock = args.iter().find(|&a| a == "-g").map(|_| true).unwrap_or(false);
+    let mut standard_controller = fake_controller
+        .as_ref()
+        .map(|c| StandardController::new(c))
+        .unwrap_or_else(|| StandardController::new(&source));
+    let use_screen_mock = args
+        .iter()
+        .find(|&a| a == "-g")
+        .map(|_| true)
+        .unwrap_or(false);
 
     if use_screen_mock {
         let screen = box screen::NoScreen(());
-        let nes = nes::NES::from_file(file, MutableRef::Borrowed(&mut standard_controller), sdl.audio(), screen);
+        let nes = nes::NES::from_file(
+            file,
+            MutableRef::Borrowed(&mut standard_controller),
+            sdl.audio(),
+            screen,
+        );
 
         run(nes, &source, &fake_controller);
     } else {
         let screen = box sdl.screen(2);
-        let nes = nes::NES::from_file(file, MutableRef::Borrowed(&mut standard_controller), sdl.audio(), screen);
+        let nes = nes::NES::from_file(
+            file,
+            MutableRef::Borrowed(&mut standard_controller),
+            sdl.audio(),
+            screen,
+        );
 
         run(nes, &source, &fake_controller);
     }
@@ -79,27 +92,46 @@ fn open_log_file() -> File {
 use nes::cpu::*;
 
 #[inline]
-fn log<'a, S, A>(log_file: &Option<File>, nes: &NES<'a, S, A>, opcodes: Rc<OpCodes>) where S: Screen + Sized, A: AudioDevice + Sized {
+fn log<'a, S, A>(log_file: &Option<File>, nes: &NES<'a, S, A>, opcodes: Rc<OpCodes>)
+where
+    S: Screen + Sized,
+    A: AudioDevice + Sized,
+{
     for mut file in log_file.iter() {
-        let flags: String =
-                [(NEGATIVE_FLAG, 'N'), (OVERFLOW_FLAG, 'O'), (DECIMAL_FLAG, 'D'), (INTERRUPT_DISABLE_FLAG, 'I'), (ZERO_FLAG, 'Z'), (CARRY_FLAG, 'C')].iter()
-                    .filter(|&&(f, _)| nes.cpu.is_flag_set(f))
-                    .map(|&(_, f)| f)
-                    .collect();
+        let flags: String = [
+            (NEGATIVE_FLAG, 'N'),
+            (OVERFLOW_FLAG, 'O'),
+            (DECIMAL_FLAG, 'D'),
+            (INTERRUPT_DISABLE_FLAG, 'I'),
+            (ZERO_FLAG, 'Z'),
+            (CARRY_FLAG, 'C'),
+        ]
+        .iter()
+        .filter(|&&(f, _)| nes.cpu.is_flag_set(f))
+        .map(|&(_, f)| f)
+        .collect();
         file.write_fmt(format_args!(
-                "Cycle: {} - {} - A: {}, X: {}, Y: {}, Flags: {}\n",
-                nes.cycle_count,
-                next_instruction_as_string(&nes, opcodes.clone()),
-                nes.cpu.accumulator(),
-                nes.cpu.register_x(),
-                nes.cpu.register_y(),
-                flags
-        )).unwrap();
+            "Cycle: {} - {} - A: {}, X: {}, Y: {}, Flags: {}\n",
+            nes.cycle_count,
+            next_instruction_as_string(&nes, opcodes.clone()),
+            nes.cpu.accumulator(),
+            nes.cpu.register_x(),
+            nes.cpu.register_y(),
+            flags
+        ))
+        .unwrap();
     }
 }
 
-fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &Option<FakeController>) where S: Screen + Sized, A: AudioDevice + Sized {
-    let mut break_points: Vec<Box<BreakPoint>> = vec!();
+fn run<'a, S, A>(
+    mut nes: NES<'a, S, A>,
+    source: &SdlEvents,
+    fake_controller: &Option<FakeController>,
+) where
+    S: Screen + Sized,
+    A: AudioDevice + Sized,
+{
+    let mut break_points: Vec<Box<dyn BreakPoint>> = vec![];
     let mut log_file: Option<File> = None;
     let opcodes = Rc::new(OpCodes::new());
     print(&nes);
@@ -191,7 +223,7 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
                 }
             },
             "sprites" => {
-                let mut ppu = nes.ppu.borrow_mut();
+                let ppu = nes.ppu.borrow_mut();
                 let sprites = ppu.sprites();
                 for s in 0..64 {
                     let sprite = &sprites[s];
@@ -293,26 +325,35 @@ fn run<'a, S, A>(mut nes: NES<'a, S, A>, source: &SdlEvents, fake_controller: &O
             "exit" => break,
             _ => println!("Unknown cmd '{}'", cmd.name()),
         }
-
     }
 }
 
-fn print<S, A>(nes: &nes::NES<S, A>) where S: Screen + Sized, A: AudioDevice + Sized {
+fn print<S, A>(nes: &nes::NES<S, A>)
+where
+    S: Screen + Sized,
+    A: AudioDevice + Sized,
+{
     println!("Cycle count: {}", nes.cycle_count);
     println!("Clock: {}", nes.clock);
     print_cpu_and_ppu(nes);
 }
 
+use std::io::{BufRead, BufReader};
 use std::ops::Deref;
-use std::io::{BufReader, BufRead};
-fn print_cpu_and_ppu<S, A>(nes: &nes::NES<S, A>) where S: Screen + Sized, A: AudioDevice + Sized {
+fn print_cpu_and_ppu<S, A>(nes: &nes::NES<S, A>)
+where
+    S: Screen + Sized,
+    A: AudioDevice + Sized,
+{
     let cpu = &nes.cpu;
     let ppu = &nes.ppu;
 
     let mut cpu_buffer = Vec::new();
     cpu_buffer.write_fmt(format_args!("{}", cpu)).unwrap();
     let mut ppu_buffer = Vec::new();
-    ppu_buffer.write_fmt(format_args!("{}", ppu.borrow().deref())).unwrap();
+    ppu_buffer
+        .write_fmt(format_args!("{}", ppu.borrow().deref()))
+        .unwrap();
 
     let cpu_buf_reader = BufReader::new(cpu_buffer.as_slice());
     let ppu_buf_reader = BufReader::new(ppu_buffer.as_slice());
@@ -320,17 +361,34 @@ fn print_cpu_and_ppu<S, A>(nes: &nes::NES<S, A>) where S: Screen + Sized, A: Aud
     let mut ppu_lines = ppu_buf_reader.lines();
     for line in cpu_buf_reader.lines() {
         print!("{}\t", line.unwrap());
-        println!("{}", ppu_lines.next().map(|r| r.unwrap()).unwrap_or(String::new()));
+        println!(
+            "{}",
+            ppu_lines
+                .next()
+                .map(|r| r.unwrap())
+                .unwrap_or(String::new())
+        );
     }
 }
 
-fn next_instruction_as_string<S, A>(nes: &nes::NES<S, A>, opcodes: Rc<OpCodes>) -> String where S: Screen + Sized, A: AudioDevice + Sized {
+fn next_instruction_as_string<S, A>(nes: &nes::NES<S, A>, opcodes: Rc<OpCodes>) -> String
+where
+    S: Screen + Sized,
+    A: AudioDevice + Sized,
+{
     let op_code = nes.memory.get(nes.cpu.program_counter(), 0);
     opcodes.debug_instruction(op_code, &nes.cpu, &nes.memory)
 }
 
-fn print_next_instruction<S, A>(nes: &nes::NES<S, A>, opcodes: Rc<OpCodes>) where S: Screen + Sized, A: AudioDevice + Sized {
-    println!("Next instruction: {}", next_instruction_as_string(nes, opcodes));
+fn print_next_instruction<S, A>(nes: &nes::NES<S, A>, opcodes: Rc<OpCodes>)
+where
+    S: Screen + Sized,
+    A: AudioDevice + Sized,
+{
+    println!(
+        "Next instruction: {}",
+        next_instruction_as_string(nes, opcodes)
+    );
 }
 
 fn read_input() -> Command {

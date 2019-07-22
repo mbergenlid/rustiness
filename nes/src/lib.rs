@@ -1,19 +1,20 @@
 #![feature(box_syntax)]
-#[macro_use] pub mod memory;
+#[macro_use]
+pub mod memory;
+pub mod borrow;
 pub mod cpu;
-pub mod ppu;
 pub mod ines;
 pub mod input;
-pub mod borrow;
+pub mod ppu;
 pub mod sound;
 
 use cpu::CPU;
 use memory::{CPUMemory, Memory};
-use ppu::PPU;
 use ppu::screen::Screen;
+use ppu::PPU;
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use sound::registers::{Register1, Register3, Register4};
 use sound::AudioDevice;
@@ -24,7 +25,9 @@ const NANOS_PER_CLOCK_CYCLE: u32 = 559;
 pub type Cycles = u32;
 
 pub struct NES<'a, T, A>
-    where T: Screen + Sized, A: AudioDevice + Sized
+where
+    T: Screen + Sized,
+    A: AudioDevice + Sized,
 {
     pub cpu: CPU,
     pub cycle_count: u64,
@@ -37,21 +40,34 @@ pub struct NES<'a, T, A>
     pub clock: Clock,
 }
 
-use ines::mapper;
 use borrow::MutableRef;
-use cpu::instructions::Instruction;
-use cpu::instructions;
-use cpu::opcodes;
 use cpu::addressing;
+use cpu::instructions;
+use cpu::instructions::Instruction;
+use cpu::opcodes;
+use ines::mapper;
 
-impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
-
-    pub fn from_file(file: &str, controller: MutableRef<'a, MemoryMappedIO>, audio: A, screen: Box<T>) -> NES<'a, T, A> {
+impl<'a, T, A> NES<'a, T, A>
+where
+    T: Screen + Sized,
+    A: AudioDevice + Sized,
+{
+    pub fn from_file(
+        file: &str,
+        controller: MutableRef<'a, dyn MemoryMappedIO>,
+        audio: A,
+        screen: Box<T>,
+    ) -> NES<'a, T, A> {
         let mapper = mapper::from_file(file);
         NES::new(mapper, controller, audio, screen)
     }
 
-    pub fn new(mapper: mapper::Mapper, controller: MutableRef<'a, MemoryMappedIO>, audio: A, screen: Box<T>) -> NES<'a, T, A> {
+    pub fn new(
+        mapper: mapper::Mapper,
+        controller: MutableRef<'a, dyn MemoryMappedIO>,
+        audio: A,
+        screen: Box<T>,
+    ) -> NES<'a, T, A> {
         let memory = mapper.cpu_memory;
 
         let ppu = Rc::new(RefCell::new(PPU::new(mapper.ppu_memory)));
@@ -77,7 +93,9 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
     }
 
     pub fn execute(&mut self) {
-        let cycles = self.op_codes.execute_instruction(&mut self.cpu, &mut self.memory);
+        let cycles = self
+            .op_codes
+            .execute_instruction(&mut self.cpu, &mut self.memory);
         let nmi = self.ppu.borrow_mut().sync(cycles, self.screen.as_mut());
 
         if cfg!(feature = "sound") {
@@ -104,13 +122,16 @@ impl <'a, T, A> NES<'a, T, A> where T: Screen + Sized, A: AudioDevice + Sized {
 use ppu::ppuregisters::*;
 
 use memory::MemoryMappedIO;
-impl <'a> CPUMemory<'a>  {
+impl<'a> CPUMemory<'a> {
     pub fn default<A>(
-        memory: Box<Memory>,
+        memory: Box<dyn Memory>,
         ppu: Rc<RefCell<PPU>>,
         apu: &APU<A>,
-        controller: Option<MutableRef<'a, MemoryMappedIO>>
-    ) -> CPUMemory<'a> where A: AudioDevice + Sized {
+        controller: Option<MutableRef<'a, dyn MemoryMappedIO>>,
+    ) -> CPUMemory<'a>
+    where
+        A: AudioDevice + Sized,
+    {
         //apu: &mut APU
         cpu_memory!(
             memory,
@@ -137,31 +158,33 @@ impl <'a> CPUMemory<'a>  {
 }
 
 impl MemoryMappedIO for () {
-    fn read(&self, _: &Memory) -> u8 { 0 }
-    fn write(&mut self, _: &mut Memory, _: u8) { }
+    fn read(&self, _: &dyn Memory) -> u8 {
+        0
+    }
+    fn write(&mut self, _: &mut dyn Memory, _: u8) {}
 }
 
-
 use std::thread::sleep;
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 pub struct Clock {
     start: Instant,
     should_have_elapsed: Duration,
-    total_sleep_time: Duration
+    total_sleep_time: Duration,
 }
 
 impl Clock {
     pub fn start() -> Clock {
         Clock {
             start: Instant::now(),
-            should_have_elapsed: Duration::new(0,0),
-            total_sleep_time: Duration::new(0,0)
+            should_have_elapsed: Duration::new(0, 0),
+            total_sleep_time: Duration::new(0, 0),
         }
     }
 
     pub fn tick(&mut self, cycles: Cycles) {
-        self.should_have_elapsed = self.should_have_elapsed + Duration::new(0, cycles*NANOS_PER_CLOCK_CYCLE);
+        self.should_have_elapsed =
+            self.should_have_elapsed + Duration::new(0, cycles * NANOS_PER_CLOCK_CYCLE);
         let elapsed = self.start.elapsed();
         if self.should_have_elapsed > elapsed {
             let sleep_time = self.should_have_elapsed - elapsed;
@@ -171,29 +194,29 @@ impl Clock {
     }
 }
 
-use std::fmt::{Display, Formatter, Error};
+use std::fmt::{Display, Error, Formatter};
 impl Display for Clock {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
         let total_time = self.start.elapsed();
-        let sleep_percent =
-            ((self.total_sleep_time.as_secs()*1000000000 + self.total_sleep_time.subsec_nanos() as u64) as f64) /
-                ((total_time.as_secs()*1000000000 + total_time.subsec_nanos() as u64) as f64);
-        formatter.write_fmt(
-            format_args!(
-                "Total time: {}.{:09}s, Idle time: {}.{:09}s, sleep {}%",
-                total_time.as_secs(), total_time.subsec_nanos(),
-                self.total_sleep_time.as_secs(), self.total_sleep_time.subsec_nanos(),
-                sleep_percent*100f64
-                ))
+        let sleep_percent = ((self.total_sleep_time.as_secs() * 1000000000
+            + self.total_sleep_time.subsec_nanos() as u64) as f64)
+            / ((total_time.as_secs() * 1000000000 + total_time.subsec_nanos() as u64) as f64);
+        formatter.write_fmt(format_args!(
+            "Total time: {}.{:09}s, Idle time: {}.{:09}s, sleep {}%",
+            total_time.as_secs(),
+            total_time.subsec_nanos(),
+            self.total_sleep_time.as_secs(),
+            self.total_sleep_time.subsec_nanos(),
+            sleep_percent * 100f64
+        ))
     }
 }
-
 
 #[cfg(test)]
 mod test {
 
-    use std::time::{Instant, Duration};
     use super::{Clock, NANOS_PER_CLOCK_CYCLE};
+    use std::time::{Duration, Instant};
     #[test]
     fn clock_test() {
         let start = Instant::now();
@@ -201,10 +224,20 @@ mod test {
         clock.tick(10000);
 
         let elapsed = start.elapsed();
-        let expected_duration = Duration::new(0, 10000*NANOS_PER_CLOCK_CYCLE);
-        assert!(elapsed >= expected_duration, "Should take at least {:?} but took {:?}", expected_duration, elapsed);
-        let expected_max_duration = Duration::new(0, 100000*NANOS_PER_CLOCK_CYCLE);
-        assert!(elapsed <= expected_max_duration, "Should take at most {:?} but took {:?}", expected_max_duration, elapsed);
+        let expected_duration = Duration::new(0, 10000 * NANOS_PER_CLOCK_CYCLE);
+        assert!(
+            elapsed >= expected_duration,
+            "Should take at least {:?} but took {:?}",
+            expected_duration,
+            elapsed
+        );
+        let expected_max_duration = Duration::new(0, 100000 * NANOS_PER_CLOCK_CYCLE);
+        assert!(
+            elapsed <= expected_max_duration,
+            "Should take at most {:?} but took {:?}",
+            expected_max_duration,
+            elapsed
+        );
     }
 
     #[test]
@@ -216,10 +249,20 @@ mod test {
         }
 
         let elapsed = start.elapsed();
-        let expected_duration = Duration::new(0, 10000*NANOS_PER_CLOCK_CYCLE);
-        assert!(elapsed >= expected_duration, "Should take at least {:?} but took {:?}", expected_duration, elapsed);
-        let expected_max_duration = Duration::new(0, 10500*NANOS_PER_CLOCK_CYCLE);
-        assert!(elapsed <= expected_max_duration, "Should take at most {:?} but took {:?}", expected_max_duration, elapsed);
+        let expected_duration = Duration::new(0, 10000 * NANOS_PER_CLOCK_CYCLE);
+        assert!(
+            elapsed >= expected_duration,
+            "Should take at least {:?} but took {:?}",
+            expected_duration,
+            elapsed
+        );
+        let expected_max_duration = Duration::new(0, 10500 * NANOS_PER_CLOCK_CYCLE);
+        assert!(
+            elapsed <= expected_max_duration,
+            "Should take at most {:?} but took {:?}",
+            expected_max_duration,
+            elapsed
+        );
     }
 
     #[test]
@@ -233,8 +276,18 @@ mod test {
 
         let elapsed = start.elapsed();
         let expected_duration = Duration::new(5, 590_000_000);
-        assert!(elapsed >= expected_duration, "Should take at least {:?} but took {:?}", expected_duration, elapsed);
+        assert!(
+            elapsed >= expected_duration,
+            "Should take at least {:?} but took {:?}",
+            expected_duration,
+            elapsed
+        );
         let expected_max_duration = Duration::new(5, 595_900_000);
-        assert!(elapsed <= expected_max_duration, "Should take at most {:?} but took {:?}", expected_max_duration, elapsed);
+        assert!(
+            elapsed <= expected_max_duration,
+            "Should take at most {:?} but took {:?}",
+            expected_max_duration,
+            elapsed
+        );
     }
 }

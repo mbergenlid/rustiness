@@ -1,9 +1,9 @@
 use memory::Memory;
-use ppu::screen::{Screen, COLOUR_PALETTE, PixelBuffer, Rectangle};
-use ppu::vram_registers::VRAMRegisters;
 use ppu::ppumemory;
 use ppu::ppumemory::PPUMemory;
-use ppu::sprite::{Sprites,Sprite,SpritePattern,HorizontalPattern, VerticalPattern};
+use ppu::screen::{PixelBuffer, Rectangle, Screen, COLOUR_PALETTE};
+use ppu::sprite::{HorizontalPattern, Sprite, SpritePattern, Sprites, VerticalPattern};
+use ppu::vram_registers::VRAMRegisters;
 
 use Cycles;
 
@@ -12,7 +12,9 @@ struct PPUCtrl {
 }
 
 impl PPUCtrl {
-    fn new() -> PPUCtrl { PPUCtrl {value: 0} }
+    fn new() -> PPUCtrl {
+        PPUCtrl { value: 0 }
+    }
 
     fn background_pattern_table(&self) -> u16 {
         ((self.value & 0x10) as u16) << 4
@@ -27,9 +29,12 @@ impl PPUCtrl {
     }
 
     fn vram_pointer_increment(&self) -> u16 {
-        if self.value & 0x04 == 0 { 1 } else { 32 }
+        if self.value & 0x04 == 0 {
+            1
+        } else {
+            32
+        }
     }
-
 }
 
 struct PPUMask {
@@ -88,22 +93,51 @@ pub struct PPU {
     sprite_hit_cycle: Cycles,
 }
 
-use std::fmt::{Formatter, Error, Display};
+use std::fmt::{Display, Error, Formatter};
 impl Display for PPU {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
-        formatter.write_fmt(format_args!("PPU: {}\t{}\n", self.cycle_count, if self.odd_flag { "Odd" } else { "Even" })).unwrap();
-        formatter.write_fmt(
-            format_args!("\tControl register: 0b{:08b}\n", self.ppu_ctrl())).unwrap();
-        formatter.write_fmt(
-            format_args!("\tMask register: 0b{:08b}\n", self.mask_register.value)).unwrap();
-        formatter.write_fmt(
-            format_args!("\tVRAM Pointer:     0x{:08x}\t\n", self.vram())).unwrap();
-        formatter.write_fmt(
-            format_args!("\tVRAM Temp Pointer:     0x{:08x}\n", self.vram_registers.temporary)).unwrap();
-        formatter.write_fmt(
-            format_args!("\tStatus register:  0b{:08b}\t\n", self.status_register)).unwrap();
-        formatter.write_fmt(
-            format_args!("\tscroll (x, y):    ({}, {})\t\n", self.vram_registers.temporary_x_scroll(), self.vram_registers.temporary_y_scroll()))
+        formatter
+            .write_fmt(format_args!(
+                "PPU: {}\t{}\n",
+                self.cycle_count,
+                if self.odd_flag { "Odd" } else { "Even" }
+            ))
+            .unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\tControl register: 0b{:08b}\n",
+                self.ppu_ctrl()
+            ))
+            .unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\tMask register: 0b{:08b}\n",
+                self.mask_register.value
+            ))
+            .unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\tVRAM Pointer:     0x{:08x}\t\n",
+                self.vram()
+            ))
+            .unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\tVRAM Temp Pointer:     0x{:08x}\n",
+                self.vram_registers.temporary
+            ))
+            .unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\tStatus register:  0b{:08b}\t\n",
+                self.status_register
+            ))
+            .unwrap();
+        formatter.write_fmt(format_args!(
+            "\tscroll (x, y):    ({}, {})\t\n",
+            self.vram_registers.temporary_x_scroll(),
+            self.vram_registers.temporary_y_scroll()
+        ))
     }
 }
 
@@ -113,10 +147,12 @@ const SCANLINES_PER_VBLANK: u32 = 20;
 const SCANLINES_PER_FRAME: u32 = 262;
 const VISIBLE_SCANLINES: u32 = 240;
 const POST_RENDER_LINES: u32 = 1;
-const VBLANK_CYCLE: Cycles = (VISIBLE_SCANLINES+POST_RENDER_LINES)*PPU_CYCLES_PER_SCANLINE+1; //82 182
-const NMI_CYCLE: Cycles = VBLANK_CYCLE+3; //82 185
-const VBLANK_CLEAR_CYCLE: Cycles = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE+1; //89 002
-const SPRITE_HIT_CLEAR_CYCLE: Cycles = (VISIBLE_SCANLINES+POST_RENDER_LINES+SCANLINES_PER_VBLANK)*PPU_CYCLES_PER_SCANLINE; //89 001
+const VBLANK_CYCLE: Cycles = (VISIBLE_SCANLINES + POST_RENDER_LINES) * PPU_CYCLES_PER_SCANLINE + 1; //82 182
+const NMI_CYCLE: Cycles = VBLANK_CYCLE + 3; //82 185
+const VBLANK_CLEAR_CYCLE: Cycles =
+    (VISIBLE_SCANLINES + POST_RENDER_LINES + SCANLINES_PER_VBLANK) * PPU_CYCLES_PER_SCANLINE + 1; //89 002
+const SPRITE_HIT_CLEAR_CYCLE: Cycles =
+    (VISIBLE_SCANLINES + POST_RENDER_LINES + SCANLINES_PER_VBLANK) * PPU_CYCLES_PER_SCANLINE; //89 001
 
 impl PPU {
     pub fn new(memory: PPUMemory) -> PPU {
@@ -150,11 +186,12 @@ impl PPU {
     }
 
     pub fn set_ppu_ctrl_at_cycle(&mut self, value: u8, sub_cycle: Cycles) {
-        self.partially_update(sub_cycle*PPU_CYCLES_PER_CPU_CYCLE+3);
+        self.partially_update(sub_cycle * PPU_CYCLES_PER_CPU_CYCLE + 3);
 
         if !self.control_register.nmi_enabled()
-                && (value & 0x80 != 0)
-                && self.status_register.is_vblank() {
+            && (value & 0x80 != 0)
+            && self.status_register.is_vblank()
+        {
             self.pending_nmi = 2;
         }
         self.control_register.value = value;
@@ -170,19 +207,19 @@ impl PPU {
     }
 
     pub fn set_ppu_mask(&mut self, value: u8, sub_cycle: Cycles) {
-        self.partially_update(sub_cycle*PPU_CYCLES_PER_CPU_CYCLE+3);
+        self.partially_update(sub_cycle * PPU_CYCLES_PER_CPU_CYCLE + 3);
         self.mask_register.value = value;
     }
 
     pub fn status(&mut self, sub_cycle: Cycles) -> u8 {
-        self.partially_update(sub_cycle*PPU_CYCLES_PER_CPU_CYCLE+2);
+        self.partially_update(sub_cycle * PPU_CYCLES_PER_CPU_CYCLE + 2);
         let status_register = self.status_register;
         self.status_register &= 0x7F;
         self.vram_registers.reset_write_toggle();
-        if self.cycle_count == VBLANK_CYCLE-1 {
+        if self.cycle_count == VBLANK_CYCLE - 1 {
             self.vblank_triggered = true;
             self.nmi_triggered = true;
-        } else if self.cycle_count == VBLANK_CYCLE || self.cycle_count == VBLANK_CYCLE+1 {
+        } else if self.cycle_count == VBLANK_CYCLE || self.cycle_count == VBLANK_CYCLE + 1 {
             self.nmi_triggered = true;
         }
         return status_register;
@@ -262,7 +299,9 @@ impl PPU {
             //VBLANK is over
             self.status_register = self.status_register & 0x7F;
             self.vblank_cleared = true;
-        } else if !self.frame_skipped && self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE-2 {
+        } else if !self.frame_skipped
+            && self.cycle_count >= SCANLINES_PER_FRAME * PPU_CYCLES_PER_SCANLINE - 2
+        {
             self.odd_flag = !self.odd_flag;
             self.frame_skipped = true;
             if self.mask_register.is_rendering_enabled() && self.odd_flag {
@@ -272,8 +311,8 @@ impl PPU {
         if self.cycle_count >= SPRITE_HIT_CLEAR_CYCLE {
             self.status_register = self.status_register & (0x40 ^ 0xFF);
         }
-        if self.cycle_count >= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE {
-            self.cycle_count -= SCANLINES_PER_FRAME*PPU_CYCLES_PER_SCANLINE;
+        if self.cycle_count >= SCANLINES_PER_FRAME * PPU_CYCLES_PER_SCANLINE {
+            self.cycle_count -= SCANLINES_PER_FRAME * PPU_CYCLES_PER_SCANLINE;
             self.vblank_triggered = false;
             self.vblank_cleared = false;
             self.nmi_triggered = false;
@@ -282,8 +321,8 @@ impl PPU {
             self.sprite_hit_cycle = self.determine_sprite_0_hit_cycle();
         }
         if self.cycle_count >= self.sprite_hit_cycle {
-            if self.mask_register.is_background_enabled()
-                    && self.mask_register.is_sprite_enabled() {
+            if self.mask_register.is_background_enabled() && self.mask_register.is_sprite_enabled()
+            {
                 self.status_register |= 0x40;
             }
             self.sprite_hit_cycle = 0xFFFFFFFF;
@@ -298,40 +337,37 @@ impl PPU {
         }
 
         let pattern_base_index = (self.control_register.sprite_pattern_table() >> 4) as usize;
-        let sprite_pattern_0  =
+        let sprite_pattern_0 =
             &self.memory.patterns()[pattern_base_index + sprite_0.pattern_index() as usize];
         if sprite_0.flip_horizontal() && sprite_0.flip_vertical() {
             self.determine_sprite_0_hit_cycle_from_sprite(
                 &sprite_0,
-                &HorizontalPattern::new(VerticalPattern::new(sprite_pattern_0))
+                &HorizontalPattern::new(VerticalPattern::new(sprite_pattern_0)),
             )
         } else if sprite_0.flip_horizontal() {
             self.determine_sprite_0_hit_cycle_from_sprite(
                 &sprite_0,
-                &HorizontalPattern::new(sprite_pattern_0)
+                &HorizontalPattern::new(sprite_pattern_0),
             )
         } else if sprite_0.flip_vertical() {
             self.determine_sprite_0_hit_cycle_from_sprite(
                 &sprite_0,
-                &VerticalPattern::new(sprite_pattern_0)
+                &VerticalPattern::new(sprite_pattern_0),
             )
         } else {
-            self.determine_sprite_0_hit_cycle_from_sprite(
-                &sprite_0,
-                sprite_pattern_0
-            )
+            self.determine_sprite_0_hit_cycle_from_sprite(&sprite_0, sprite_pattern_0)
         }
     }
 
     fn determine_sprite_0_hit_cycle_from_sprite(
         &self,
-        sprite_0: &Sprite,
-        sprite_pattern: &SpritePattern
+        sprite_0: &dyn Sprite,
+        sprite_pattern: &dyn SpritePattern,
     ) -> Cycles {
         let name_table = self.memory.name_table();
         let bg_pattern_base_index = self.control_register.background_pattern_table() as usize;
         let bg_patterns =
-            &self.memory.patterns()[bg_pattern_base_index..(bg_pattern_base_index+0x100)];
+            &self.memory.patterns()[bg_pattern_base_index..(bg_pattern_base_index + 0x100)];
 
         let absolute_y = (sprite_0.position_y() + 1) as u16;
         for py in 0..8 {
@@ -342,21 +378,20 @@ impl PPU {
                 } else {
                     0
                 };
-            let px_end =
-                if sprite_0.position_x() > (255-8) {
-                    255-sprite_0.position_x()
-                } else {
-                    8
-                };
+            let px_end = if sprite_0.position_x() > (255 - 8) {
+                255 - sprite_0.position_x()
+            } else {
+                8
+            };
             for px in px_start..px_end {
-                if  sprite_pattern.pixel(px,py) != 0
-                        &&
-                    name_table.pixel(
-                        absolute_x+(px as u16),
-                        absolute_y+(py as u16),
-                        &bg_patterns
-                    ) != 0 {
-                        return 1 + (absolute_y as u32)*341 + (absolute_x as u32);
+                if sprite_pattern.pixel(px, py) != 0
+                    && name_table.pixel(
+                        absolute_x + (px as u16),
+                        absolute_y + (py as u16),
+                        &bg_patterns,
+                    ) != 0
+                {
+                    return 1 + (absolute_y as u32) * 341 + (absolute_x as u32);
                 }
             }
         }
@@ -367,9 +402,11 @@ impl PPU {
      * Returns true if a VBLANK should be generated.
      */
     pub fn sync<T>(&mut self, cpu_cycle_count: Cycles, screen: &mut T) -> bool
-        where T: Screen + Sized
+    where
+        T: Screen + Sized,
     {
-        let remaining_cycles = cpu_cycle_count*PPU_CYCLES_PER_CPU_CYCLE - self.cycles_already_executed;
+        let remaining_cycles =
+            cpu_cycle_count * PPU_CYCLES_PER_CPU_CYCLE - self.cycles_already_executed;
         self.cycles_already_executed = 0;
         self.update(remaining_cycles);
         if self.should_update_screen {
@@ -391,7 +428,10 @@ impl PPU {
         }
     }
 
-    pub fn update_screen<T>(&mut self, screen: &mut T) where T: Screen + Sized {
+    pub fn update_screen<T>(&mut self, screen: &mut T)
+    where
+        T: Screen + Sized,
+    {
         if self.vram_changed {
             self.vram_changed = false;
             screen.update_buffer(|buffer| self.draw_buffer(buffer));
@@ -413,28 +453,52 @@ impl PPU {
         let area_width_minus_left = area_width.wrapping_sub(left);
         let area_height_minus_top = area_height.wrapping_sub(top);
         screen.render(
-            Rectangle { x: left as i32, y: top as i32, width: min(screen_width, area_width_minus_left) as u32, height: min(screen_height, area_height_minus_top) as u32 },
-            0, 0
+            Rectangle {
+                x: left as i32,
+                y: top as i32,
+                width: min(screen_width, area_width_minus_left) as u32,
+                height: min(screen_height, area_height_minus_top) as u32,
+            },
+            0,
+            0,
         );
         //Do we need to patch to the right?
         if area_width_minus_left < screen_width {
             screen.render(
-                Rectangle { x: 0, y: top as i32, width: (screen_width-area_width_minus_left) as u32, height: min(screen_height, area_height_minus_top) as u32 },
-                area_width-left, 0
+                Rectangle {
+                    x: 0,
+                    y: top as i32,
+                    width: (screen_width - area_width_minus_left) as u32,
+                    height: min(screen_height, area_height_minus_top) as u32,
+                },
+                area_width - left,
+                0,
             );
         }
         //Do we need to patch at the bottom?
         if area_height_minus_top < screen_height {
             screen.render(
-                Rectangle { x: left as i32, y: 0, width: min(screen_width, area_width_minus_left) as u32, height: (screen_height-area_height_minus_top) as u32 },
-                0, area_height-top as usize
+                Rectangle {
+                    x: left as i32,
+                    y: 0,
+                    width: min(screen_width, area_width_minus_left) as u32,
+                    height: (screen_height - area_height_minus_top) as u32,
+                },
+                0,
+                area_height - top as usize,
             );
         }
         //Do we need to patch at the bottom right?
         if area_width_minus_left < screen_width && area_height_minus_top < screen_height {
             screen.render(
-                Rectangle { x: 0, y: 0, width: (screen_width-area_width_minus_left) as u32, height: (screen_height-area_height_minus_top) as u32 },
-                area_width-left as usize, area_height-top as usize
+                Rectangle {
+                    x: 0,
+                    y: 0,
+                    width: (screen_width - area_width_minus_left) as u32,
+                    height: (screen_height - area_height_minus_top) as u32,
+                },
+                area_width - left as usize,
+                area_height - top as usize,
             );
         }
 
@@ -448,38 +512,38 @@ impl PPU {
         for sprite_index in 0..64 {
             let sprite = &self.sprites[sprite_index];
             let pattern_table_base_address = self.control_register.sprite_pattern_table();
-            let pattern_table_address = pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
+            let pattern_table_address =
+                pattern_table_base_address | ((sprite.pattern_index() as u16) << 4);
             let pattern = self.memory.patterns()[(pattern_table_address as usize) >> 4];
             pattern.update_buffer(
                 buffer,
                 self.memory.sprite_palette(sprite.colour_palette()),
-                sprite_index*8,
-                0
+                sprite_index * 8,
+                0,
             );
         }
     }
 
-
     pub fn draw_buffer(&mut self, pixel_buffer: &mut PixelBuffer) {
         let pattern_table = self.control_register.background_pattern_table() as usize;
-        let patterns = &self.memory.patterns()[pattern_table..(pattern_table+0x100)];
+        let patterns = &self.memory.patterns()[pattern_table..(pattern_table + 0x100)];
         let palettes = self.memory.background_palette();
         let name_table = self.memory.name_table();
         match self.mirroring {
             ppumemory::Mirroring::Horizontal => {
                 name_table.update_tile_for_nametable(pixel_buffer, 0, patterns, palettes);
                 name_table.update_tile_for_nametable(pixel_buffer, 2, patterns, palettes);
-            },
+            }
             ppumemory::Mirroring::Vertical => {
                 name_table.update_tile_for_nametable(pixel_buffer, 0, patterns, palettes);
                 name_table.update_tile_for_nametable(pixel_buffer, 1, patterns, palettes);
-            },
+            }
             ppumemory::Mirroring::NoMirroring => {
                 name_table.update_tile_for_nametable(pixel_buffer, 0, patterns, palettes);
                 name_table.update_tile_for_nametable(pixel_buffer, 1, patterns, palettes);
                 name_table.update_tile_for_nametable(pixel_buffer, 2, patterns, palettes);
                 name_table.update_tile_for_nametable(pixel_buffer, 3, patterns, palettes);
-            },
+            }
         };
     }
 
@@ -488,16 +552,16 @@ impl PPU {
         self.memory.name_table_mut().invalidate_tile_cache();
     }
 
-    pub fn memory(&self) -> &Memory {
+    pub fn memory(&self) -> &dyn Memory {
         &self.memory
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use ppu::screen::ScreenMock;
-    use super::{PPU, PPUStatus};
+    use super::{PPUStatus, PPU};
     use ppu::ppumemory::PPUMemory;
+    use ppu::screen::ScreenMock;
 
     #[test]
     fn reading_status_register_should_clear_vblank() {
@@ -523,7 +587,7 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
         ppu.set_ppu_ctrl(0x80);
         assert_eq!(false, ppu.sync(45, screen)); //cycle count = 135
-        assert_eq!(false, ppu.sync(27_394-45, screen)); //cycle count = 82_182
+        assert_eq!(false, ppu.sync(27_394 - 45, screen)); //cycle count = 82_182
 
         assert_eq!(true, ppu.status_register.is_vblank());
         assert_eq!(true, ppu.sync(1, screen)); //cycle count = 82_185
@@ -531,12 +595,12 @@ pub mod tests {
         assert_eq!(false, ppu.sync(49, screen)); //cycle count = 82 332
         assert_eq!(true, ppu.status_register.is_vblank());
 
-        assert_eq!(false, ppu.sync(2_224, screen));  //cycle count = 89 004
+        assert_eq!(false, ppu.sync(2_224, screen)); //cycle count = 89 004
         assert_eq!(false, ppu.status_register.is_vblank());
 
         //89 342 ppu cycles per frame
         //Total cpu cycles 29_781 = 89_343 ppu cycles
-        assert_eq!(false, ppu.sync(113+45, screen)); // cycle count = 136
+        assert_eq!(false, ppu.sync(113 + 45, screen)); // cycle count = 136
 
         assert_eq!(true, ppu.sync(27_462, screen)); //cycle count = 82 522
         assert_eq!(true, ppu.status_register.is_vblank());
@@ -570,7 +634,7 @@ pub mod tests {
 
         ppu.set_ppu_ctrl(0x80);
         update_ppu(27393, &mut ppu); //82_179 = VBL-3
-        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_181)
+                                     //The following 'status' read will happen 2 ppu cycles later (i.e at 82_181)
         assert_eq!(0x00, ppu.status(0) & 0x80); //Reads one PPU clock before vbl suppresses vbl for this frame
         assert_eq!(false, ppu.sync(4, screen)); //82_191
         assert_eq!(0x00, ppu.status(0) & 0x80); //VBL has been suppressed by previous read
@@ -583,8 +647,8 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
         ppu.set_ppu_ctrl(0x80);
-        update_ppu(29781+27393, &mut ppu); //82_180 = VBL-2
-        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_182)
+        update_ppu(29781 + 27393, &mut ppu); //82_180 = VBL-2
+                                             //The following 'status' read will happen 2 ppu cycles later (i.e at 82_182)
         assert_eq!(0x80, ppu.status(0) & 0x80); //Reads status exactly on vbl suppresses nmi
         assert_eq!(false, ppu.sync(2, screen));
     }
@@ -596,8 +660,8 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
         ppu.set_ppu_ctrl(0x80);
-        update_ppu(27392+29781*4, &mut ppu); //82_180 = VBL-1
-        //The following 'status' read will happen 2 ppu cycles later (i.e at 82_182)
+        update_ppu(27392 + 29781 * 4, &mut ppu); //82_180 = VBL-1
+                                                 //The following 'status' read will happen 2 ppu cycles later (i.e at 82_182)
         assert_eq!(0x80, ppu.status(0) & 0x80); //Reads status exactly on vbl suppresses nmi
         assert_eq!(false, ppu.sync(2, screen));
     }
@@ -634,7 +698,7 @@ pub mod tests {
     fn read_status_occuring_mid_instruction() {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
-        update_ppu(29_781+27_393, &mut ppu); //82_180
+        update_ppu(29_781 + 27_393, &mut ppu); //82_180
         assert_eq!(0x80, ppu.status(0) & 0x80); //82_182
     }
 
@@ -646,7 +710,8 @@ pub mod tests {
     }
 
     #[test]
-    fn the_update_after_a_status_read_should_subtract_the_cycles_already_consumed_by_the_status_read() {
+    fn the_update_after_a_status_read_should_subtract_the_cycles_already_consumed_by_the_status_read(
+    ) {
         let screen = &mut ScreenMock::new();
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
@@ -676,7 +741,7 @@ pub mod tests {
         let mut ppu = PPU::new(PPUMemory::no_mirroring());
 
         ppu.set_ppu_mask(0x18, 0);
-        update_ppu(29781+27394, &mut ppu); //82_183
+        update_ppu(29781 + 27394, &mut ppu); //82_183
         assert_eq!(true, ppu.status_register.is_vblank());
 
         update_ppu(29780, &mut ppu); //82_182 (82_181 but odd frame should skip 1 cycle)

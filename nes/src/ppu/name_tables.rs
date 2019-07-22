@@ -1,4 +1,4 @@
-use memory::{Memory, Address};
+use memory::{Address, Memory};
 use ppu::attributetable::AttributeTable;
 use ppu::screen::PixelBuffer;
 use std::cell::Cell;
@@ -14,7 +14,7 @@ struct Tile {
 impl Tile {
     fn new() -> Tile {
         Tile {
-            pattern_and_colour: (0,0),
+            pattern_and_colour: (0, 0),
             modified: Cell::new(true),
         }
     }
@@ -32,23 +32,23 @@ impl Tile {
 
 pub struct NameTable {
     tiles: Vec<Vec<Tile>>,
-    raw_data: Vec<u8>
+    raw_data: Vec<u8>,
 }
-use ppu::ppumemory::Palette;
 use ppu::pattern::{Pattern, Pixel};
+use ppu::ppumemory::Palette;
 
 impl NameTable {
-    pub fn from_memory(memory: &Memory) -> NameTable {
-        let mut tiles = vec!(vec!(Tile::new(); 64); 60);
+    pub fn from_memory(memory: &dyn Memory) -> NameTable {
+        let mut tiles = vec![vec!(Tile::new(); 64); 60];
         for name_table_index in 0..4 {
-            let name_table_base = (0x2000 + name_table_index*0x400) as u16;
+            let name_table_base = (0x2000 + name_table_index * 0x400) as u16;
             let mut name_table = name_table_base;
             let x_offset_multiplier = name_table_index & 0x01;
             let y_offset_multiplier = (name_table_index & 0x2) >> 1;
             for row in 0..30 {
                 for col in 0..32 {
-                    let absolute_row = y_offset_multiplier*30 + row;
-                    let absolute_col = x_offset_multiplier*32 + col;
+                    let absolute_row = y_offset_multiplier * 30 + row;
+                    let absolute_col = x_offset_multiplier * 32 + col;
                     let pattern_table_address = memory.get(name_table, 0);
                     let colour_palette = {
                         let attribute_table = AttributeTable {
@@ -57,13 +57,14 @@ impl NameTable {
                         };
                         attribute_table.get_palette_index(row as u16, col as u16)
                     };
-                    tiles[absolute_row][absolute_col].pattern_and_colour = (pattern_table_address, colour_palette);
+                    tiles[absolute_row][absolute_col].pattern_and_colour =
+                        (pattern_table_address, colour_palette);
                     name_table += 1;
                 }
             }
         }
 
-        let mut raw_data = vec!(0; 0x1000);
+        let mut raw_data = vec![0; 0x1000];
         memory.dma(0x2000..0x3000, &mut raw_data);
         NameTable {
             tiles: tiles,
@@ -94,8 +95,8 @@ impl NameTable {
         let y_offset_multiplier = (name_table_index & 0x2) >> 1;
         for row in 0..30 {
             for col in 0..32 {
-                let absolute_row = y_offset_multiplier*30 + row;
-                let absolute_col = x_offset_multiplier*32 + col;
+                let absolute_row = y_offset_multiplier * 30 + row;
+                let absolute_col = x_offset_multiplier * 32 + col;
                 let tile = &self.tiles[absolute_row][absolute_col];
                 if tile.modified.get() {
                     let (pattern, colour_palette) = tile.pattern_and_colour;
@@ -103,8 +104,8 @@ impl NameTable {
                     pattern.update_buffer(
                         pixel_buffer,
                         &palettes[colour_palette as usize],
-                        absolute_col*8,
-                        absolute_row*8
+                        absolute_col * 8,
+                        absolute_row * 8,
                     );
                     tile.modified.set(false);
                 }
@@ -113,8 +114,8 @@ impl NameTable {
     }
 
     pub fn pixel(&self, x: u16, y: u16, patterns: &[Pattern]) -> Pixel {
-        let row = (y/8) as usize;
-        let col = (x/8) as usize;
+        let row = (y / 8) as usize;
+        let col = (x / 8) as usize;
         let &(pattern, _) = &self.tiles[row][col].pattern_and_colour;
         let pattern = patterns[pattern as usize];
         return pattern.pixel((x & 0x7) as u8, (y & 0x7) as u8);
@@ -131,16 +132,16 @@ impl Memory for NameTable {
         let col_offset: usize = if address & 0x400 == 0 { 0 } else { 32 };
         if address & 0x3C0 == 0x3C0 {
             //Attribute table
-            let row = row_offset + ((address as usize >> 3) & 0x7)*4;
-            let col = col_offset + (address as usize & 0x7)*4;
+            let row = row_offset + ((address as usize >> 3) & 0x7) * 4;
+            let col = col_offset + (address as usize & 0x7) * 4;
             let mut value = value;
             let rows = if row == 29 || row == 58 { 1 } else { 2 };
             for i in 0..rows {
                 for j in 0..2 {
-                    self.tiles[row+i*2][col+j*2].colour(value & 0b11);
-                    self.tiles[row+i*2][col+j*2 + 1].colour(value & 0b11);
-                    self.tiles[row+i*2 + 1][col+j*2].colour(value & 0b11);
-                    self.tiles[row+i*2 + 1][col+j*2 + 1].colour(value & 0b11);
+                    self.tiles[row + i * 2][col + j * 2].colour(value & 0b11);
+                    self.tiles[row + i * 2][col + j * 2 + 1].colour(value & 0b11);
+                    self.tiles[row + i * 2 + 1][col + j * 2].colour(value & 0b11);
+                    self.tiles[row + i * 2 + 1][col + j * 2 + 1].colour(value & 0b11);
                     value >>= 2;
                 }
             }
@@ -153,11 +154,10 @@ impl Memory for NameTable {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::NameTable;
-    use memory::{Memory, BasicMemory};
+    use memory::{BasicMemory, Memory};
     use ppu::pattern::Pattern;
 
     #[test]
@@ -221,7 +221,6 @@ mod test {
         populate(&mut name_table);
 
         assert_name_table(&name_table, row_offset, col_offset);
-
     }
 
     fn name_table_from_memory(row_offset: u16, col_offset: u16) {
@@ -232,7 +231,7 @@ mod test {
         assert_name_table(&name_table, row_offset, col_offset);
     }
 
-    fn populate(memory: &mut Memory) {
+    fn populate(memory: &mut dyn Memory) {
         memory.set(0x23C0, 0b11_10_01_00, 0);
         memory.set(0x23C1, 0b00_01_10_11, 0);
         memory.set(0x23C9, 0b11_10_01_00, 0);
@@ -264,68 +263,211 @@ mod test {
     }
 
     fn assert_name_table(name_table: &NameTable, row_offset: u16, col_offset: u16) {
-        assert_eq!((0x00, 0x00), name_table.tile(row_offset+0,col_offset+0));
-        assert_eq!((0x01, 0x00), name_table.tile(row_offset+0,col_offset+1));
-        assert_eq!((0x02, 0x01), name_table.tile(row_offset+0,col_offset+2));
-        assert_eq!((0x03, 0x01), name_table.tile(row_offset+0,col_offset+3));
+        assert_eq!(
+            (0x00, 0x00),
+            name_table.tile(row_offset + 0, col_offset + 0)
+        );
+        assert_eq!(
+            (0x01, 0x00),
+            name_table.tile(row_offset + 0, col_offset + 1)
+        );
+        assert_eq!(
+            (0x02, 0x01),
+            name_table.tile(row_offset + 0, col_offset + 2)
+        );
+        assert_eq!(
+            (0x03, 0x01),
+            name_table.tile(row_offset + 0, col_offset + 3)
+        );
 
-        assert_eq!((0x20, 0x00), name_table.tile(row_offset+1,col_offset+0));
-        assert_eq!((0x21, 0x00), name_table.tile(row_offset+1,col_offset+1));
-        assert_eq!((0x22, 0x01), name_table.tile(row_offset+1,col_offset+2));
-        assert_eq!((0x23, 0x01), name_table.tile(row_offset+1,col_offset+3));
+        assert_eq!(
+            (0x20, 0x00),
+            name_table.tile(row_offset + 1, col_offset + 0)
+        );
+        assert_eq!(
+            (0x21, 0x00),
+            name_table.tile(row_offset + 1, col_offset + 1)
+        );
+        assert_eq!(
+            (0x22, 0x01),
+            name_table.tile(row_offset + 1, col_offset + 2)
+        );
+        assert_eq!(
+            (0x23, 0x01),
+            name_table.tile(row_offset + 1, col_offset + 3)
+        );
 
-        assert_eq!((0x40, 0x02), name_table.tile(row_offset+2,col_offset+0));
-        assert_eq!((0x41, 0x02), name_table.tile(row_offset+2,col_offset+1));
-        assert_eq!((0x42, 0x03), name_table.tile(row_offset+2,col_offset+2));
-        assert_eq!((0x43, 0x03), name_table.tile(row_offset+2,col_offset+3));
+        assert_eq!(
+            (0x40, 0x02),
+            name_table.tile(row_offset + 2, col_offset + 0)
+        );
+        assert_eq!(
+            (0x41, 0x02),
+            name_table.tile(row_offset + 2, col_offset + 1)
+        );
+        assert_eq!(
+            (0x42, 0x03),
+            name_table.tile(row_offset + 2, col_offset + 2)
+        );
+        assert_eq!(
+            (0x43, 0x03),
+            name_table.tile(row_offset + 2, col_offset + 3)
+        );
 
-        assert_eq!((0x60, 0x02), name_table.tile(row_offset+3,col_offset+0));
-        assert_eq!((0x61, 0x02), name_table.tile(row_offset+3,col_offset+1));
-        assert_eq!((0x62, 0x03), name_table.tile(row_offset+3,col_offset+2));
-        assert_eq!((0x63, 0x03), name_table.tile(row_offset+3,col_offset+3));
+        assert_eq!(
+            (0x60, 0x02),
+            name_table.tile(row_offset + 3, col_offset + 0)
+        );
+        assert_eq!(
+            (0x61, 0x02),
+            name_table.tile(row_offset + 3, col_offset + 1)
+        );
+        assert_eq!(
+            (0x62, 0x03),
+            name_table.tile(row_offset + 3, col_offset + 2)
+        );
+        assert_eq!(
+            (0x63, 0x03),
+            name_table.tile(row_offset + 3, col_offset + 3)
+        );
 
         //Quadrants of 0x23C1
-        assert_eq!((0x04, 0x03), name_table.tile(row_offset+0,col_offset+ 4));
-        assert_eq!((0x05, 0x03), name_table.tile(row_offset+0,col_offset+ 5));
-        assert_eq!((0x24, 0x03), name_table.tile(row_offset+1,col_offset+ 4));
-        assert_eq!((0x25, 0x03), name_table.tile(row_offset+1,col_offset+ 5));
+        assert_eq!(
+            (0x04, 0x03),
+            name_table.tile(row_offset + 0, col_offset + 4)
+        );
+        assert_eq!(
+            (0x05, 0x03),
+            name_table.tile(row_offset + 0, col_offset + 5)
+        );
+        assert_eq!(
+            (0x24, 0x03),
+            name_table.tile(row_offset + 1, col_offset + 4)
+        );
+        assert_eq!(
+            (0x25, 0x03),
+            name_table.tile(row_offset + 1, col_offset + 5)
+        );
 
-        assert_eq!((0x06, 0x02), name_table.tile(row_offset+0,col_offset+ 6));
-        assert_eq!((0x07, 0x02), name_table.tile(row_offset+0,col_offset+ 7));
-        assert_eq!((0x26, 0x02), name_table.tile(row_offset+1,col_offset+ 6));
-        assert_eq!((0x27, 0x02), name_table.tile(row_offset+1,col_offset+ 7));
+        assert_eq!(
+            (0x06, 0x02),
+            name_table.tile(row_offset + 0, col_offset + 6)
+        );
+        assert_eq!(
+            (0x07, 0x02),
+            name_table.tile(row_offset + 0, col_offset + 7)
+        );
+        assert_eq!(
+            (0x26, 0x02),
+            name_table.tile(row_offset + 1, col_offset + 6)
+        );
+        assert_eq!(
+            (0x27, 0x02),
+            name_table.tile(row_offset + 1, col_offset + 7)
+        );
 
-        assert_eq!((0x44, 0x01), name_table.tile(row_offset+2,col_offset+ 4));
-        assert_eq!((0x45, 0x01), name_table.tile(row_offset+2,col_offset+ 5));
-        assert_eq!((0x64, 0x01), name_table.tile(row_offset+3,col_offset+ 4));
-        assert_eq!((0x65, 0x01), name_table.tile(row_offset+3,col_offset+ 5));
+        assert_eq!(
+            (0x44, 0x01),
+            name_table.tile(row_offset + 2, col_offset + 4)
+        );
+        assert_eq!(
+            (0x45, 0x01),
+            name_table.tile(row_offset + 2, col_offset + 5)
+        );
+        assert_eq!(
+            (0x64, 0x01),
+            name_table.tile(row_offset + 3, col_offset + 4)
+        );
+        assert_eq!(
+            (0x65, 0x01),
+            name_table.tile(row_offset + 3, col_offset + 5)
+        );
 
-        assert_eq!((0x46, 0x00), name_table.tile(row_offset+2,col_offset+ 6));
-        assert_eq!((0x47, 0x00), name_table.tile(row_offset+2,col_offset+ 7));
-        assert_eq!((0x66, 0x00), name_table.tile(row_offset+3,col_offset+ 6));
-        assert_eq!((0x67, 0x00), name_table.tile(row_offset+3,col_offset+ 7));
-
+        assert_eq!(
+            (0x46, 0x00),
+            name_table.tile(row_offset + 2, col_offset + 6)
+        );
+        assert_eq!(
+            (0x47, 0x00),
+            name_table.tile(row_offset + 2, col_offset + 7)
+        );
+        assert_eq!(
+            (0x66, 0x00),
+            name_table.tile(row_offset + 3, col_offset + 6)
+        );
+        assert_eq!(
+            (0x67, 0x00),
+            name_table.tile(row_offset + 3, col_offset + 7)
+        );
 
         //Quadrants of 0x23C9
-        assert_eq!((0x84, 0x00), name_table.tile(row_offset+4,col_offset+ 4));
-        assert_eq!((0x85, 0x00), name_table.tile(row_offset+4,col_offset+ 5));
-        assert_eq!((0xA4, 0x00), name_table.tile(row_offset+5,col_offset+ 4));
-        assert_eq!((0xA5, 0x00), name_table.tile(row_offset+5,col_offset+ 5));
+        assert_eq!(
+            (0x84, 0x00),
+            name_table.tile(row_offset + 4, col_offset + 4)
+        );
+        assert_eq!(
+            (0x85, 0x00),
+            name_table.tile(row_offset + 4, col_offset + 5)
+        );
+        assert_eq!(
+            (0xA4, 0x00),
+            name_table.tile(row_offset + 5, col_offset + 4)
+        );
+        assert_eq!(
+            (0xA5, 0x00),
+            name_table.tile(row_offset + 5, col_offset + 5)
+        );
 
-        assert_eq!((0x86, 0x01), name_table.tile(row_offset+4,col_offset+ 6));
-        assert_eq!((0x87, 0x01), name_table.tile(row_offset+4,col_offset+ 7));
-        assert_eq!((0xA6, 0x01), name_table.tile(row_offset+5,col_offset+ 6));
-        assert_eq!((0xA7, 0x01), name_table.tile(row_offset+5,col_offset+ 7));
+        assert_eq!(
+            (0x86, 0x01),
+            name_table.tile(row_offset + 4, col_offset + 6)
+        );
+        assert_eq!(
+            (0x87, 0x01),
+            name_table.tile(row_offset + 4, col_offset + 7)
+        );
+        assert_eq!(
+            (0xA6, 0x01),
+            name_table.tile(row_offset + 5, col_offset + 6)
+        );
+        assert_eq!(
+            (0xA7, 0x01),
+            name_table.tile(row_offset + 5, col_offset + 7)
+        );
 
-        assert_eq!((0xC4, 0x02), name_table.tile(row_offset+6,col_offset+ 4));
-        assert_eq!((0xC5, 0x02), name_table.tile(row_offset+6,col_offset+ 5));
-        assert_eq!((0xE4, 0x02), name_table.tile(row_offset+7,col_offset+ 4));
-        assert_eq!((0xE5, 0x02), name_table.tile(row_offset+7,col_offset+ 5));
+        assert_eq!(
+            (0xC4, 0x02),
+            name_table.tile(row_offset + 6, col_offset + 4)
+        );
+        assert_eq!(
+            (0xC5, 0x02),
+            name_table.tile(row_offset + 6, col_offset + 5)
+        );
+        assert_eq!(
+            (0xE4, 0x02),
+            name_table.tile(row_offset + 7, col_offset + 4)
+        );
+        assert_eq!(
+            (0xE5, 0x02),
+            name_table.tile(row_offset + 7, col_offset + 5)
+        );
 
-        assert_eq!((0xC6, 0x03), name_table.tile(row_offset+6,col_offset+ 6));
-        assert_eq!((0xC7, 0x03), name_table.tile(row_offset+6,col_offset+ 7));
-        assert_eq!((0xE6, 0x03), name_table.tile(row_offset+7,col_offset+ 6));
-        assert_eq!((0xE7, 0x03), name_table.tile(row_offset+7,col_offset+ 7));
+        assert_eq!(
+            (0xC6, 0x03),
+            name_table.tile(row_offset + 6, col_offset + 6)
+        );
+        assert_eq!(
+            (0xC7, 0x03),
+            name_table.tile(row_offset + 6, col_offset + 7)
+        );
+        assert_eq!(
+            (0xE6, 0x03),
+            name_table.tile(row_offset + 7, col_offset + 6)
+        );
+        assert_eq!(
+            (0xE7, 0x03),
+            name_table.tile(row_offset + 7, col_offset + 7)
+        );
     }
 
     #[test]
@@ -335,38 +477,86 @@ mod test {
 
         let patterns = patterns();
 
-        assert_eq!(patterns[0].pixel(0,0), name_table.pixel(0, 0, &patterns));
-        assert_eq!(patterns[0].pixel(1,0), name_table.pixel(1, 0, &patterns));
-        assert_eq!(patterns[0].pixel(2,0), name_table.pixel(2, 0, &patterns));
-        assert_eq!(patterns[0].pixel(3,0), name_table.pixel(3, 0, &patterns));
-        assert_eq!(patterns[0].pixel(4,0), name_table.pixel(4, 0, &patterns));
+        assert_eq!(patterns[0].pixel(0, 0), name_table.pixel(0, 0, &patterns));
+        assert_eq!(patterns[0].pixel(1, 0), name_table.pixel(1, 0, &patterns));
+        assert_eq!(patterns[0].pixel(2, 0), name_table.pixel(2, 0, &patterns));
+        assert_eq!(patterns[0].pixel(3, 0), name_table.pixel(3, 0, &patterns));
+        assert_eq!(patterns[0].pixel(4, 0), name_table.pixel(4, 0, &patterns));
 
-        assert_eq!(patterns[1].pixel(0,1), name_table.pixel(8,  1, &patterns));
-        assert_eq!(patterns[1].pixel(1,1), name_table.pixel(9,  1, &patterns));
-        assert_eq!(patterns[1].pixel(2,1), name_table.pixel(10, 1, &patterns));
-        assert_eq!(patterns[1].pixel(3,1), name_table.pixel(11, 1, &patterns));
-        assert_eq!(patterns[1].pixel(4,1), name_table.pixel(12, 1, &patterns));
-        assert_eq!(patterns[1].pixel(5,1), name_table.pixel(13, 1, &patterns));
-        assert_eq!(patterns[1].pixel(6,1), name_table.pixel(14, 1, &patterns));
-        assert_eq!(patterns[1].pixel(7,1), name_table.pixel(15, 1, &patterns));
+        assert_eq!(patterns[1].pixel(0, 1), name_table.pixel(8, 1, &patterns));
+        assert_eq!(patterns[1].pixel(1, 1), name_table.pixel(9, 1, &patterns));
+        assert_eq!(patterns[1].pixel(2, 1), name_table.pixel(10, 1, &patterns));
+        assert_eq!(patterns[1].pixel(3, 1), name_table.pixel(11, 1, &patterns));
+        assert_eq!(patterns[1].pixel(4, 1), name_table.pixel(12, 1, &patterns));
+        assert_eq!(patterns[1].pixel(5, 1), name_table.pixel(13, 1, &patterns));
+        assert_eq!(patterns[1].pixel(6, 1), name_table.pixel(14, 1, &patterns));
+        assert_eq!(patterns[1].pixel(7, 1), name_table.pixel(15, 1, &patterns));
 
-        assert_eq!(patterns[32].pixel(0,0), name_table.pixel(0, 8+0, &patterns));
-        assert_eq!(patterns[32].pixel(1,0), name_table.pixel(1, 8+0, &patterns));
-        assert_eq!(patterns[32].pixel(2,0), name_table.pixel(2, 8+0, &patterns));
-        assert_eq!(patterns[32].pixel(3,0), name_table.pixel(3, 8+0, &patterns));
-        assert_eq!(patterns[32].pixel(4,0), name_table.pixel(4, 8+0, &patterns));
-        assert_eq!(patterns[32].pixel(5,0), name_table.pixel(5, 8+0, &patterns));
-        assert_eq!(patterns[32].pixel(6,0), name_table.pixel(6, 8+0, &patterns));
-        assert_eq!(patterns[32].pixel(7,0), name_table.pixel(7, 8+0, &patterns));
+        assert_eq!(
+            patterns[32].pixel(0, 0),
+            name_table.pixel(0, 8 + 0, &patterns)
+        );
+        assert_eq!(
+            patterns[32].pixel(1, 0),
+            name_table.pixel(1, 8 + 0, &patterns)
+        );
+        assert_eq!(
+            patterns[32].pixel(2, 0),
+            name_table.pixel(2, 8 + 0, &patterns)
+        );
+        assert_eq!(
+            patterns[32].pixel(3, 0),
+            name_table.pixel(3, 8 + 0, &patterns)
+        );
+        assert_eq!(
+            patterns[32].pixel(4, 0),
+            name_table.pixel(4, 8 + 0, &patterns)
+        );
+        assert_eq!(
+            patterns[32].pixel(5, 0),
+            name_table.pixel(5, 8 + 0, &patterns)
+        );
+        assert_eq!(
+            patterns[32].pixel(6, 0),
+            name_table.pixel(6, 8 + 0, &patterns)
+        );
+        assert_eq!(
+            patterns[32].pixel(7, 0),
+            name_table.pixel(7, 8 + 0, &patterns)
+        );
 
-        assert_eq!(patterns[118].pixel(0,4), name_table.pixel(176+0, 24+4, &patterns));
-        assert_eq!(patterns[118].pixel(1,4), name_table.pixel(176+1, 24+4, &patterns));
-        assert_eq!(patterns[118].pixel(2,4), name_table.pixel(176+2, 24+4, &patterns));
-        assert_eq!(patterns[118].pixel(3,4), name_table.pixel(176+3, 24+4, &patterns));
-        assert_eq!(patterns[118].pixel(4,4), name_table.pixel(176+4, 24+4, &patterns));
-        assert_eq!(patterns[118].pixel(5,4), name_table.pixel(176+5, 24+4, &patterns));
-        assert_eq!(patterns[118].pixel(6,4), name_table.pixel(176+6, 24+4, &patterns));
-        assert_eq!(patterns[118].pixel(7,4), name_table.pixel(176+7, 24+4, &patterns));
+        assert_eq!(
+            patterns[118].pixel(0, 4),
+            name_table.pixel(176 + 0, 24 + 4, &patterns)
+        );
+        assert_eq!(
+            patterns[118].pixel(1, 4),
+            name_table.pixel(176 + 1, 24 + 4, &patterns)
+        );
+        assert_eq!(
+            patterns[118].pixel(2, 4),
+            name_table.pixel(176 + 2, 24 + 4, &patterns)
+        );
+        assert_eq!(
+            patterns[118].pixel(3, 4),
+            name_table.pixel(176 + 3, 24 + 4, &patterns)
+        );
+        assert_eq!(
+            patterns[118].pixel(4, 4),
+            name_table.pixel(176 + 4, 24 + 4, &patterns)
+        );
+        assert_eq!(
+            patterns[118].pixel(5, 4),
+            name_table.pixel(176 + 5, 24 + 4, &patterns)
+        );
+        assert_eq!(
+            patterns[118].pixel(6, 4),
+            name_table.pixel(176 + 6, 24 + 4, &patterns)
+        );
+        assert_eq!(
+            patterns[118].pixel(7, 4),
+            name_table.pixel(176 + 7, 24 + 4, &patterns)
+        );
     }
 
     fn patterns() -> Vec<Pattern> {
@@ -382,4 +572,3 @@ mod test {
         return patterns;
     }
 }
-

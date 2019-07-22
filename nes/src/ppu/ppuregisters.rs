@@ -1,8 +1,8 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use memory::Memory;
 use memory::MemoryMappedIO;
 use ppu::PPU;
-use memory::Memory;
+use std::cell::RefCell;
+use std::rc::Rc;
 use Cycles;
 
 pub struct PPUCtrl(pub Rc<RefCell<PPU>>);
@@ -16,118 +16,123 @@ pub struct OAMData(pub Rc<RefCell<PPU>>);
 pub struct OAMDMA(pub Rc<RefCell<PPU>>);
 
 impl MemoryMappedIO for PPUCtrl {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         self.0.borrow().ppu_ctrl()
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().set_ppu_ctrl_at_cycle(value, 0);
     }
 
-    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: Cycles) {
+    fn write_at_cycle(&mut self, _: &mut dyn Memory, value: u8, sub_cycle: Cycles) {
         self.0.borrow_mut().set_ppu_ctrl_at_cycle(value, sub_cycle);
     }
 }
 
 impl MemoryMappedIO for PPUMask {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().set_ppu_mask(value, 0);
     }
 
-    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: Cycles) {
+    fn write_at_cycle(&mut self, _: &mut dyn Memory, value: u8, sub_cycle: Cycles) {
         self.0.borrow_mut().set_ppu_mask(value, sub_cycle);
     }
 }
 impl MemoryMappedIO for PPUStatus {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         self.0.borrow_mut().status(0)
     }
-    fn write(&mut self, _: &mut Memory, _: u8) {
+    fn write(&mut self, _: &mut dyn Memory, _: u8) {
         //Do nothing
     }
-    fn read_at_cycle(&self, _: &Memory, sub_cycle: Cycles) -> u8 {
+    fn read_at_cycle(&self, _: &dyn Memory, sub_cycle: Cycles) -> u8 {
         self.0.borrow_mut().status(sub_cycle)
     }
 }
 impl MemoryMappedIO for PPUScroll {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().set_scroll(value);
     }
 }
 impl MemoryMappedIO for PPUAddress {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().set_vram(value);
     }
 }
 
 impl MemoryMappedIO for PPUData {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         self.0.borrow_mut().read_from_vram()
     }
 
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().write_to_vram(value);
     }
 }
 
 impl MemoryMappedIO for OAMDMA {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, memory: &mut Memory, value: u8) {
+    fn write(&mut self, memory: &mut dyn Memory, value: u8) {
         let dma_address: u16 = (value as u16) << 8;
         let mut ppu = self.0.borrow_mut();
         let sprites = ppu.sprites_mut();
         let oam_address = sprites.address() as usize;
         if oam_address == 0 {
-            memory.dma(dma_address..(dma_address+256), sprites.slice());
+            memory.dma(dma_address..(dma_address + 256), sprites.slice());
         } else {
-            let wrap_around_address: u16 = dma_address+(256-oam_address as u16);
-            memory.dma(dma_address..wrap_around_address, &mut sprites.slice()[oam_address..(256-oam_address)+1]);
-            memory.dma(wrap_around_address..(dma_address+256), &mut sprites.slice()[0..]);
+            let wrap_around_address: u16 = dma_address + (256 - oam_address as u16);
+            memory.dma(
+                dma_address..wrap_around_address,
+                &mut sprites.slice()[oam_address..(256 - oam_address) + 1],
+            );
+            memory.dma(
+                wrap_around_address..(dma_address + 256),
+                &mut sprites.slice()[0..],
+            );
         }
     }
 }
 
 impl MemoryMappedIO for OAMAddress {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().sprites_mut().set_address(value);
     }
 }
 
 impl MemoryMappedIO for OAMData {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         self.0.borrow().sprites().read_byte()
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().sprites_mut().write_byte(value);
     }
 }
 
 #[cfg(test)]
 mod test {
+    use super::{OAMAddress, OAMData, PPUAddress, PPUData, OAMDMA};
     use memory::BasicMemory;
     use memory::Memory;
-    use ppu::PPU;
     use ppu::ppumemory::PPUMemory;
-    use super::{PPUAddress,PPUData, OAMAddress, OAMData, OAMDMA};
-    use std::rc::Rc;
+    use ppu::PPU;
     use std::cell::RefCell;
-
+    use std::rc::Rc;
 
     #[test]
-    fn test_write_to_vram() { 
+    fn test_write_to_vram() {
         let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::no_mirroring())));
 
         {
@@ -160,12 +165,15 @@ mod test {
     use memory::SharedMemory;
     use ppu::ppumemory::Mirroring;
     #[test]
-    fn test_read_from_vram() { 
+    fn test_read_from_vram() {
         let ppu_internal_memory = memory!(
             0x2000 => 0x05,
             0x2001 => 0x10
         );
-        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(
+            SharedMemory::wrap(ppu_internal_memory),
+            Mirroring::NoMirroring,
+        ))));
 
         {
             let basic_memory = BasicMemory::new();
@@ -191,7 +199,10 @@ mod test {
             0x3F00 => 0x05,
             0x3F01 => 0x10
         );
-        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(
+            SharedMemory::wrap(ppu_internal_memory),
+            Mirroring::NoMirroring,
+        ))));
 
         {
             let basic_memory = BasicMemory::new();
@@ -215,7 +226,10 @@ mod test {
             0x2f12 => 0x9A,
             0x3F12 => 0x05
         );
-        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(
+            SharedMemory::wrap(ppu_internal_memory),
+            Mirroring::NoMirroring,
+        ))));
 
         {
             let basic_memory = BasicMemory::new();
@@ -310,6 +324,6 @@ mod test {
         );
         let mut cpu = CPU::new(0x8000);
         let cycles = OpCodes::new().execute_instruction(&mut cpu, &mut memory);
-        assert_eq!(4+513, cycles);
+        assert_eq!(4 + 513, cycles);
     }
 }

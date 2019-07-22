@@ -1,19 +1,18 @@
-use memory::{MemoryMappedIO, Memory};
 use super::square::PulseGenerator;
-use std::rc::Rc;
+use memory::{Memory, MemoryMappedIO};
 use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct Register1(pub Rc<RefCell<PulseGenerator>>);
 pub struct Register3(pub Rc<RefCell<PulseGenerator>>);
 pub struct Register4(pub Rc<RefCell<PulseGenerator>>);
 
-
 impl MemoryMappedIO for Register1 {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
 
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         if value & 0x10 > 0 {
             self.0.borrow_mut().volume(value & 0xF);
         } else {
@@ -22,20 +21,20 @@ impl MemoryMappedIO for Register1 {
     }
 }
 impl MemoryMappedIO for Register3 {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         0
     }
 
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().timer_low(value);
     }
 }
 impl MemoryMappedIO for Register4 {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
 
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().length(value >> 3);
         self.0.borrow_mut().timer_high(value & 0x07);
     }
@@ -44,10 +43,10 @@ impl MemoryMappedIO for Register4 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use memory::{Memory, BasicMemory, CPUMemory};
+    use memory::{BasicMemory, CPUMemory, Memory};
     use sound::square::PulseGenerator;
-    use std::cell::RefCell;
     use sound::AudioDevice;
+    use std::cell::RefCell;
 
     use sound::counter::ClockTester;
 
@@ -60,7 +59,7 @@ mod test {
         cpu_memory.set(0x4003, 0b0100_1001, 0);
 
         assert_eq!(generator.borrow().pulse_value(), 0);
-        let mut clock = ClockTester::new(generator, 426*2);
+        let mut clock = ClockTester::new(generator, 426 * 2);
         {
             clock.count_down(
                 |gen, tick| gen.borrow_mut().update(tick),
@@ -70,10 +69,14 @@ mod test {
         }
 
         for _ in 0..176 {
-            execute_one_cycle(
-                &mut clock,
-                &|gen, cycles| assert_eq!(gen.pulse_value(), if cycles >= 14913*8 { 0 } else { 10 }, "After {} cycles", cycles)
-            );
+            execute_one_cycle(&mut clock, &|gen, cycles| {
+                assert_eq!(
+                    gen.pulse_value(),
+                    if cycles >= 14913 * 8 { 0 } else { 10 },
+                    "After {} cycles",
+                    cycles
+                )
+            });
         }
     }
 
@@ -84,21 +87,30 @@ mod test {
         cpu_memory.set(0x4000, 4, 0);
         cpu_memory.set(0x4002, 0xAA, 0);
         cpu_memory.set(0x4003, 0b0000_1001, 0);
-        let decaying_period = 14913*5;
-        let mut clock = ClockTester::new(generator, 426*2);
+        let decaying_period = 14913 * 5;
+        let mut clock = ClockTester::new(generator, 426 * 2);
         {
             clock.count_down(
                 |gen, tick| gen.borrow_mut().update(tick),
                 &|gen, cycles| assert_eq!(gen.borrow().pulse_value(), 0, "After {} cycles", cycles),
-                &|gen, cycles| assert_eq!(gen.borrow().pulse_value(), 15 - (cycles/decaying_period) as i16),
+                &|gen, cycles| {
+                    assert_eq!(
+                        gen.borrow().pulse_value(),
+                        15 - (cycles / decaying_period) as i16
+                    )
+                },
             );
         }
         use std::cmp;
         for _ in 0..1500 {
-            execute_one_cycle(
-                &mut clock,
-                &|gen, cycles| assert_eq!(gen.pulse_value(), cmp::max(0, 15 - (cycles/decaying_period) as i16), "After {} cycles", cycles)
-            );
+            execute_one_cycle(&mut clock, &|gen, cycles| {
+                assert_eq!(
+                    gen.pulse_value(),
+                    cmp::max(0, 15 - (cycles / decaying_period) as i16),
+                    "After {} cycles",
+                    cycles
+                )
+            });
         }
     }
 
@@ -123,7 +135,12 @@ mod test {
         }
     }
 
-    fn execute_one_cycle<F>(clock: &mut ClockTester<Rc<RefCell<PulseGenerator>>>, assert_value_high: &F) where F: Fn(&PulseGenerator, u64) {
+    fn execute_one_cycle<F>(
+        clock: &mut ClockTester<Rc<RefCell<PulseGenerator>>>,
+        assert_value_high: &F,
+    ) where
+        F: Fn(&PulseGenerator, u64),
+    {
         {
             for _ in 0..3 {
                 clock.count_down(
@@ -142,7 +159,9 @@ mod test {
             for _ in 0..3 {
                 clock.count_down(
                     |gen, tick| gen.borrow_mut().update(tick),
-                    &|gen, cycles| assert_eq!(gen.borrow().pulse_value(), 0, "After {} cycles", cycles),
+                    &|gen, cycles| {
+                        assert_eq!(gen.borrow().pulse_value(), 0, "After {} cycles", cycles)
+                    },
                     &|gen, _| assert_eq!(gen.borrow().pulse_value(), 0),
                 );
             }
