@@ -5,6 +5,7 @@ extern crate nes_sdl2;
 
 mod debugger;
 mod instruction_benchmark;
+mod runner;
 mod sdlscreentest;
 mod soundtest;
 
@@ -17,6 +18,7 @@ fn main() {
     }
 
     match args[1].trim() {
+        "run" => runner::start(),
         "debug" => debugger::start(),
         "sdl2screen" => sdlscreentest::start(),
         "sound" => soundtest::start(),
