@@ -51,7 +51,7 @@ impl FakeController {
             "down" => self.down.set(true),
             "left" => self.left.set(true),
             "right" => self.right.set(true),
-            _ => ()
+            _ => (),
         }
     }
 
@@ -65,7 +65,7 @@ impl FakeController {
             "down" => self.down.set(false),
             "left" => self.left.set(false),
             "right" => self.right.set(false),
-            _ => ()
+            _ => (),
         }
     }
 }

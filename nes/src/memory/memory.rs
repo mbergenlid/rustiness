@@ -1,7 +1,6 @@
-
 pub type Address = u16;
 use std::iter::Iterator;
-use std::ops::{Range, Index};
+use std::ops::{Index, Range};
 
 pub trait Memory {
     fn get(&self, address: Address, sub_cycle: u8) -> u8;
@@ -23,12 +22,14 @@ pub trait Memory {
 }
 
 pub struct BasicMemory {
-    data: Vec<u8>
+    data: Vec<u8>,
 }
 
 impl BasicMemory {
     pub fn new() -> BasicMemory {
-        return BasicMemory { data: vec![0; 65_536]};
+        return BasicMemory {
+            data: vec![0; 65_536],
+        };
     }
 }
 
@@ -41,7 +42,6 @@ impl Memory for BasicMemory {
         self.data[address as usize] = value;
     }
 }
-
 
 impl Index<Range<usize>> for BasicMemory {
     type Output = [u8];
@@ -62,7 +62,6 @@ pub trait MemoryMappedIO {
         self.write(memory, value)
     }
 }
-
 
 #[macro_export]
 macro_rules! memory {

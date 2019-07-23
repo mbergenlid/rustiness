@@ -1,4 +1,3 @@
-
 const APU_CYCLES_CLOCK_RATE: u32 = 14913;
 
 pub struct Envelope {
@@ -6,7 +5,7 @@ pub struct Envelope {
     volume: u8,
     decay_level: u8,
     cpu_cycles: u32,
-    constant_volume: bool
+    constant_volume: bool,
 }
 
 impl Envelope {
@@ -16,7 +15,7 @@ impl Envelope {
             divider: volume,
             decay_level: 15,
             cpu_cycles: 0,
-            constant_volume: false
+            constant_volume: false,
         }
     }
 
@@ -50,7 +49,6 @@ impl Envelope {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::Envelope;
@@ -61,13 +59,13 @@ mod test {
         let envelope = Envelope::decaying(10);
         assert_eq!(envelope.value(), 15);
         let mut value = 15;
-        let mut clock = ClockTester::new(envelope, (10+1)*super::APU_CYCLES_CLOCK_RATE);
+        let mut clock = ClockTester::new(envelope, (10 + 1) * super::APU_CYCLES_CLOCK_RATE);
         for i in 0..15 {
             println!("Iteration {}", i);
             clock.count_down(
                 |counter, tick| counter.clock(tick),
                 &|counter, cycles| assert_eq!(counter.value(), value, "Failed on clock {}", cycles),
-                &|counter, _| assert_eq!(counter.value(), value-1),
+                &|counter, _| assert_eq!(counter.value(), value - 1),
             );
             value -= 1;
         }
@@ -85,7 +83,7 @@ mod test {
     fn constant_volume() {
         let envelope = Envelope::constant(10);
         assert_eq!(envelope.value(), 10);
-        let mut clock = ClockTester::new(envelope, (10+1)*super::APU_CYCLES_CLOCK_RATE);
+        let mut clock = ClockTester::new(envelope, (10 + 1) * super::APU_CYCLES_CLOCK_RATE);
         for _ in 0..15 {
             clock.count_down(
                 |counter, tick| counter.clock(tick),

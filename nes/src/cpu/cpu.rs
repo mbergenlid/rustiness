@@ -1,4 +1,3 @@
-
 use memory::Address;
 
 pub const NEGATIVE_FLAG: u8 = 0b1000_0000;
@@ -33,38 +32,56 @@ pub struct CPU {
 
 impl PartialEq for CPU {
     fn eq(&self, other: &CPU) -> bool {
-        self.program_counter == other.program_counter &&
-            self.accumulator == other.accumulator &&
-            self.processor_status == other.processor_status &&
-            self.register_x == other.register_x &&
-            self.register_y == other.register_y &&
-            self.stack_pointer == other.stack_pointer
+        self.program_counter == other.program_counter
+            && self.accumulator == other.accumulator
+            && self.processor_status == other.processor_status
+            && self.register_x == other.register_x
+            && self.register_y == other.register_y
+            && self.stack_pointer == other.stack_pointer
     }
 }
 
-use std::fmt::{Formatter, Error, Display};
+use std::fmt::{Display, Error, Formatter};
 impl Display for CPU {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
         formatter.write_str("CPU:\t\t\t\t\t|\n").unwrap();
-        formatter.write_fmt(
-            format_args!("\tProgram counter:  0x{:4X}\t|\n", self.program_counter)
-        ).unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\tProgram counter:  0x{:4X}\t|\n",
+                self.program_counter
+            ))
+            .unwrap();
 
-        formatter.write_str("\tProcessor status: N O D I Z C\t|\n").unwrap();
-        formatter.write_fmt(format_args!("\t                  {} {} {} {} {} {}\t|\n",
-                 self.is_flag_set(NEGATIVE_FLAG) as u8,
-                 self.is_flag_set(OVERFLOW_FLAG) as u8,
-                 self.is_flag_set(DECIMAL_FLAG) as u8,
-                 self.is_flag_set(INTERRUPT_DISABLE_FLAG) as u8,
-                 self.is_flag_set(ZERO_FLAG) as u8,
-                 self.is_flag_set(CARRY_FLAG) as u8,
-        )).unwrap();
-        formatter.write_fmt(
-            format_args!("\tAccumulator:      0x{:02X}\t\t|\n", self.accumulator())).unwrap();
-        formatter.write_fmt(
-            format_args!("\tRegister X:       0x{:02X}\t\t|\n", self.register_x())).unwrap();
-        formatter.write_fmt(
-            format_args!("\tRegister Y:       0x{:02X}\t\t|\n", self.register_y()))
+        formatter
+            .write_str("\tProcessor status: N O D I Z C\t|\n")
+            .unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\t                  {} {} {} {} {} {}\t|\n",
+                self.is_flag_set(NEGATIVE_FLAG) as u8,
+                self.is_flag_set(OVERFLOW_FLAG) as u8,
+                self.is_flag_set(DECIMAL_FLAG) as u8,
+                self.is_flag_set(INTERRUPT_DISABLE_FLAG) as u8,
+                self.is_flag_set(ZERO_FLAG) as u8,
+                self.is_flag_set(CARRY_FLAG) as u8,
+            ))
+            .unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\tAccumulator:      0x{:02X}\t\t|\n",
+                self.accumulator()
+            ))
+            .unwrap();
+        formatter
+            .write_fmt(format_args!(
+                "\tRegister X:       0x{:02X}\t\t|\n",
+                self.register_x()
+            ))
+            .unwrap();
+        formatter.write_fmt(format_args!(
+            "\tRegister Y:       0x{:02X}\t\t|\n",
+            self.register_y()
+        ))
     }
 }
 
@@ -77,7 +94,7 @@ impl CPU {
             register_x: 0,
             register_y: 0,
             processor_status: 0x04,
-        }
+        };
     }
 
     pub fn set_flags(&mut self, flags: u8) {
@@ -93,7 +110,8 @@ impl CPU {
     }
 
     pub fn add_accumulator(&mut self, value: u8) {
-        let sum = self.accumulator as u16 + value as u16 + (self.processor_status & CARRY_FLAG) as u16;
+        let sum =
+            self.accumulator as u16 + value as u16 + (self.processor_status & CARRY_FLAG) as u16;
 
         if sum > 0xFF {
             self.set_flags(CARRY_FLAG);
@@ -105,8 +123,9 @@ impl CPU {
         } else {
             self.clear_flags(ZERO_FLAG);
         }
-        if value & 0x80 == 0 && self.accumulator & 0x80 == 0 && sum >= 0x80 ||
-            value & self.accumulator >= 0x80 && (sum as u8) < 0x80 {
+        if value & 0x80 == 0 && self.accumulator & 0x80 == 0 && sum >= 0x80
+            || value & self.accumulator >= 0x80 && (sum as u8) < 0x80
+        {
             self.set_flags(OVERFLOW_FLAG);
         } else {
             self.clear_flags(OVERFLOW_FLAG);
@@ -127,7 +146,8 @@ impl CPU {
 
         let new_value = self.subtract_without_carry(accumulator, value);
 
-        let actual_sum = ((self.accumulator as i8) as i16) - ((value as i8) as i16) - (borrow as i16);
+        let actual_sum =
+            ((self.accumulator as i8) as i16) - ((value as i8) as i16) - (borrow as i16);
         if actual_sum < -128 || actual_sum > 127 {
             self.set_flags(OVERFLOW_FLAG);
         } else {
@@ -319,7 +339,6 @@ impl CPU {
         self.register_y = value;
     }
 
-
     fn update_z_and_n_flags(&mut self, value: u8) {
         if value == 0 {
             self.set_flags(ZERO_FLAG);
@@ -385,7 +404,6 @@ impl CPU {
         self.stack_pointer = stack as u8;
         return stack;
     }
-
 }
 
 pub struct CpuBuilder {
@@ -441,7 +459,12 @@ mod test {
     fn test_sbc() {
         {
             let mut cpu = super::CpuBuilder::new()
-                .flags(super::NEGATIVE_FLAG | super::ZERO_FLAG | super::CARRY_FLAG | super::OVERFLOW_FLAG)
+                .flags(
+                    super::NEGATIVE_FLAG
+                        | super::ZERO_FLAG
+                        | super::CARRY_FLAG
+                        | super::OVERFLOW_FLAG,
+                )
                 .accumulator(0x02)
                 .build();
 
@@ -480,9 +503,7 @@ mod test {
         }
 
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(0x00)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(0x00).build();
 
             //0x00 - 1 - 0xFF = 0x100 - 1 - 0xFF = 0xFF - 0xFF
             cpu.sub_accumulator(0xFF);
@@ -521,9 +542,21 @@ mod test {
 
                     assert_eq!(s1.wrapping_sub(s2).wrapping_sub(1) as u8, cpu.accumulator());
                     if actual_sum >= -128 && actual_sum <= 127 {
-                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false, "Overflow should be clear: {} - {} - 1", s1, s2);
+                        assert_eq!(
+                            cpu.is_flag_set(super::OVERFLOW_FLAG),
+                            false,
+                            "Overflow should be clear: {} - {} - 1",
+                            s1,
+                            s2
+                        );
                     } else {
-                        assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true, "Overflow should be set: {} - {} - 1", s1, s2);
+                        assert_eq!(
+                            cpu.is_flag_set(super::OVERFLOW_FLAG),
+                            true,
+                            "Overflow should be set: {} - {} - 1",
+                            s1,
+                            s2
+                        );
                     }
                 }
                 {
@@ -662,9 +695,7 @@ mod test {
         assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
 
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(0x00)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(0x00).build();
             cpu.or_accumulator(0x00);
             assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
         }
@@ -689,9 +720,7 @@ mod test {
 
     #[test]
     fn test_load() {
-        let mut cpu = super::CpuBuilder::new()
-            .flags(super::NEGATIVE_FLAG)
-            .build();
+        let mut cpu = super::CpuBuilder::new().flags(super::NEGATIVE_FLAG).build();
 
         cpu.load_accumulator(0x00);
         assert_eq!(cpu.accumulator, 0x00);
@@ -712,9 +741,7 @@ mod test {
 
     #[test]
     fn test_xor() {
-        let mut cpu = super::CpuBuilder::new()
-            .accumulator(0x25)
-            .build();
+        let mut cpu = super::CpuBuilder::new().accumulator(0x25).build();
         cpu.xor_accumulator(0x01);
         assert_eq!(cpu.accumulator, 0x25 ^ 0x01);
 
@@ -730,9 +757,7 @@ mod test {
 
     #[test]
     fn test_increment() {
-        let mut cpu = super::CpuBuilder::new()
-            .flags(super::NEGATIVE_FLAG)
-            .build();
+        let mut cpu = super::CpuBuilder::new().flags(super::NEGATIVE_FLAG).build();
 
         let new_value = cpu.increment(0x02);
         assert_eq!(new_value, 0x03);
@@ -751,15 +776,12 @@ mod test {
 
     #[test]
     fn test_decrement() {
-        let mut cpu = super::CpuBuilder::new()
-            .flags(super::NEGATIVE_FLAG)
-            .build();
+        let mut cpu = super::CpuBuilder::new().flags(super::NEGATIVE_FLAG).build();
 
         let new_value = cpu.decrement(0x02);
         assert_eq!(new_value, 0x01);
         assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), false);
         assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
-
 
         let new_value = cpu.decrement(0x01);
         assert_eq!(new_value, 0x00);
@@ -811,34 +833,26 @@ mod test {
 
     #[test]
     fn test_add_with_carry() {
-        let mut cpu = super::CpuBuilder::new()
-            .accumulator(0x05)
-            .build();
+        let mut cpu = super::CpuBuilder::new().accumulator(0x05).build();
         cpu.add_accumulator(0x02);
         assert_eq!(cpu.accumulator, 0x07);
     }
 
     #[test]
     fn add_with_carry_should_set_the_carry_flag_on_overflow() {
-        let mut cpu = super::CpuBuilder::new()
-            .accumulator(0xFE)
-            .build();
+        let mut cpu = super::CpuBuilder::new().accumulator(0xFE).build();
         cpu.add_accumulator(0x03);
         assert_eq!(cpu.accumulator, 0x01);
         assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(0xFF)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(0xFF).build();
             cpu.add_accumulator(1);
             assert_eq!(cpu.accumulator, 0x00);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
             assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
         }
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(0x80)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(0x80).build();
             cpu.add_accumulator(0xFF);
             assert_eq!(cpu.accumulator, 127);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
@@ -847,9 +861,7 @@ mod test {
 
     #[test]
     fn add_with_carry_should_not_set_the_carry_flag_on_underflow() {
-        let mut cpu = super::CpuBuilder::new()
-            .accumulator(0x01)
-            .build();
+        let mut cpu = super::CpuBuilder::new().accumulator(0x01).build();
         cpu.add_accumulator(0b1111_1101);
         assert_eq!(cpu.accumulator, 0xFE);
         assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
@@ -877,9 +889,7 @@ mod test {
 
     #[test]
     fn add_with_carry_should_set_the_zero_flag() {
-        let mut cpu = super::CpuBuilder::new()
-            .accumulator(0x01)
-            .build();
+        let mut cpu = super::CpuBuilder::new().accumulator(0x01).build();
         cpu.add_accumulator(0b1111_1111);
         assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
         assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
@@ -899,25 +909,19 @@ mod test {
     #[test]
     fn add_with_carry_should_set_the_overflow_flag() {
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(127)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(127).build();
             cpu.add_accumulator(1);
             assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), true);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
         }
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(1)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(1).build();
             cpu.add_accumulator(1);
             assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
         }
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(1)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(1).build();
             cpu.add_accumulator(0xFF);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
             assert_eq!(cpu.is_flag_set(super::OVERFLOW_FLAG), false);
@@ -946,9 +950,7 @@ mod test {
     #[test]
     fn add_accumulator_should_clear_set_and_clear_negative_flag() {
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(0x01)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(0x01).build();
             cpu.add_accumulator(0xFE);
             assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
         }
@@ -982,17 +984,13 @@ mod test {
     #[test]
     fn test_and_accumulator() {
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(0x15)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(0x15).build();
             cpu.and_accumulator(!0x15);
             assert_eq!(cpu.accumulator, 0x00);
             assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
         }
         {
-            let mut cpu = super::CpuBuilder::new()
-                .accumulator(0xFF)
-                .build();
+            let mut cpu = super::CpuBuilder::new().accumulator(0xFF).build();
             cpu.and_accumulator(0x80);
             assert_eq!(cpu.accumulator, 0x80);
             assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
@@ -1011,9 +1009,7 @@ mod test {
 
     #[test]
     fn test_asl() {
-        let mut cpu = super::CpuBuilder::new()
-            .accumulator(0x01)
-            .build();
+        let mut cpu = super::CpuBuilder::new().accumulator(0x01).build();
         cpu.asl_accumulator();
         assert_eq!(cpu.accumulator, 0x02);
     }
@@ -1021,24 +1017,20 @@ mod test {
     #[test]
     fn asl_should_set_carry_and_zero_flag() {
         {
-            let mut cpu = super::CpuBuilder::new()
-                .flags(super::CARRY_FLAG)
-                .build();
+            let mut cpu = super::CpuBuilder::new().flags(super::CARRY_FLAG).build();
             let new_value = cpu.arithmetic_shift_left(0x01);
             assert_eq!(new_value, 0x02);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), false);
         }
         {
-            let mut cpu = super::CpuBuilder::new()
-                .build();
+            let mut cpu = super::CpuBuilder::new().build();
             let new_value = cpu.arithmetic_shift_left(0x80);
             assert_eq!(new_value, 0x00);
             assert_eq!(cpu.is_flag_set(super::CARRY_FLAG), true);
             assert_eq!(cpu.is_flag_set(super::ZERO_FLAG), true);
         }
         {
-            let mut cpu = super::CpuBuilder::new()
-                .build();
+            let mut cpu = super::CpuBuilder::new().build();
             let new_value = cpu.arithmetic_shift_left(0x40);
             assert_eq!(new_value, 0x80);
             assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), true);
@@ -1076,8 +1068,8 @@ mod test {
             .flags(super::NEGATIVE_FLAG)
             .build();
 
-       cpu.bit_test(0x00);
-       assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
+        cpu.bit_test(0x00);
+        assert_eq!(cpu.is_flag_set(super::NEGATIVE_FLAG), false);
     }
 
     extern crate rand;
@@ -1086,10 +1078,11 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn bit_test_should_only_affect_N_V_C_flags() {
-        let non_affected_flags =
-            UNUSED_BREAK_FLAG | super::DECIMAL_FLAG |
-            super::INTERRUPT_DISABLE_FLAG | super::CARRY_FLAG |
-            UNUSED_FLAG;
+        let non_affected_flags = UNUSED_BREAK_FLAG
+            | super::DECIMAL_FLAG
+            | super::INTERRUPT_DISABLE_FLAG
+            | super::CARRY_FLAG
+            | UNUSED_FLAG;
         for _ in 0..100 {
             let accumulator = rand::random::<u8>();
             let flags = rand::random::<u8>() | UNUSED_FLAG;
@@ -1098,14 +1091,17 @@ mod test {
                 .flags(flags)
                 .build();
 
-           let test_mask = rand::random::<u8>();
-           cpu.bit_test(test_mask);
-           assert_eq!(
-            cpu.processor_status & non_affected_flags,
-            flags & non_affected_flags,
-            "\nFlags: 0b{:08b}\nAccumulator: 0b{:08b}\nMask: 0b{:08b}\nStatus: 0b{:08b}",
-            flags, accumulator, test_mask, cpu.processor_status
-          );
+            let test_mask = rand::random::<u8>();
+            cpu.bit_test(test_mask);
+            assert_eq!(
+                cpu.processor_status & non_affected_flags,
+                flags & non_affected_flags,
+                "\nFlags: 0b{:08b}\nAccumulator: 0b{:08b}\nMask: 0b{:08b}\nStatus: 0b{:08b}",
+                flags,
+                accumulator,
+                test_mask,
+                cpu.processor_status
+            );
         }
     }
 }

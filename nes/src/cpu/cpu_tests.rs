@@ -1,21 +1,35 @@
-
 #[cfg(test)]
 mod test {
 
-    use cpu::CpuBuilder;
     use cpu::opcodes::*;
+    use cpu::CpuBuilder;
     use memory::Memory;
-    use std::collections::HashMap;
     use std::cell::RefCell;
+    use std::collections::HashMap;
 
     #[test]
     fn absolute_indexed_addressing_should_do_dummy_read() {
         //LDA, LDX, LDY, EOR, AND, ORA, ADC, SBC, CMP
         for &op in [
-            LDA_ABSOLUTE_X, LDA_ABSOLUTE_Y, LDX_ABSOLUTE_Y, LDY_ABSOLUTE_X, EOR_ABSOLUTE_X, EOR_ABSOLUTE_Y,
-            AND_ABSOLUTE_X, AND_ABSOLUTE_Y, ORA_ABSOLUTE_X, ORA_ABSOLUTE_Y, ADC_ABSOLUTE_X, ADC_ABSOLUTE_Y,
-            SBC_ABSOLUTE_X, SBC_ABSOLUTE_Y, CMP_ABSOLUTE_X, CMP_ABSOLUTE_Y
-        ].iter() {
+            LDA_ABSOLUTE_X,
+            LDA_ABSOLUTE_Y,
+            LDX_ABSOLUTE_Y,
+            LDY_ABSOLUTE_X,
+            EOR_ABSOLUTE_X,
+            EOR_ABSOLUTE_Y,
+            AND_ABSOLUTE_X,
+            AND_ABSOLUTE_Y,
+            ORA_ABSOLUTE_X,
+            ORA_ABSOLUTE_Y,
+            ADC_ABSOLUTE_X,
+            ADC_ABSOLUTE_Y,
+            SBC_ABSOLUTE_X,
+            SBC_ABSOLUTE_Y,
+            CMP_ABSOLUTE_X,
+            CMP_ABSOLUTE_Y,
+        ]
+        .iter()
+        {
             let memory = memory!(
                 0x8000 => op,
                 0x8001 => 0xE0,
@@ -41,9 +55,16 @@ mod test {
     fn indirect_indexed_addressing_should_do_dummy_read() {
         //LDA, EOR, AND, ORA, ADC, SBC, CMP
         for &op in [
-            LDA_INDIRECT_Y, EOR_INDIRECT_Y, AND_INDIRECT_Y, ORA_INDIRECT_Y,
-            ADC_INDIRECT_Y, SBC_INDIRECT_Y, CMP_INDIRECT_Y,
-        ].iter() {
+            LDA_INDIRECT_Y,
+            EOR_INDIRECT_Y,
+            AND_INDIRECT_Y,
+            ORA_INDIRECT_Y,
+            ADC_INDIRECT_Y,
+            SBC_INDIRECT_Y,
+            CMP_INDIRECT_Y,
+        ]
+        .iter()
+        {
             let memory = memory!(
                 0x8000 => op,
                 0x8001 => 0x05,
@@ -71,7 +92,7 @@ mod test {
 
     struct MemorySpy {
         memory: Box<Memory>,
-        reads: RefCell<HashMap<u16, u32>>
+        reads: RefCell<HashMap<u16, u32>>,
     }
 
     impl MemorySpy {
@@ -103,10 +124,7 @@ mod test {
     fn set_up(memory: Box<Memory>) -> (u8, MemorySpy) {
         let mut memory_spy = MemorySpy::new(memory);
         let opcodes = OpCodes::new();
-        let mut cpu = CpuBuilder::new()
-            .register_x(0x22)
-            .register_y(0x22)
-            .build();
+        let mut cpu = CpuBuilder::new().register_x(0x22).register_y(0x22).build();
         let cycles = opcodes.execute_instruction(&mut cpu, &mut memory_spy);
         return (cycles, memory_spy);
     }

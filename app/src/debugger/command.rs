@@ -1,16 +1,19 @@
-
 pub struct Command {
-    value: Vec<String>
+    value: Vec<String>,
 }
 
 impl Command {
     pub fn from(string: String) -> Command {
         Command {
-            value: string.split_whitespace().map(|s| s.to_string()).collect()
+            value: string.split_whitespace().map(|s| s.to_string()).collect(),
         }
     }
     pub fn name(&self) -> &str {
-        if self.value.len() > 0 { &self.value[0] } else { "" }
+        if self.value.len() > 0 {
+            &self.value[0]
+        } else {
+            ""
+        }
     }
 
     pub fn arg(&self, index: usize) -> Option<&String> {
@@ -30,9 +33,9 @@ impl Command {
         for c in string.chars() {
             let digit = c as u16;
             if digit >= 0x30 && digit <= 0x39 {
-                value = value*16 + (digit - 0x30);
+                value = value * 16 + (digit - 0x30);
             } else if digit >= 0x41 && digit <= 0x46 {
-                value = value*16 + (digit - 0x41 + 10);
+                value = value * 16 + (digit - 0x41 + 10);
             } else {
                 return None;
             }

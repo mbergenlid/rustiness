@@ -1,19 +1,18 @@
-extern crate sdl2;
 extern crate nes;
+extern crate sdl2;
 
 pub mod standard_controller;
 
-pub use self::screen::SDL2Screen;
 pub use self::audio::SDLAudioDevice;
-pub mod screen;
+pub use self::screen::SDL2Screen;
 pub mod audio;
+pub mod screen;
 
 use sdl2::Sdl;
 
 use standard_controller::SdlEvents;
-use std::rc::Rc;
 use std::cell::RefCell;
-
+use std::rc::Rc;
 
 pub struct SDL2(Sdl);
 
@@ -23,7 +22,7 @@ impl SDL2 {
     }
 
     pub fn event_pump(&self) -> SdlEvents {
-       SdlEvents(Rc::new(RefCell::new(self.0.event_pump().unwrap())))
+        SdlEvents(Rc::new(RefCell::new(self.0.event_pump().unwrap())))
     }
 
     pub fn screen(&self, scale: u8) -> SDL2Screen {

@@ -1,11 +1,11 @@
 pub use self::ppu::PPU;
 
-mod ppu;
-pub mod sprite;
-pub mod screen;
-pub mod ppumemory;
-pub mod vram_registers;
 pub mod attributetable;
-pub mod ppuregisters;
-pub mod pattern;
 pub mod name_tables;
+pub mod pattern;
+mod ppu;
+pub mod ppumemory;
+pub mod ppuregisters;
+pub mod screen;
+pub mod sprite;
+pub mod vram_registers;

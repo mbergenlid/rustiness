@@ -1,5 +1,5 @@
-use ppu::screen::{COLOUR_PALETTE, PixelBuffer};
 use ppu::ppumemory::Palette;
+use ppu::screen::{PixelBuffer, COLOUR_PALETTE};
 
 pub type Pixel = u8;
 
@@ -26,7 +26,7 @@ impl Pattern {
         pixel_buffer: &mut PixelBuffer,
         palette: &Palette,
         x_offset: usize,
-        y_offset: usize
+        y_offset: usize,
     ) {
         for pattern_row in 0..8 {
             for bit_index in 0..8 {
@@ -41,16 +41,14 @@ impl Pattern {
                 pixel_buffer.set_pixel(
                     x_offset + (bit_index as usize),
                     y_offset + (pattern_row as usize),
-                    colour
+                    colour,
                 );
             }
         }
-
     }
-
 }
 
-use memory::{Memory, Address};
+use memory::{Address, Memory};
 impl Memory for Pattern {
     fn get(&self, address: Address, _: u8) -> u8 {
         return self.raw_data[(address as usize) & 0xF];
@@ -62,7 +60,7 @@ impl Memory for Pattern {
         let mut value = value;
         let shift = (address & 0xF) >> 3;
         for bit_index in 0..8 {
-            self.data[row][7-bit_index] |= (value & 0x1) << shift;
+            self.data[row][7 - bit_index] |= (value & 0x1) << shift;
             value >>= 1;
         }
     }
@@ -78,14 +76,14 @@ mod test {
         let mut pattern = Pattern::new();
         pattern.set(0x0, 0b01010101, 0);
 
-        assert_eq!(0, pattern.pixel(0,0));
-        assert_eq!(1, pattern.pixel(1,0));
-        assert_eq!(0, pattern.pixel(2,0));
-        assert_eq!(1, pattern.pixel(3,0));
-        assert_eq!(0, pattern.pixel(4,0));
-        assert_eq!(1, pattern.pixel(5,0));
-        assert_eq!(0, pattern.pixel(6,0));
-        assert_eq!(1, pattern.pixel(7,0));
+        assert_eq!(0, pattern.pixel(0, 0));
+        assert_eq!(1, pattern.pixel(1, 0));
+        assert_eq!(0, pattern.pixel(2, 0));
+        assert_eq!(1, pattern.pixel(3, 0));
+        assert_eq!(0, pattern.pixel(4, 0));
+        assert_eq!(1, pattern.pixel(5, 0));
+        assert_eq!(0, pattern.pixel(6, 0));
+        assert_eq!(1, pattern.pixel(7, 0));
 
         assert_eq!(0b01010101, pattern.get(0x0, 0));
     }
@@ -95,14 +93,14 @@ mod test {
         let mut pattern = Pattern::new();
         pattern.set(0x8, 0b01010101, 0);
 
-        assert_eq!(0, pattern.pixel(0,0));
-        assert_eq!(2, pattern.pixel(1,0));
-        assert_eq!(0, pattern.pixel(2,0));
-        assert_eq!(2, pattern.pixel(3,0));
-        assert_eq!(0, pattern.pixel(4,0));
-        assert_eq!(2, pattern.pixel(5,0));
-        assert_eq!(0, pattern.pixel(6,0));
-        assert_eq!(2, pattern.pixel(7,0));
+        assert_eq!(0, pattern.pixel(0, 0));
+        assert_eq!(2, pattern.pixel(1, 0));
+        assert_eq!(0, pattern.pixel(2, 0));
+        assert_eq!(2, pattern.pixel(3, 0));
+        assert_eq!(0, pattern.pixel(4, 0));
+        assert_eq!(2, pattern.pixel(5, 0));
+        assert_eq!(0, pattern.pixel(6, 0));
+        assert_eq!(2, pattern.pixel(7, 0));
 
         assert_eq!(0b01010101, pattern.get(0x8, 0));
     }
@@ -113,14 +111,14 @@ mod test {
         pattern.set(0x0, 0b01010101, 0);
         pattern.set(0x8, 0b00110011, 0);
 
-        assert_eq!(0, pattern.pixel(0,0));
-        assert_eq!(1, pattern.pixel(1,0));
-        assert_eq!(2, pattern.pixel(2,0));
-        assert_eq!(3, pattern.pixel(3,0));
-        assert_eq!(0, pattern.pixel(4,0));
-        assert_eq!(1, pattern.pixel(5,0));
-        assert_eq!(2, pattern.pixel(6,0));
-        assert_eq!(3, pattern.pixel(7,0));
+        assert_eq!(0, pattern.pixel(0, 0));
+        assert_eq!(1, pattern.pixel(1, 0));
+        assert_eq!(2, pattern.pixel(2, 0));
+        assert_eq!(3, pattern.pixel(3, 0));
+        assert_eq!(0, pattern.pixel(4, 0));
+        assert_eq!(1, pattern.pixel(5, 0));
+        assert_eq!(2, pattern.pixel(6, 0));
+        assert_eq!(3, pattern.pixel(7, 0));
 
         assert_eq!(0b01010101, pattern.get(0x0, 0));
         assert_eq!(0b00110011, pattern.get(0x8, 0));

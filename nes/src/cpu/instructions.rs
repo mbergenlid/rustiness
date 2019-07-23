@@ -1,6 +1,6 @@
 use addressing::AddressingMode;
-use cpu::CPU;
 use cpu;
+use cpu::CPU;
 use memory::Memory;
 
 pub trait Instruction {
@@ -49,7 +49,7 @@ impl INC {
 impl Instruction for INC {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.increment(memory.get(self.0.operand_address, self.0.cycles));
-        memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        memory.set(self.0.operand_address, new_value, self.0.cycles + 2);
         return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
@@ -81,7 +81,7 @@ impl DEC {
 impl Instruction for DEC {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.decrement(memory.get(self.0.operand_address, self.0.cycles));
-        memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        memory.set(self.0.operand_address, new_value, self.0.cycles + 2);
         return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
@@ -172,7 +172,8 @@ impl ASL {
 }
 impl Instruction for ASL {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
-        let new_value = cpu.arithmetic_shift_left(memory.get(self.0.operand_address, self.0.cycles));
+        let new_value =
+            cpu.arithmetic_shift_left(memory.get(self.0.operand_address, self.0.cycles));
         memory.set(self.0.operand_address, new_value, self.0.cycles);
         return self.estimated_cycles();
     }
@@ -213,7 +214,7 @@ impl LSR {
 impl Instruction for LSR {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.logical_shift_right(memory.get(self.0.operand_address, self.0.cycles));
-        memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        memory.set(self.0.operand_address, new_value, self.0.cycles + 2);
         return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
@@ -256,7 +257,7 @@ impl ROL {
 impl Instruction for ROL {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.rotate_left(memory.get(self.0.operand_address, self.0.cycles));
-        memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        memory.set(self.0.operand_address, new_value, self.0.cycles + 2);
         return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
@@ -299,7 +300,7 @@ impl ROR {
 impl Instruction for ROR {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let new_value = cpu.rotate_right(memory.get(self.0.operand_address, self.0.cycles));
-        memory.set(self.0.operand_address, new_value, self.0.cycles+2);
+        memory.set(self.0.operand_address, new_value, self.0.cycles + 2);
         return self.estimated_cycles();
     }
     fn estimated_cycles(&self) -> u8 {
@@ -342,12 +343,11 @@ impl Instruction for BIT {
 pub struct Branch(bool);
 impl Branch {
     pub fn new(cpu: &mut CPU, flag: u8, inverted: bool) -> Branch {
-        let condition =
-            if inverted {
-                !cpu.is_flag_set(flag)
-            } else {
-                cpu.is_flag_set(flag)
-            };
+        let condition = if inverted {
+            !cpu.is_flag_set(flag)
+        } else {
+            cpu.is_flag_set(flag)
+        };
 
         Branch(condition)
     }
@@ -440,7 +440,8 @@ impl Instruction for RTI {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
         let processor_status = memory.get(cpu.pop_stack(), 3);
         cpu.set_processor_status(processor_status);
-        let return_address = memory.get(cpu.pop_stack(), 4) as u16 | (memory.get(cpu.pop_stack(), 5) as u16) << 8;
+        let return_address =
+            memory.get(cpu.pop_stack(), 4) as u16 | (memory.get(cpu.pop_stack(), 5) as u16) << 8;
         cpu.set_program_counter(return_address);
         return self.estimated_cycles();
     }
@@ -468,7 +469,8 @@ impl Instruction for JSR {
 pub struct RTS;
 impl Instruction for RTS {
     fn execute(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
-        let return_address = memory.get(cpu.pop_stack(), 3) as u16 | (memory.get(cpu.pop_stack(), 4) as u16) << 8;
+        let return_address =
+            memory.get(cpu.pop_stack(), 3) as u16 | (memory.get(cpu.pop_stack(), 4) as u16) << 8;
         cpu.set_program_counter(return_address + 1);
         return self.estimated_cycles();
     }
@@ -575,7 +577,7 @@ impl Instruction for LDA {
 
 pub struct CMP(AddressingMode);
 impl CMP {
-    pub fn new(mode: AddressingMode) ->CMP {
+    pub fn new(mode: AddressingMode) -> CMP {
         CMP(mode)
     }
 }

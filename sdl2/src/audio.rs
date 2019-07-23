@@ -1,11 +1,10 @@
+use nes::sound::AudioDevice;
 use sdl2::audio::{AudioQueue, AudioSpecDesired};
 use sdl2::Sdl;
-use nes::sound::AudioDevice;
 
 pub struct SDLAudioDevice {
     audio_queue: AudioQueue<i16>,
 }
-
 
 pub fn new_audio_device(sdl_context: &Sdl) -> SDLAudioDevice {
     let audio_subsystem = sdl_context.audio().unwrap();
@@ -14,14 +13,15 @@ pub fn new_audio_device(sdl_context: &Sdl) -> SDLAudioDevice {
         freq: Some(48000),
         channels: Some(1),
         // mono  -
-        samples: None
-        // default sample size
-        };
+        samples: None, // default sample size
+    };
 
-    let device = audio_subsystem.open_queue::<i16>(None, &desired_spec).unwrap();
+    let device = audio_subsystem
+        .open_queue::<i16>(None, &desired_spec)
+        .unwrap();
     println!("Spec {:?}", device.spec());
     SDLAudioDevice {
-        audio_queue: device
+        audio_queue: device,
     }
 }
 

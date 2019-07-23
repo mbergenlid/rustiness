@@ -18,7 +18,6 @@ impl<'a, T: ?Sized> Deref for MutableRef<'a, T> {
 }
 
 impl<'a, T: ?Sized> DerefMut for MutableRef<'a, T> {
-
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         match *self {
@@ -38,8 +37,12 @@ mod test {
     }
 
     impl SomeTrait for u8 {
-        fn a_borrow(&self) -> u8 { *self }
-        fn a_mut_borrow(&mut self) -> u8 { *self }
+        fn a_borrow(&self) -> u8 {
+            *self
+        }
+        fn a_mut_borrow(&mut self) -> u8 {
+            *self
+        }
     }
 
     #[test]
@@ -55,10 +58,8 @@ mod test {
     #[test]
     fn test_mutable_references_in_vector() {
         let v = &mut 6;
-        let mut vector: Vec<MutableRef<SomeTrait>> = vec!(
-            MutableRef::Box(Box::new(5)),
-            MutableRef::Borrowed(v),
-        );
+        let mut vector: Vec<MutableRef<SomeTrait>> =
+            vec![MutableRef::Box(Box::new(5)), MutableRef::Borrowed(v)];
 
         assert_eq!(5, vector[0].a_borrow());
         assert_eq!(6, vector[1].a_borrow());

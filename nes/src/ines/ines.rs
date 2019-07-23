@@ -1,7 +1,7 @@
+use memory::Memory;
+use ppu::ppumemory::{Mirroring, PPUMemory};
 use std::fs::File;
 use std::io::Read;
-use memory::Memory;
-use ppu::ppumemory::{PPUMemory, Mirroring};
 
 pub type ROM = [u8];
 
@@ -12,13 +12,17 @@ pub struct INes {
     pub mirroring: Mirroring,
 }
 
-impl <'a> INes  {
+impl<'a> INes {
     pub fn from_file(mut file: File) -> INes {
-        let mut buffer: Vec<u8> = vec!();
+        let mut buffer: Vec<u8> = vec![];
         file.read_to_end(&mut buffer).unwrap();
         let num_prg_roms = buffer[4];
         let num_chr_roms = buffer[5];
-        let mirroring = if buffer[6] & 0x01 == 0 { Mirroring::Horizontal } else { Mirroring::Vertical };
+        let mirroring = if buffer[6] & 0x01 == 0 {
+            Mirroring::Horizontal
+        } else {
+            Mirroring::Vertical
+        };
         INes {
             buffer: buffer,
             num_prg_roms: num_prg_roms,
@@ -28,11 +32,15 @@ impl <'a> INes  {
     }
 
     pub fn read(file: &mut Read) -> INes {
-        let mut buffer: Vec<u8> = vec!();
+        let mut buffer: Vec<u8> = vec![];
         file.read_to_end(&mut buffer).unwrap();
         let num_prg_roms = buffer[4];
         let num_chr_roms = buffer[5];
-        let mirroring = if buffer[6] & 0x01 == 0 { Mirroring::Horizontal } else { Mirroring::Vertical };
+        let mirroring = if buffer[6] & 0x01 == 0 {
+            Mirroring::Horizontal
+        } else {
+            Mirroring::Vertical
+        };
         INes {
             buffer: buffer,
             num_prg_roms: num_prg_roms,
@@ -42,14 +50,14 @@ impl <'a> INes  {
     }
 
     pub fn prg_rom(&self, index: usize) -> &ROM {
-        let rom_base: usize = 0x10 + index*0x4000;
-        &self.buffer[rom_base..(rom_base+0x4000)]
+        let rom_base: usize = 0x10 + index * 0x4000;
+        &self.buffer[rom_base..(rom_base + 0x4000)]
     }
 
     pub fn chr_rom(&self, index: usize) -> &ROM {
-        let chr_base = 0x10 + (self.num_prg_roms as usize)*0x4000;
-        let rom_base: usize = chr_base + index*0x2000;
-        &self.buffer[rom_base..(rom_base+0x2000)]
+        let chr_base = 0x10 + (self.num_prg_roms as usize) * 0x4000;
+        let rom_base: usize = chr_base + index * 0x2000;
+        &self.buffer[rom_base..(rom_base + 0x2000)]
     }
 
     pub fn load(&self, cpu_memory: &mut Memory) {
@@ -70,13 +78,12 @@ impl <'a> INes  {
     }
 }
 
-
 #[cfg(test)]
 mod test {
 
-    use std::fs::File;
     use memory;
     use memory::Memory;
+    use std::fs::File;
 
     #[test]
     fn test() {

@@ -1,10 +1,9 @@
 use nes_sdl2::SDL2;
 
-
+use nes::memory::{BasicMemory, Memory};
+use nes::sound::registers::*;
 use nes::sound::APU;
 use nes::Clock;
-use nes::sound::registers::*;
-use nes::memory::{BasicMemory, Memory};
 
 pub fn start() {
     let sdl = SDL2::new();

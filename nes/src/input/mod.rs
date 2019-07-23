@@ -4,4 +4,3 @@ use memory::MemoryMappedIO;
 trait Source<T: MemoryMappedIO> {
     fn load(&self) -> T;
 }
-

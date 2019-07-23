@@ -1,13 +1,16 @@
-use memory::{Memory, Address, MemoryMappedIO};
 use borrow::MutableRef;
+use memory::{Address, Memory, MemoryMappedIO};
 
 pub struct CPUMemory<'a> {
     memory: Box<Memory>,
     io_registers: Vec<(u16, MutableRef<'a, MemoryMappedIO>)>,
 }
 
-impl <'a> CPUMemory<'a> {
-    pub fn new(memory: Box<Memory>, io_registers: Vec<(u16, MutableRef<'a, MemoryMappedIO>)>) -> CPUMemory<'a> {
+impl<'a> CPUMemory<'a> {
+    pub fn new(
+        memory: Box<Memory>,
+        io_registers: Vec<(u16, MutableRef<'a, MemoryMappedIO>)>,
+    ) -> CPUMemory<'a> {
         CPUMemory {
             memory: memory,
             io_registers: io_registers,
@@ -21,27 +24,31 @@ impl <'a> CPUMemory<'a> {
             address
         }
     }
-
 }
-use std::fmt::{Error, Debug, Formatter};
-pub struct CPUMemoryReference<'a, 'b>(pub u16, pub &'a CPUMemory<'b>) where 'b: 'a;
+use std::fmt::{Debug, Error, Formatter};
+pub struct CPUMemoryReference<'a, 'b>(pub u16, pub &'a CPUMemory<'b>)
+where
+    'b: 'a;
 
 impl<'a, 'b> Debug for CPUMemoryReference<'a, 'b> {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
-        formatter.write_fmt(
-            format_args!("0x{:04x} -> 0x{:x}", self.0, self.1.memory.get(self.0, 0))
-        )
+        formatter.write_fmt(format_args!(
+            "0x{:04x} -> 0x{:x}",
+            self.0,
+            self.1.memory.get(self.0, 0)
+        ))
     }
 }
 
 use std::borrow::BorrowMut;
-impl <'a> Memory for CPUMemory<'a> {
+impl<'a> Memory for CPUMemory<'a> {
     fn get(&self, address: Address, sub_cycle: u8) -> u8 {
         let address = self.translate(address);
         if address < 0x2000 {
             self.memory.get(address, sub_cycle)
         } else {
-            self.io_registers.iter()
+            self.io_registers
+                .iter()
                 .find(|e| e.0 == address)
                 .map(|e| e.1.read_at_cycle(self.memory.as_ref(), sub_cycle))
                 .unwrap_or_else(|| self.memory.get(address, sub_cycle))
@@ -76,11 +83,10 @@ macro_rules! cpu_memory {
     };
 }
 
-
 #[cfg(test)]
 mod test {
-    use memory::{Memory, BasicMemory};
-    use std::cell::{RefCell,Cell};
+    use memory::{BasicMemory, Memory};
+    use std::cell::{Cell, RefCell};
     use std::rc::Rc;
 
     struct TestRegister {
@@ -103,8 +109,14 @@ mod test {
 
     #[test]
     fn test_io_registers() {
-        let register1  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
-        let register2  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register1 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
+        let register2 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
         {
             let mut io_registers = cpu_memory!(
                 box BasicMemory::new(),
@@ -126,22 +138,45 @@ mod test {
 
         assert_eq!(1, register1.borrow().reads.get());
         assert_eq!(2, register2.borrow().reads.get());
-        assert_eq!(vec!(4,5), register1.borrow().writes);
+        assert_eq!(vec!(4, 5), register1.borrow().writes);
         assert_eq!(vec!(6), register2.borrow().writes);
-
     }
 
     #[test]
     #[allow(non_snake_case)]
     fn ppu_registers_should_be_mirrored_at_2008_to_3FFF() {
-        let register0  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
-        let register1  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
-        let register2  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
-        let register3  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
-        let register4  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
-        let register5  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
-        let register6  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
-        let register7  = Rc::new(RefCell::new(TestRegister { reads: Cell::new(0), writes: vec!() }));
+        let register0 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
+        let register1 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
+        let register2 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
+        let register3 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
+        let register4 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
+        let register5 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
+        let register6 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
+        let register7 = Rc::new(RefCell::new(TestRegister {
+            reads: Cell::new(0),
+            writes: vec![],
+        }));
 
         let mut memory = cpu_memory!(
             box BasicMemory::new(),
@@ -186,7 +221,7 @@ mod test {
         assert_eq!(0x3FF, register6.borrow().reads.get());
         assert_eq!(0x3FF, register7.borrow().reads.get());
 
-        let writes = vec!(42; 0x3FF);
+        let writes = vec![42; 0x3FF];
         assert_eq!(&writes, &register0.borrow().writes);
         assert_eq!(&writes, &register1.borrow().writes);
         assert_eq!(&writes, &register2.borrow().writes);

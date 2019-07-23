@@ -1,4 +1,4 @@
-use memory::{MemoryMappedIO, Memory};
+use memory::{Memory, MemoryMappedIO};
 use std::cell::Cell;
 
 static TRUE: bool = true;
@@ -14,7 +14,7 @@ pub struct StandardController<'a> {
     state: StandardControllerState,
 }
 
-impl <'a> StandardController<'a> {
+impl<'a> StandardController<'a> {
     pub fn new(source: &'a Source) -> StandardController<'a> {
         StandardController {
             source: source,
@@ -29,12 +29,12 @@ impl <'a> StandardController<'a> {
                 down: false,
                 left: false,
                 right: false,
-            }
+            },
         }
     }
 }
 
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct StandardControllerState {
     pub a_button: bool,
     pub b_button: bool,
@@ -64,7 +64,7 @@ impl Index<u8> for StandardControllerState {
     }
 }
 
-impl <'a> MemoryMappedIO for StandardController<'a> {
+impl<'a> MemoryMappedIO for StandardController<'a> {
     fn read(&self, _: &Memory) -> u8 {
         if self.state_loaded {
             let state_index = self.state_index.get();
@@ -82,7 +82,7 @@ impl <'a> MemoryMappedIO for StandardController<'a> {
             self.state = self.source.load();
             self.state_index.set(0);
         }
-        self.state_loaded = if strobe_bit == 0  { true } else { false };
+        self.state_loaded = if strobe_bit == 0 { true } else { false };
     }
 }
 
@@ -90,8 +90,8 @@ impl <'a> MemoryMappedIO for StandardController<'a> {
 mod test {
 
     extern crate rand;
-    use memory::{MemoryMappedIO, BasicMemory};
-    use super::{StandardController, StandardControllerState, Source};
+    use super::{Source, StandardController, StandardControllerState};
+    use memory::{BasicMemory, MemoryMappedIO};
     use std::cell;
 
     #[test]
@@ -121,14 +121,70 @@ mod test {
             controller.write(&mut memory, 0);
 
             let expected_button_state = source_sequence[0];
-            assert_eq!((expected_button_state & 0x01) >> 0, controller.read(&memory), "\nFailed on iteration {}, expected_state {:08b}\n{:?}", i, expected_button_state, controller.state);
-            assert_eq!((expected_button_state & 0x02) >> 1, controller.read(&memory), "\nFailed on iteration {}, expected_state {:08b}\n{:?}", i, expected_button_state, controller.state);
-            assert_eq!((expected_button_state & 0x04) >> 2, controller.read(&memory), "\nFailed on iteration {}, expected_state {:08b}\n{:?}", i, expected_button_state, controller.state);
-            assert_eq!((expected_button_state & 0x08) >> 3, controller.read(&memory), "\nFailed on iteration {}, expected_state {:08b}\n{:?}", i, expected_button_state, controller.state);
-            assert_eq!((expected_button_state & 0x10) >> 4, controller.read(&memory), "\nFailed on iteration {}, expected_state {:08b}\n{:?}", i, expected_button_state, controller.state);
-            assert_eq!((expected_button_state & 0x20) >> 5, controller.read(&memory), "\nFailed on iteration {}, expected_state {:08b}\n{:?}", i, expected_button_state, controller.state);
-            assert_eq!((expected_button_state & 0x40) >> 6, controller.read(&memory), "\nFailed on iteration {}, expected_state {:08b}\n{:?}", i, expected_button_state, controller.state);
-            assert_eq!((expected_button_state & 0x80) >> 7, controller.read(&memory), "\nFailed on iteration {}, expected_state {:08b}\n{:?}", i, expected_button_state, controller.state);
+            assert_eq!(
+                (expected_button_state & 0x01) >> 0,
+                controller.read(&memory),
+                "\nFailed on iteration {}, expected_state {:08b}\n{:?}",
+                i,
+                expected_button_state,
+                controller.state
+            );
+            assert_eq!(
+                (expected_button_state & 0x02) >> 1,
+                controller.read(&memory),
+                "\nFailed on iteration {}, expected_state {:08b}\n{:?}",
+                i,
+                expected_button_state,
+                controller.state
+            );
+            assert_eq!(
+                (expected_button_state & 0x04) >> 2,
+                controller.read(&memory),
+                "\nFailed on iteration {}, expected_state {:08b}\n{:?}",
+                i,
+                expected_button_state,
+                controller.state
+            );
+            assert_eq!(
+                (expected_button_state & 0x08) >> 3,
+                controller.read(&memory),
+                "\nFailed on iteration {}, expected_state {:08b}\n{:?}",
+                i,
+                expected_button_state,
+                controller.state
+            );
+            assert_eq!(
+                (expected_button_state & 0x10) >> 4,
+                controller.read(&memory),
+                "\nFailed on iteration {}, expected_state {:08b}\n{:?}",
+                i,
+                expected_button_state,
+                controller.state
+            );
+            assert_eq!(
+                (expected_button_state & 0x20) >> 5,
+                controller.read(&memory),
+                "\nFailed on iteration {}, expected_state {:08b}\n{:?}",
+                i,
+                expected_button_state,
+                controller.state
+            );
+            assert_eq!(
+                (expected_button_state & 0x40) >> 6,
+                controller.read(&memory),
+                "\nFailed on iteration {}, expected_state {:08b}\n{:?}",
+                i,
+                expected_button_state,
+                controller.state
+            );
+            assert_eq!(
+                (expected_button_state & 0x80) >> 7,
+                controller.read(&memory),
+                "\nFailed on iteration {}, expected_state {:08b}\n{:?}",
+                i,
+                expected_button_state,
+                controller.state
+            );
         }
     }
 
@@ -154,17 +210,69 @@ mod test {
 
     fn assert_reloaded_state(controller: &StandardController, expected_button_state: u8) {
         let memory = BasicMemory::new();
-        assert_eq!((expected_button_state & 0x01) >> 0, controller.read(&memory), "\nFailed: expected_state {:08b}\n{:?}", expected_button_state, controller.state);
-        assert_eq!((expected_button_state & 0x02) >> 1, controller.read(&memory), "\nFailed: expected_state {:08b}\n{:?}", expected_button_state, controller.state);
-        assert_eq!((expected_button_state & 0x04) >> 2, controller.read(&memory), "\nFailed: expected_state {:08b}\n{:?}", expected_button_state, controller.state);
-        assert_eq!((expected_button_state & 0x08) >> 3, controller.read(&memory), "\nFailed: expected_state {:08b}\n{:?}", expected_button_state, controller.state);
-        assert_eq!((expected_button_state & 0x10) >> 4, controller.read(&memory), "\nFailed: expected_state {:08b}\n{:?}", expected_button_state, controller.state);
-        assert_eq!((expected_button_state & 0x20) >> 5, controller.read(&memory), "\nFailed: expected_state {:08b}\n{:?}", expected_button_state, controller.state);
-        assert_eq!((expected_button_state & 0x40) >> 6, controller.read(&memory), "\nFailed: expected_state {:08b}\n{:?}", expected_button_state, controller.state);
-        assert_eq!((expected_button_state & 0x80) >> 7, controller.read(&memory), "\nFailed: expected_state {:08b}\n{:?}", expected_button_state, controller.state);
+        assert_eq!(
+            (expected_button_state & 0x01) >> 0,
+            controller.read(&memory),
+            "\nFailed: expected_state {:08b}\n{:?}",
+            expected_button_state,
+            controller.state
+        );
+        assert_eq!(
+            (expected_button_state & 0x02) >> 1,
+            controller.read(&memory),
+            "\nFailed: expected_state {:08b}\n{:?}",
+            expected_button_state,
+            controller.state
+        );
+        assert_eq!(
+            (expected_button_state & 0x04) >> 2,
+            controller.read(&memory),
+            "\nFailed: expected_state {:08b}\n{:?}",
+            expected_button_state,
+            controller.state
+        );
+        assert_eq!(
+            (expected_button_state & 0x08) >> 3,
+            controller.read(&memory),
+            "\nFailed: expected_state {:08b}\n{:?}",
+            expected_button_state,
+            controller.state
+        );
+        assert_eq!(
+            (expected_button_state & 0x10) >> 4,
+            controller.read(&memory),
+            "\nFailed: expected_state {:08b}\n{:?}",
+            expected_button_state,
+            controller.state
+        );
+        assert_eq!(
+            (expected_button_state & 0x20) >> 5,
+            controller.read(&memory),
+            "\nFailed: expected_state {:08b}\n{:?}",
+            expected_button_state,
+            controller.state
+        );
+        assert_eq!(
+            (expected_button_state & 0x40) >> 6,
+            controller.read(&memory),
+            "\nFailed: expected_state {:08b}\n{:?}",
+            expected_button_state,
+            controller.state
+        );
+        assert_eq!(
+            (expected_button_state & 0x80) >> 7,
+            controller.read(&memory),
+            "\nFailed: expected_state {:08b}\n{:?}",
+            expected_button_state,
+            controller.state
+        );
 
         for _ in 0..10 {
-            assert_eq!(1, controller.read(&memory), "All reads after the 8 first should return 1");
+            assert_eq!(
+                1,
+                controller.read(&memory),
+                "All reads after the 8 first should return 1"
+            );
         }
     }
 

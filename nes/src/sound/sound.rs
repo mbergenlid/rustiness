@@ -1,6 +1,6 @@
 use sound::square;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 pub trait AudioDevice {
     fn play(&self, &[i16]);
@@ -11,7 +11,7 @@ pub struct APU<T: AudioDevice> {
     volume_scale: i16,
     square1: Rc<RefCell<square::PulseGenerator>>,
     square2: Rc<RefCell<square::PulseGenerator>>,
-    cpu_cycles: u32
+    cpu_cycles: u32,
 }
 
 impl<T: AudioDevice> APU<T> {
@@ -40,9 +40,10 @@ impl<T: AudioDevice> APU<T> {
         self.cpu_cycles += cpu_cycles as u32;
         if self.cpu_cycles >= 37 {
             self.cpu_cycles -= 37;
-            self.audio_device.play(
-                &[(self.square1.borrow().pulse_value()+ self.square2.borrow().pulse_value())*self.volume_scale]
-            );
+            self.audio_device
+                .play(&[(self.square1.borrow().pulse_value()
+                    + self.square2.borrow().pulse_value())
+                    * self.volume_scale]);
         }
     }
 }
@@ -57,10 +58,10 @@ impl AudioDevice for Rc<RefCell<Vec<i16>>> {
 
 #[cfg(test)]
 mod test {
-    use sound::counter::ClockTester;
-    use std::rc::Rc;
-    use std::cell::RefCell;
     use super::APU;
+    use sound::counter::ClockTester;
+    use std::cell::RefCell;
+    use std::rc::Rc;
     const FOUR_PULSE_SAMPLES_IN_CPU_CYCLES: u32 = 149;
 
     #[test]
@@ -69,10 +70,8 @@ mod test {
         let apu = APU::new(audio_device.clone(), 1);
 
         let mut clock = ClockTester::new(apu, FOUR_PULSE_SAMPLES_IN_CPU_CYCLES);
-        clock.count_down(
-            |apu, tick| apu.update(tick),
-            &|_, _| (),
-            &|_, _| assert_eq!(audio_device.borrow().len(), 4)
-        );
+        clock.count_down(|apu, tick| apu.update(tick), &|_, _| (), &|_, _| {
+            assert_eq!(audio_device.borrow().len(), 4)
+        });
     }
 }

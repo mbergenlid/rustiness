@@ -1,10 +1,10 @@
+extern crate histogram;
 extern crate nes;
 extern crate rand;
-extern crate histogram;
 
-use std::time::{Instant, Duration};
 use nes::cpu::opcodes::*;
 use nes::cpu::CPU;
+use std::time::{Duration, Instant};
 
 pub fn run(args: &[String]) {
     let mut bench = InstructionBenchmark::new();
@@ -27,7 +27,6 @@ pub fn run(args: &[String]) {
     }
 }
 
-
 struct InstructionTiming {
     op_code: OpCode,
     duration: Duration,
@@ -42,12 +41,12 @@ impl InstructionTiming {
     fn new(op_code: OpCode) -> InstructionTiming {
         InstructionTiming {
             op_code: op_code,
-            duration: Duration::new(0,0),
+            duration: Duration::new(0, 0),
             count: 0,
             histogram: histogram::Histogram::new(),
-            min: Duration::new(10,0),
-            max: Duration::new(0,0),
-            mean: Duration::new(0,0),
+            min: Duration::new(10, 0),
+            max: Duration::new(0, 0),
+            mean: Duration::new(0, 0),
         }
     }
 }
@@ -55,17 +54,24 @@ impl InstructionTiming {
 use std::fmt::{Debug, Formatter, Result};
 impl Debug for InstructionTiming {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        f.write_fmt(format_args!("OpCode: {:x} {}ns (90 pct), {}ns (95pct)\n", self.op_code, self.histogram.percentile(90.0).unwrap(), self.histogram.percentile(95.0).unwrap()))
+        f.write_fmt(format_args!(
+            "OpCode: {:x} {}ns (90 pct), {}ns (95pct)\n",
+            self.op_code,
+            self.histogram.percentile(90.0).unwrap(),
+            self.histogram.percentile(95.0).unwrap()
+        ))
     }
 }
 
+use std::cmp::{max, min};
 use std::ops;
-use std::cmp::{min, max};
 impl ops::AddAssign<Duration> for InstructionTiming {
     fn add_assign(&mut self, duration: Duration) {
         self.duration += duration;
         self.count += 1;
-        self.histogram.increment(duration.subsec_nanos() as u64).unwrap();
+        self.histogram
+            .increment(duration.subsec_nanos() as u64)
+            .unwrap();
         self.min = min(self.min, duration);
         self.max = max(self.max, duration);
         self.mean = self.duration / self.count;
@@ -83,7 +89,10 @@ impl InstructionBenchmark {
         InstructionBenchmark {
             op_codes: OpCodes::new(),
             cpu: CPU::new(0x2000),
-            timing_results: OP_CODES.into_iter().map(|&code| InstructionTiming::new(code)).collect(),
+            timing_results: OP_CODES
+                .into_iter()
+                .map(|&code| InstructionTiming::new(code))
+                .collect(),
         }
     }
 
@@ -107,12 +116,11 @@ impl InstructionBenchmark {
         );
 
         let start = Instant::now();
-        self.op_codes.execute_instruction(&mut self.cpu, &mut memory);
+        self.op_codes
+            .execute_instruction(&mut self.cpu, &mut memory);
         start.elapsed()
     }
 }
-
-
 
 const OP_CODES: [OpCode; 151] = [
     ADC_IMMEDIATE,
@@ -146,7 +154,7 @@ const OP_CODES: [OpCode; 151] = [
     BRANCH_CARRY_CLEAR,
     BRANCH_NOT_EQUAL,
     BRANCH_EQUAL,
-    BRK         ,
+    BRK,
     CMP_IMMEDIATE,
     CMP_ZERO_PAGE,
     CMP_ZERO_PAGE_X,
@@ -173,13 +181,13 @@ const OP_CODES: [OpCode; 151] = [
     EOR_ABSOLUTE_Y,
     EOR_INDIRECT_X,
     EOR_INDIRECT_Y,
-    CLC            ,
-    SEC            ,
-    CLI            ,
-    SEI            ,
-    CLV            ,
-    CLD            ,
-    SED            ,
+    CLC,
+    SEC,
+    CLI,
+    SEI,
+    CLV,
+    CLD,
+    SED,
     INC_ZERO_PAGE,
     INC_ZERO_PAGE_X,
     INC_ABSOLUTE,
@@ -219,14 +227,14 @@ const OP_CODES: [OpCode; 151] = [
     ORA_ABSOLUTE_Y,
     ORA_INDIRECT_X,
     ORA_INDIRECT_Y,
-    TAX            ,
-    TXA            ,
-    DEX            ,
-    INX            ,
-    TAY            ,
-    TYA            ,
-    DEY            ,
-    INY            ,
+    TAX,
+    TXA,
+    DEX,
+    INX,
+    TAY,
+    TYA,
+    DEY,
+    INY,
     ROL_ACCUMULATOR,
     ROL_ZERO_PAGE,
     ROL_ZERO_PAGE_X,
@@ -237,8 +245,8 @@ const OP_CODES: [OpCode; 151] = [
     ROR_ZERO_PAGE_X,
     ROR_ABSOLUTE,
     ROR_ABSOLUTE_X,
-    RTI        ,
-    RTS        ,
+    RTI,
+    RTS,
     SBC_IMMEDIATE,
     SBC_ZERO_PAGE,
     SBC_ZERO_PAGE_X,
@@ -254,12 +262,12 @@ const OP_CODES: [OpCode; 151] = [
     STA_ABSOLUTE_Y,
     STA_INDIRECT_X,
     STA_INDIRECT_Y,
-    TXS            ,
-    TSX            ,
-    PHA            ,
-    PLA            ,
-    PHP            ,
-    PLP            ,
+    TXS,
+    TSX,
+    PHA,
+    PLA,
+    PHP,
+    PLP,
     STX_ZERO_PAGE,
     STX_ZERO_PAGE_Y,
     STX_ABSOLUTE,

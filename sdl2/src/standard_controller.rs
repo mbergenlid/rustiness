@@ -1,6 +1,6 @@
 use nes::input::standard_controller::{Source, StandardControllerState};
-use sdl2::EventPump;
 use sdl2::keyboard::Scancode;
+use sdl2::EventPump;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -11,8 +11,8 @@ impl SdlEvents {
         for event in self.0.borrow_mut().poll_iter() {
             use sdl2::event::Event;
             match event {
-                Event::Quit {..} => return true,
-                _ => ()
+                Event::Quit { .. } => return true,
+                _ => (),
             }
         }
         return false;
@@ -36,4 +36,3 @@ impl Source for SdlEvents {
         }
     }
 }
-

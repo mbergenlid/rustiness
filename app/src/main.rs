@@ -4,9 +4,9 @@ extern crate nes;
 extern crate nes_sdl2;
 
 mod debugger;
+mod instruction_benchmark;
 mod sdlscreentest;
 mod soundtest;
-mod instruction_benchmark;
 
 use std::env;
 

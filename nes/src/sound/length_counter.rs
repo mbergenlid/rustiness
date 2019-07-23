@@ -1,12 +1,12 @@
 pub struct LengthCounter {
     value: u8,
-    cpu_cycles: u32
+    cpu_cycles: u32,
 }
 const APU_CYCLES_CLOCK_RATE: u32 = 14913;
 
 const LENGTH_TABLE: [u8; 32] = [
-    10, 254, 20, 2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
-    12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
+    10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
+    192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
 impl LengthCounter {
@@ -47,7 +47,7 @@ mod test {
             clock.count_down(
                 |counter, tick| counter.clock(tick),
                 &|counter, cycles| assert_eq!(counter.value(), value, "Failed on clock {}", cycles),
-                &|counter, _| assert_eq!(counter.value(), value-1),
+                &|counter, _| assert_eq!(counter.value(), value - 1),
             );
             value -= 1;
         }

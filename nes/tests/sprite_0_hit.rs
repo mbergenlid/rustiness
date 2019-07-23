@@ -2,14 +2,14 @@
 #[macro_use]
 extern crate nes;
 
+use nes::memory::SharedMemory;
+use nes::memory::{CPUMemory, Memory};
+use nes::ppu::ppumemory::{Mirroring, PPUMemory};
 use nes::ppu::screen::ScreenMock;
 use nes::ppu::PPU;
-use nes::ppu::ppumemory::{PPUMemory, Mirroring};
-use nes::memory::SharedMemory;
-use std::rc::Rc;
-use std::cell::RefCell;
-use nes::memory::{CPUMemory, Memory};
 use nes::sound::APU;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[test]
 #[ignore]
@@ -23,7 +23,12 @@ fn test_basic_sprite_rendering() {
         0x0203 => 0x00
     );
 
-    let mut cpu_memory = CPUMemory::default(box basic_memory, ppu.clone(), &APU::new(Rc::new(RefCell::new(Vec::new())), 1), None);
+    let mut cpu_memory = CPUMemory::default(
+        box basic_memory,
+        ppu.clone(),
+        &APU::new(Rc::new(RefCell::new(Vec::new())), 1),
+        None,
+    );
     {
         cpu_memory.set(0x4014, 0x02, 0);
     };
@@ -38,22 +43,25 @@ fn test_basic_sprite_rendering() {
 
 fn create_ppu() -> Rc<RefCell<PPU>> {
     let memory = memory!(
-            //BG colour palettes
-            0x3F00 => 0x00, //Gray,
-            0x3F01 => 0x20, //White
+        //BG colour palettes
+        0x3F00 => 0x00, //Gray,
+        0x3F01 => 0x20, //White
 
-            //Sprite palettes
-            0x3F10 => 0x1F, //Black
-            0x3F11 => 0x20, //White
-            0x3F13 => 0x0B, //(0x00,0x3F,0x17)
+        //Sprite palettes
+        0x3F10 => 0x1F, //Black
+        0x3F11 => 0x20, //White
+        0x3F13 => 0x0B, //(0x00,0x3F,0x17)
 
-            0x3F14 => 0xFF, //Invalid
-            0x3F15 => 0x17, //(0xCB,0x4F,0x0F)
-            0x3F17 => 0x3B, //(0xB3,0xFF,0xCF)
+        0x3F14 => 0xFF, //Invalid
+        0x3F15 => 0x17, //(0xCB,0x4F,0x0F)
+        0x3F17 => 0x3B, //(0xB3,0xFF,0xCF)
 
-            0x2000 => 0x01
-        );
-    let mut ppu = PPU::new(PPUMemory::wrap(SharedMemory::wrap(memory), Mirroring::NoMirroring));
+        0x2000 => 0x01
+    );
+    let mut ppu = PPU::new(PPUMemory::wrap(
+        SharedMemory::wrap(memory),
+        Mirroring::NoMirroring,
+    ));
     ppu.set_ppu_ctrl(0x08);
 
     ppu.load(
@@ -61,34 +69,22 @@ fn create_ppu() -> Rc<RefCell<PPU>> {
         &[
             //Pattern table 0
             //Layer 1
-            0b00001100,
-            0b00110010,
-            0b00111000,
-            0b00011100,
-            0b00001110,
-            0b00100110,
-            0b00011100,
+            0b00001100, 0b00110010, 0b00111000, 0b00011100, 0b00001110, 0b00100110, 0b00011100,
+            0b00000000, //Layer 2
+            0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000,
             0b00000000,
-            //Layer 2
-            0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000,
-        ]
+        ],
     );
     ppu.load(
         0x1010,
         &[
             //Pattern table 0
             //Layer 1
-            0b11111111,
-            0b11111111,
-            0b11000011,
-            0b11000011,
-            0b11000011,
-            0b11000011,
-            0b11111111,
-            0b11111111,
-            //Layer 2
-            0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000,
-        ]
+            0b11111111, 0b11111111, 0b11000011, 0b11000011, 0b11000011, 0b11000011, 0b11111111,
+            0b11111111, //Layer 2
+            0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000,
+            0b00000000,
+        ],
     );
     return Rc::new(RefCell::new(ppu));
 }

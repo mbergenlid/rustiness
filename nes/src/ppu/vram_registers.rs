@@ -1,4 +1,3 @@
-
 pub struct VRAMRegisters {
     pub temporary: u16,
     pub current: u16,
@@ -109,7 +108,7 @@ impl VRAMRegisters {
     }
 
     pub fn current_absolute_y_scroll(&self) -> u16 {
-        ((self.current & 0x800) >> 11)*240 + self.current_y_scroll() as u16
+        ((self.current & 0x800) >> 11) * 240 + self.current_y_scroll() as u16
     }
 }
 
@@ -228,9 +227,9 @@ mod tests {
                     registers.vertical_increment();
                     fine_y_scroll += 0b001_0000_0000_0000;
                     assert_eq!(
-                        fine_y_scroll,
-                        registers.current,
-                        "Fine increment: {}, Expected: {:015b}, Was: {:015b}", fine, fine_y_scroll, registers.current
+                        fine_y_scroll, registers.current,
+                        "Fine increment: {}, Expected: {:015b}, Was: {:015b}",
+                        fine, fine_y_scroll, registers.current
                     );
                 }
                 registers.vertical_increment();
@@ -242,17 +241,17 @@ mod tests {
                 registers.vertical_increment();
                 fine_y_scroll += 0b001_0000_0000_0000;
                 assert_eq!(
-                    fine_y_scroll,
-                    registers.current,
-                    "Fine increment: {}, Expected: {:015b}, Was: {:015b}", fine, fine_y_scroll, registers.current
+                    fine_y_scroll, registers.current,
+                    "Fine increment: {}, Expected: {:015b}, Was: {:015b}",
+                    fine, fine_y_scroll, registers.current
                 );
             }
             registers.vertical_increment();
             coarse_y_scroll = 0b000_1000_0000_0000;
             assert_eq!(
-                coarse_y_scroll,
-                registers.current,
-                "Expected: {:015b}, Was: {:015b}", coarse_y_scroll, registers.current
+                coarse_y_scroll, registers.current,
+                "Expected: {:015b}, Was: {:015b}",
+                coarse_y_scroll, registers.current
             );
         }
 
@@ -264,9 +263,9 @@ mod tests {
                     registers.vertical_increment();
                     fine_y_scroll += 0b001_0000_0000_0000;
                     assert_eq!(
-                        fine_y_scroll,
-                        registers.current,
-                        "Fine increment: {}, Expected: {:015b}, Was: {:015b}", fine, fine_y_scroll, registers.current
+                        fine_y_scroll, registers.current,
+                        "Fine increment: {}, Expected: {:015b}, Was: {:015b}",
+                        fine, fine_y_scroll, registers.current
                     );
                 }
                 registers.vertical_increment();
@@ -278,17 +277,17 @@ mod tests {
                 registers.vertical_increment();
                 fine_y_scroll += 0b001_0000_0000_0000;
                 assert_eq!(
-                    fine_y_scroll,
-                    registers.current,
-                    "Fine increment: {}, Expected: {:015b}, Was: {:015b}", fine, fine_y_scroll, registers.current
+                    fine_y_scroll, registers.current,
+                    "Fine increment: {}, Expected: {:015b}, Was: {:015b}",
+                    fine, fine_y_scroll, registers.current
                 );
             }
             registers.vertical_increment();
             coarse_y_scroll = 0;
             assert_eq!(
-                coarse_y_scroll,
-                registers.current,
-                "Expected: {:015b}, Was: {:015b}", coarse_y_scroll, registers.current
+                coarse_y_scroll, registers.current,
+                "Expected: {:015b}, Was: {:015b}",
+                coarse_y_scroll, registers.current
             );
         }
     }
@@ -304,7 +303,9 @@ mod tests {
             assert_eq!(
                 temp_vram & 0b000_0100_0001_1111,
                 vram.current,
-                "Copy temp value: {:04x} -> {:04x}", temp_vram, vram.current
+                "Copy temp value: {:04x} -> {:04x}",
+                temp_vram,
+                vram.current
             )
         }
     }

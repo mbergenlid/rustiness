@@ -1,7 +1,7 @@
-use memory::{BasicMemory, Memory, Address};
+use memory::{Address, BasicMemory, Memory};
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct SharedMemory(Rc<RefCell<Memory>>);
 

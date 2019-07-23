@@ -3,14 +3,14 @@ use memory::Memory;
 const COLOUR_PALETTE_BASE_ADDRESS: u16 = 0x3F00;
 pub struct AttributeTable<'a> {
     pub memory: &'a Memory,
-    pub address: u16
+    pub address: u16,
 }
 
 impl<'a> AttributeTable<'a> {
     pub fn get_palette_address(&self, tile_row: u16, tile_col: u16) -> u16 {
         let palette_index = self.get_palette_index(tile_row, tile_col);
 
-        COLOUR_PALETTE_BASE_ADDRESS + (palette_index as u16)*4
+        COLOUR_PALETTE_BASE_ADDRESS + (palette_index as u16) * 4
     }
 
     pub fn get_palette_index(&self, tile_row: u16, tile_col: u16) -> u8 {
@@ -19,7 +19,7 @@ impl<'a> AttributeTable<'a> {
         let row_inside_attribute = (tile_row & 0x03) >> 1;
         let col_inside_attribute = (tile_col & 0x03) >> 1;
         let quadrant = (row_inside_attribute << 1) | col_inside_attribute;
-        let attribute_address = self.address + (attribute_row*8 + attribute_col);
+        let attribute_address = self.address + (attribute_row * 8 + attribute_col);
 
         let value = self.memory.get(attribute_address, 0);
         value >> (quadrant << 1) & 0x03
@@ -38,7 +38,7 @@ mod test {
         );
         let attribute_table = AttributeTable {
             memory: &memory,
-            address: 0x23C0
+            address: 0x23C0,
         };
 
         //Quadrants of 0x23C0
@@ -62,7 +62,6 @@ mod test {
         assert_eq!(attribute_table.get_palette_address(3, 2), 0x3F0C);
         assert_eq!(attribute_table.get_palette_address(3, 3), 0x3F0C);
 
-
         //Quadrants of 0x23C1
         assert_eq!(attribute_table.get_palette_address(0, 4), 0x3F0C);
         assert_eq!(attribute_table.get_palette_address(0, 5), 0x3F0C);
@@ -83,7 +82,6 @@ mod test {
         assert_eq!(attribute_table.get_palette_address(2, 7), 0x3F00);
         assert_eq!(attribute_table.get_palette_address(3, 6), 0x3F00);
         assert_eq!(attribute_table.get_palette_address(3, 7), 0x3F00);
-
 
         //Quadrants of 0x23C9
         assert_eq!(attribute_table.get_palette_address(4, 4), 0x3F00);

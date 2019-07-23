@@ -1,8 +1,8 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use memory::Memory;
 use memory::MemoryMappedIO;
 use ppu::PPU;
-use memory::Memory;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct PPUCtrl(pub Rc<RefCell<PPU>>);
 pub struct PPUMask(pub Rc<RefCell<PPU>>);
@@ -87,11 +87,17 @@ impl MemoryMappedIO for OAMDMA {
         let sprites = ppu.sprites_mut();
         let oam_address = sprites.address() as usize;
         if oam_address == 0 {
-            memory.dma(dma_address..(dma_address+256), sprites.slice());
+            memory.dma(dma_address..(dma_address + 256), sprites.slice());
         } else {
-            let wrap_around_address: u16 = dma_address+(256-oam_address as u16);
-            memory.dma(dma_address..wrap_around_address, &mut sprites.slice()[oam_address..(256-oam_address)+1]);
-            memory.dma(wrap_around_address..(dma_address+256), &mut sprites.slice()[0..]);
+            let wrap_around_address: u16 = dma_address + (256 - oam_address as u16);
+            memory.dma(
+                dma_address..wrap_around_address,
+                &mut sprites.slice()[oam_address..(256 - oam_address) + 1],
+            );
+            memory.dma(
+                wrap_around_address..(dma_address + 256),
+                &mut sprites.slice()[0..],
+            );
         }
     }
 }
@@ -116,17 +122,16 @@ impl MemoryMappedIO for OAMData {
 
 #[cfg(test)]
 mod test {
+    use super::{OAMAddress, OAMData, PPUAddress, PPUData, OAMDMA};
     use memory::BasicMemory;
     use memory::Memory;
-    use ppu::PPU;
     use ppu::ppumemory::PPUMemory;
-    use super::{PPUAddress,PPUData, OAMAddress, OAMData, OAMDMA};
-    use std::rc::Rc;
+    use ppu::PPU;
     use std::cell::RefCell;
-
+    use std::rc::Rc;
 
     #[test]
-    fn test_write_to_vram() { 
+    fn test_write_to_vram() {
         let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::no_mirroring())));
 
         {
@@ -159,12 +164,15 @@ mod test {
     use memory::SharedMemory;
     use ppu::ppumemory::Mirroring;
     #[test]
-    fn test_read_from_vram() { 
+    fn test_read_from_vram() {
         let ppu_internal_memory = memory!(
             0x2000 => 0x05,
             0x2001 => 0x10
         );
-        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(
+            SharedMemory::wrap(ppu_internal_memory),
+            Mirroring::NoMirroring,
+        ))));
 
         {
             let basic_memory = BasicMemory::new();
@@ -190,7 +198,10 @@ mod test {
             0x3F00 => 0x05,
             0x3F01 => 0x10
         );
-        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(
+            SharedMemory::wrap(ppu_internal_memory),
+            Mirroring::NoMirroring,
+        ))));
 
         {
             let basic_memory = BasicMemory::new();
@@ -214,7 +225,10 @@ mod test {
             0x2f12 => 0x9A,
             0x3F12 => 0x05
         );
-        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(SharedMemory::wrap(ppu_internal_memory), Mirroring::NoMirroring))));
+        let ppu = Rc::new(RefCell::new(PPU::new(PPUMemory::wrap(
+            SharedMemory::wrap(ppu_internal_memory),
+            Mirroring::NoMirroring,
+        ))));
 
         {
             let basic_memory = BasicMemory::new();

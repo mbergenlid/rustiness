@@ -1,6 +1,6 @@
-use ppu::ppumemory::PPUMemory;
-use memory::{Memory, BasicMemory};
 use ines::INes;
+use memory::{BasicMemory, Memory};
+use ppu::ppumemory::PPUMemory;
 use std::fs::File;
 
 pub struct Mapper {
@@ -30,6 +30,6 @@ pub fn from_file(file_name: &str) -> Mapper {
                 ppu_mem.set_slice(0x0000, ines.chr_rom(0));
             }
             ppu_mem
-        }
+        },
     }
 }

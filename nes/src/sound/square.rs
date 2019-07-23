@@ -1,5 +1,5 @@
-use sound::length_counter::LengthCounter;
 use sound::envelope::Envelope;
+use sound::length_counter::LengthCounter;
 
 struct CircularBuffer {
     buffer: [i16; 8],
@@ -36,7 +36,7 @@ impl PulseGenerator {
             length: LengthCounter::new(0),
 
             sequencer: CircularBuffer {
-                buffer: [0,1,1,1,1,0,0,0],
+                buffer: [0, 1, 1, 1, 1, 0, 0, 0],
                 index: 0,
             },
         }
@@ -87,4 +87,3 @@ impl PulseGenerator {
         }
     }
 }
-
