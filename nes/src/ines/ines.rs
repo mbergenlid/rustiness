@@ -31,7 +31,7 @@ impl<'a> INes {
         }
     }
 
-    pub fn read(file: &mut Read) -> INes {
+    pub fn read(file: &mut dyn Read) -> INes {
         let mut buffer: Vec<u8> = vec![];
         file.read_to_end(&mut buffer).unwrap();
         let num_prg_roms = buffer[4];
@@ -60,7 +60,7 @@ impl<'a> INes {
         &self.buffer[rom_base..(rom_base + 0x2000)]
     }
 
-    pub fn load(&self, cpu_memory: &mut Memory) {
+    pub fn load(&self, cpu_memory: &mut dyn Memory) {
         cpu_memory.set_slice(0x8000, self.prg_rom(0));
         if self.num_prg_roms == 1 {
             cpu_memory.set_slice(0xC000, self.prg_rom(0));

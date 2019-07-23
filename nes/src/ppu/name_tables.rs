@@ -36,7 +36,7 @@ use ppu::pattern::Pattern;
 use ppu::ppumemory::Palette;
 
 impl NameTable {
-    pub fn from_memory(memory: &Memory) -> NameTable {
+    pub fn from_memory(memory: &dyn Memory) -> NameTable {
         let mut tiles = vec![vec!(Tile::new(); 64); 60];
         for name_table_index in 0..4 {
             let name_table_base = (0x2000 + name_table_index * 0x400) as u16;
@@ -220,7 +220,7 @@ mod test {
         assert_name_table(&name_table, row_offset, col_offset);
     }
 
-    fn populate(memory: &mut Memory) {
+    fn populate(memory: &mut dyn Memory) {
         memory.set(0x23C0, 0b11_10_01_00, 0);
         memory.set(0x23C1, 0b00_01_10_11, 0);
         memory.set(0x23C9, 0b11_10_01_00, 0);

@@ -20,7 +20,7 @@ impl AddressingMode {
         };
     }
 
-    pub fn zero_paged(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn zero_paged(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let operand_address = memory.get(cpu.get_and_increment_pc(), 1) as u16;
         return AddressingMode {
             cycles: 2,
@@ -28,7 +28,7 @@ impl AddressingMode {
         };
     }
 
-    pub fn zero_paged_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn zero_paged_x(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let operand_address: Address =
             memory.get(cpu.get_and_increment_pc(), 1) as Address + cpu.register_x() as Address;
         return AddressingMode {
@@ -41,7 +41,7 @@ impl AddressingMode {
         };
     }
 
-    pub fn zero_paged_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn zero_paged_y(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let operand_address: Address =
             memory.get(cpu.get_and_increment_pc(), 1) as Address + cpu.register_y() as Address;
         return AddressingMode {
@@ -50,7 +50,7 @@ impl AddressingMode {
         };
     }
 
-    pub fn absolute(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn absolute(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let lsbs: u8 = memory.get(cpu.get_and_increment_pc(), 1);
         let msbs: u8 = memory.get(cpu.get_and_increment_pc(), 2);
         return AddressingMode {
@@ -59,17 +59,17 @@ impl AddressingMode {
         };
     }
 
-    pub fn absolute_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn absolute_x(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let x = cpu.register_x();
         AddressingMode::absolute_indexed(cpu, memory, x)
     }
 
-    pub fn absolute_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn absolute_y(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let y = cpu.register_y();
         AddressingMode::absolute_indexed(cpu, memory, y)
     }
 
-    fn absolute_indexed(cpu: &mut CPU, memory: &Memory, index: u8) -> AddressingMode {
+    fn absolute_indexed(cpu: &mut CPU, memory: &dyn Memory, index: u8) -> AddressingMode {
         let lsb: u16 = memory.get(cpu.get_and_increment_pc(), 1) as u16;
         let msb: u16 = memory.get(cpu.get_and_increment_pc(), 2) as u16;
         let base_address = (msb << 8) | lsb;
@@ -86,7 +86,7 @@ impl AddressingMode {
         };
     }
 
-    pub fn indirect(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn indirect(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let ial = memory.get(cpu.get_and_increment_pc(), 1);
         let iah = memory.get(cpu.get_and_increment_pc(), 2);
 
@@ -100,7 +100,7 @@ impl AddressingMode {
         };
     }
 
-    pub fn indirect_x(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn indirect_x(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let index = memory.get(cpu.get_and_increment_pc(), 1);
         let base_address = index.wrapping_add(cpu.register_x());
 
@@ -115,7 +115,7 @@ impl AddressingMode {
         };
     }
 
-    pub fn indirect_y(cpu: &mut CPU, memory: &Memory) -> AddressingMode {
+    pub fn indirect_y(cpu: &mut CPU, memory: &dyn Memory) -> AddressingMode {
         let ial = memory.get(cpu.get_and_increment_pc(), 1);
         let bal = memory.get(ial as u16, 2);
         let bah = memory.get(ial.wrapping_add(1) as u16, 3);

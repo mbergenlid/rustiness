@@ -51,14 +51,14 @@ impl Index<Range<usize>> for BasicMemory {
 }
 
 pub trait MemoryMappedIO {
-    fn read(&self, &Memory) -> u8;
-    fn write(&mut self, &mut Memory, value: u8);
+    fn read(&self, &dyn Memory) -> u8;
+    fn write(&mut self, &mut dyn Memory, value: u8);
 
-    fn read_at_cycle(&self, memory: &Memory, _: u8) -> u8 {
+    fn read_at_cycle(&self, memory: &dyn Memory, _: u8) -> u8 {
         self.read(memory)
     }
 
-    fn write_at_cycle(&mut self, memory: &mut Memory, value: u8, _: u8) {
+    fn write_at_cycle(&mut self, memory: &mut dyn Memory, value: u8, _: u8) {
         self.write(memory, value)
     }
 }

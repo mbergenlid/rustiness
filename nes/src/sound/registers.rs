@@ -8,11 +8,11 @@ pub struct Register3(pub Rc<RefCell<PulseGenerator>>);
 pub struct Register4(pub Rc<RefCell<PulseGenerator>>);
 
 impl MemoryMappedIO for Register1 {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
 
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         if value & 0x10 > 0 {
             self.0.borrow_mut().volume(value & 0xF);
         } else {
@@ -21,20 +21,20 @@ impl MemoryMappedIO for Register1 {
     }
 }
 impl MemoryMappedIO for Register3 {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         0
     }
 
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().timer_low(value);
     }
 }
 impl MemoryMappedIO for Register4 {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
 
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().length(value >> 3);
         self.0.borrow_mut().timer_high(value & 0x07);
     }

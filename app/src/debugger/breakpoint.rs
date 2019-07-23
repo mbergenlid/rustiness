@@ -7,12 +7,12 @@ use nes::{cpu, memory};
 use std::rc::Rc;
 use std::result;
 
-type Result = result::Result<Box<BreakPoint>, Fail>;
+type Result = result::Result<Box<dyn BreakPoint>, Fail>;
 pub trait BreakPoint {
-    fn breakpoint(&self, cpu: &cpu::CPU, ppu: &PPU, memory: &memory::Memory) -> bool;
+    fn breakpoint(&self, cpu: &cpu::CPU, ppu: &PPU, memory: &dyn memory::Memory) -> bool;
 }
 
-impl BreakPoint {
+impl dyn BreakPoint {
     pub fn parse(command: &[String], opcodes: Rc<OpCodes>) -> Result {
         let mut opts = Options::new();
         opts.optopt("l", "", "Address to break at", "address");
@@ -27,7 +27,7 @@ impl BreakPoint {
         let location_option = matches.opt_str("l").and_then(|option| parse_hex(&option));
         let address_access_option = matches.opt_str("a").and_then(|option| parse_hex(&option));
         let vram_value = matches.opt_str("v").and_then(|option| parse_hex(&option));
-        let mut vector: Vec<Box<BreakPoint>> = vec![];
+        let mut vector: Vec<Box<dyn BreakPoint>> = vec![];
         if location_option.is_some() {
             vector.push(box location_option.unwrap());
         }
@@ -60,9 +60,9 @@ fn parse_hex(string: &String) -> Option<u16> {
     return Some(value);
 }
 
-struct And(Vec<Box<BreakPoint>>);
+struct And(Vec<Box<dyn BreakPoint>>);
 impl BreakPoint for And {
-    fn breakpoint(&self, cpu: &cpu::CPU, ppu: &PPU, memory: &memory::Memory) -> bool {
+    fn breakpoint(&self, cpu: &cpu::CPU, ppu: &PPU, memory: &dyn memory::Memory) -> bool {
         for b in self.0.iter() {
             if !b.breakpoint(cpu, ppu, memory) {
                 return false;
@@ -72,8 +72,8 @@ impl BreakPoint for And {
     }
 }
 
-impl BreakPoint for Vec<Box<BreakPoint>> {
-    fn breakpoint(&self, cpu: &cpu::CPU, ppu: &PPU, memory: &memory::Memory) -> bool {
+impl BreakPoint for Vec<Box<dyn BreakPoint>> {
+    fn breakpoint(&self, cpu: &cpu::CPU, ppu: &PPU, memory: &dyn memory::Memory) -> bool {
         for b in self.iter() {
             if b.breakpoint(cpu, ppu, memory) {
                 return true;
@@ -84,7 +84,7 @@ impl BreakPoint for Vec<Box<BreakPoint>> {
 }
 
 impl BreakPoint for u16 {
-    fn breakpoint(&self, cpu: &cpu::CPU, _: &PPU, _: &memory::Memory) -> bool {
+    fn breakpoint(&self, cpu: &cpu::CPU, _: &PPU, _: &dyn memory::Memory) -> bool {
         cpu.program_counter() == *self
     }
 }
@@ -93,7 +93,7 @@ use self::opcodes::OpCodes;
 pub struct MemoryAccess(u16, Rc<OpCodes>);
 
 impl BreakPoint for MemoryAccess {
-    fn breakpoint(&self, cpu: &cpu::CPU, _: &PPU, memory: &memory::Memory) -> bool {
+    fn breakpoint(&self, cpu: &cpu::CPU, _: &PPU, memory: &dyn memory::Memory) -> bool {
         let address = self.1.addressing_mode(cpu, memory).operand_address;
         address == self.0
     }
@@ -101,7 +101,7 @@ impl BreakPoint for MemoryAccess {
 
 struct VRAMValue(u16);
 impl BreakPoint for VRAMValue {
-    fn breakpoint(&self, _: &cpu::CPU, ppu: &PPU, _: &memory::Memory) -> bool {
+    fn breakpoint(&self, _: &cpu::CPU, ppu: &PPU, _: &dyn memory::Memory) -> bool {
         ppu.vram() == self.0
     }
 }

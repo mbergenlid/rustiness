@@ -2,7 +2,7 @@ use memory::Memory;
 
 const COLOUR_PALETTE_BASE_ADDRESS: u16 = 0x3F00;
 pub struct AttributeTable<'a> {
-    pub memory: &'a Memory,
+    pub memory: &'a dyn Memory,
     pub address: u16,
 }
 

@@ -456,7 +456,7 @@ impl PPU {
         self.memory.name_table_mut().invalidate_tile_cache();
     }
 
-    pub fn memory(&self) -> &Memory {
+    pub fn memory(&self) -> &dyn Memory {
         &self.memory
     }
 }

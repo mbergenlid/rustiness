@@ -52,7 +52,7 @@ where
 {
     pub fn from_file(
         file: &str,
-        controller: MutableRef<'a, MemoryMappedIO>,
+        controller: MutableRef<'a, dyn MemoryMappedIO>,
         audio: A,
         screen: Box<T>,
     ) -> NES<'a, T, A> {
@@ -62,7 +62,7 @@ where
 
     pub fn new(
         mapper: mapper::Mapper,
-        controller: MutableRef<'a, MemoryMappedIO>,
+        controller: MutableRef<'a, dyn MemoryMappedIO>,
         audio: A,
         screen: Box<T>,
     ) -> NES<'a, T, A> {
@@ -127,10 +127,10 @@ use ppu::ppuregisters::*;
 use memory::MemoryMappedIO;
 impl<'a> CPUMemory<'a> {
     pub fn default<A>(
-        memory: Box<Memory>,
+        memory: Box<dyn Memory>,
         ppu: Rc<RefCell<PPU>>,
         apu: &APU<A>,
-        controller: Option<MutableRef<'a, MemoryMappedIO>>,
+        controller: Option<MutableRef<'a, dyn MemoryMappedIO>>,
     ) -> CPUMemory<'a>
     where
         A: AudioDevice + Sized,
@@ -161,10 +161,10 @@ impl<'a> CPUMemory<'a> {
 }
 
 impl MemoryMappedIO for () {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         0
     }
-    fn write(&mut self, _: &mut Memory, _: u8) {}
+    fn write(&mut self, _: &mut dyn Memory, _: u8) {}
 }
 
 use std::thread::sleep;

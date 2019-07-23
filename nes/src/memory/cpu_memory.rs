@@ -2,14 +2,14 @@ use borrow::MutableRef;
 use memory::{Address, Memory, MemoryMappedIO};
 
 pub struct CPUMemory<'a> {
-    memory: Box<Memory>,
-    io_registers: Vec<(u16, MutableRef<'a, MemoryMappedIO>)>,
+    memory: Box<dyn Memory>,
+    io_registers: Vec<(u16, MutableRef<'a, dyn MemoryMappedIO>)>,
 }
 
 impl<'a> CPUMemory<'a> {
     pub fn new(
-        memory: Box<Memory>,
-        io_registers: Vec<(u16, MutableRef<'a, MemoryMappedIO>)>,
+        memory: Box<dyn Memory>,
+        io_registers: Vec<(u16, MutableRef<'a, dyn MemoryMappedIO>)>,
     ) -> CPUMemory<'a> {
         CPUMemory {
             memory: memory,
@@ -61,7 +61,7 @@ impl<'a> Memory for CPUMemory<'a> {
             self.memory.set(address, value, sub_cycles);
         } else {
             if let Some(entry) = self.io_registers.iter_mut().find(|e| e.0 == address) {
-                let memory: &mut Memory = self.memory.borrow_mut();
+                let memory: &mut dyn Memory = self.memory.borrow_mut();
                 entry.1.write_at_cycle(memory, value, sub_cycles);
             } else {
                 self.memory.set(address, value, sub_cycles);
@@ -95,14 +95,14 @@ mod test {
     }
 
     use super::MemoryMappedIO;
-    impl MemoryMappedIO for Rc<RefCell<TestRegister>> {
-        fn read(&self, _: &Memory) -> u8 {
+    impl MemoryMappedIO for Rc<RefCell<dyn TestRegister>> {
+        fn read(&self, _: &dyn Memory) -> u8 {
             let prev_value = self.borrow().reads.get();
             self.borrow().reads.set(prev_value + 1);
             return 0;
         }
 
-        fn write(&mut self, _: &mut Memory, value: u8) {
+        fn write(&mut self, _: &mut dyn Memory, value: u8) {
             self.borrow_mut().writes.push(value);
         }
     }

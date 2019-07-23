@@ -15,73 +15,73 @@ pub struct OAMData(pub Rc<RefCell<PPU>>);
 pub struct OAMDMA(pub Rc<RefCell<PPU>>);
 
 impl MemoryMappedIO for PPUCtrl {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         self.0.borrow().ppu_ctrl()
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().set_ppu_ctrl_at_cycle(value, 0);
     }
 
-    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: u8) {
+    fn write_at_cycle(&mut self, _: &mut dyn Memory, value: u8, sub_cycle: u8) {
         self.0.borrow_mut().set_ppu_ctrl_at_cycle(value, sub_cycle);
     }
 }
 
 impl MemoryMappedIO for PPUMask {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().set_ppu_mask(value, 0);
     }
 
-    fn write_at_cycle(&mut self, _: &mut Memory, value: u8, sub_cycle: u8) {
+    fn write_at_cycle(&mut self, _: &mut dyn Memory, value: u8, sub_cycle: u8) {
         self.0.borrow_mut().set_ppu_mask(value, sub_cycle);
     }
 }
 impl MemoryMappedIO for PPUStatus {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         self.0.borrow_mut().status(0)
     }
-    fn write(&mut self, _: &mut Memory, _: u8) {
+    fn write(&mut self, _: &mut dyn Memory, _: u8) {
         //Do nothing
     }
-    fn read_at_cycle(&self, _: &Memory, sub_cycle: u8) -> u8 {
+    fn read_at_cycle(&self, _: &dyn Memory, sub_cycle: u8) -> u8 {
         self.0.borrow_mut().status(sub_cycle)
     }
 }
 impl MemoryMappedIO for PPUScroll {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().set_scroll(value);
     }
 }
 impl MemoryMappedIO for PPUAddress {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().set_vram(value);
     }
 }
 
 impl MemoryMappedIO for PPUData {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         self.0.borrow_mut().read_from_vram()
     }
 
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().write_to_vram(value);
     }
 }
 
 impl MemoryMappedIO for OAMDMA {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, memory: &mut Memory, value: u8) {
+    fn write(&mut self, memory: &mut dyn Memory, value: u8) {
         let dma_address: u16 = (value as u16) << 8;
         let mut ppu = self.0.borrow_mut();
         let sprites = ppu.sprites_mut();
@@ -103,19 +103,19 @@ impl MemoryMappedIO for OAMDMA {
 }
 
 impl MemoryMappedIO for OAMAddress {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         unimplemented!();
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().sprites_mut().set_address(value);
     }
 }
 
 impl MemoryMappedIO for OAMData {
-    fn read(&self, _: &Memory) -> u8 {
+    fn read(&self, _: &dyn Memory) -> u8 {
         self.0.borrow().sprites().read_byte()
     }
-    fn write(&mut self, _: &mut Memory, value: u8) {
+    fn write(&mut self, _: &mut dyn Memory, value: u8) {
         self.0.borrow_mut().sprites_mut().write_byte(value);
     }
 }

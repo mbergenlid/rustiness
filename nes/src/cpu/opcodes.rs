@@ -16,7 +16,11 @@ impl OpCodes {
         }
     }
 
-    pub fn fetch_instruction(&self, cpu: &mut CPU, memory: &mut Memory) -> Box<Instruction> {
+    pub fn fetch_instruction(
+        &self,
+        cpu: &mut CPU,
+        memory: &mut dyn Memory,
+    ) -> Box<dyn Instruction> {
         let pc = cpu.get_and_increment_pc();
         let op_code: u8 = memory.get(pc, 0);
 
@@ -26,13 +30,13 @@ impl OpCodes {
         }
     }
 
-    pub fn execute_instruction(&self, cpu: &mut CPU, memory: &mut Memory) -> u8 {
+    pub fn execute_instruction(&self, cpu: &mut CPU, memory: &mut dyn Memory) -> u8 {
         let instruction = self.fetch_instruction(cpu, memory);
         return instruction.execute(cpu, memory);
     }
 }
 
-type InstructionFactory = Box<Fn(&mut CPU, &mut Memory) -> Box<Instruction>>;
+type InstructionFactory = Box<dyn Fn(&mut CPU, &mut dyn Memory) -> Box<dyn Instruction>>;
 
 fn generate_instructions() -> Vec<Option<InstructionFactory>> {
     let mut codes: Vec<Option<InstructionFactory>> = vec![];
@@ -809,11 +813,11 @@ mod tests {
     use memory::Memory;
     use opcodes;
 
-    fn execute_instruction(cpu: &mut cpu::CPU, memory: &mut Memory) -> u8 {
+    fn execute_instruction(cpu: &mut cpu::CPU, memory: &mut dyn Memory) -> u8 {
         super::OpCodes::new().execute_instruction(cpu, memory)
     }
 
-    fn test_program(memory: &mut Memory, expected_cpu_states: &[cpu::CPU]) {
+    fn test_program(memory: &mut dyn Memory, expected_cpu_states: &[cpu::CPU]) {
         let op_codes = super::OpCodes::new();
         let mut cpu = cpu::CPU::new(0x8000);
 
@@ -1109,7 +1113,7 @@ mod tests {
         assert_eq!(true, cpu.is_flag_set(cpu::INTERRUPT_DISABLE_FLAG));
     }
 
-    fn test_instruction(memory: &mut Memory, expected_cpu: cpu::CPU) {
+    fn test_instruction(memory: &mut dyn Memory, expected_cpu: cpu::CPU) {
         let mut cpu = cpu::CPU::new(0x8000);
         execute_instruction(&mut cpu, memory);
 

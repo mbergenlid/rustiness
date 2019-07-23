@@ -129,7 +129,7 @@ fn run<'a, S, A>(
     S: Screen + Sized,
     A: AudioDevice + Sized,
 {
-    let mut break_points: Vec<Box<BreakPoint>> = vec![];
+    let mut break_points: Vec<Box<dyn BreakPoint>> = vec![];
     let mut log_file: Option<File> = None;
     let opcodes = Rc::new(OpCodes::new());
     print(&nes);
@@ -221,7 +221,7 @@ fn run<'a, S, A>(
                 }
             },
             "sprites" => {
-                let mut ppu = nes.ppu.borrow_mut();
+                let ppu = nes.ppu.borrow_mut();
                 let sprites = ppu.sprites();
                 for s in 0..64 {
                     let sprite = &sprites[s];

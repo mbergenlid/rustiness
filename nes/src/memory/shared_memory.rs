@@ -3,7 +3,7 @@ use memory::{Address, BasicMemory, Memory};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub struct SharedMemory(Rc<RefCell<Memory>>);
+pub struct SharedMemory(Rc<RefCell<dyn Memory>>);
 
 impl SharedMemory {
     pub fn new() -> SharedMemory {

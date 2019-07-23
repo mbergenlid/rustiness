@@ -4,7 +4,7 @@ use ppu::ppumemory::PPUMemory;
 use std::fs::File;
 
 pub struct Mapper {
-    pub cpu_memory: Box<Memory>,
+    pub cpu_memory: Box<dyn Memory>,
     pub ppu_memory: PPUMemory,
 }
 

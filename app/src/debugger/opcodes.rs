@@ -7,8 +7,8 @@ use std::string::String;
 pub struct OpCodeDebug(
     u8,
     &'static str,
-    Box<Fn(&mut CPU, &Memory) -> AddressingMode>,
-    Box<Fn(&mut CPU, &CPUMemory) -> String>,
+    Box<dyn Fn(&mut CPU, &dyn Memory) -> AddressingMode>,
+    Box<dyn Fn(&mut CPU, &CPUMemory) -> String>,
 );
 
 pub struct OpCodes {
@@ -22,7 +22,7 @@ impl OpCodes {
         }
     }
 
-    pub fn addressing_mode(&self, cpu: &CPU, memory: &Memory) -> AddressingMode {
+    pub fn addressing_mode(&self, cpu: &CPU, memory: &dyn Memory) -> AddressingMode {
         let mut cloned_cpu = cpu.clone();
         let op_code = memory.get(cloned_cpu.get_and_increment_pc(), 0);
         match self.codes.iter().find(|opd| opd.0 == op_code) {
